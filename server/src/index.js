@@ -13,6 +13,7 @@ import { adminRouter } from "./routes/admin.js";
 import { superadminRouter } from "./routes/superadmin.js";
 import { communityRouter } from "./routes/community.js";
 import { amenitiesRouter } from "./routes/amenities.js";
+import { staffRouter } from "./routes/staff.js";
 import { aiRouter } from "./routes/ai.js";
 import cron from "node-cron";
 import { runMonthlyBackups } from "./backup.js";
@@ -63,6 +64,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api/superadmin", superadminRouter);
 app.use("/api", communityRouter);
 app.use("/api", amenitiesRouter);
+app.use("/api", staffRouter);
 app.use("/api/ai", aiRouter);
 
 // Secure endpoint to trigger the monthly backup from an EXTERNAL scheduler

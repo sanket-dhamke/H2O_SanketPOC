@@ -27,6 +27,7 @@ function summarize(societies, users, bills, expenses, venueBookings) {
         address: s.address || null,
         active: s.active,
         createdAt: s.createdAt,
+        orgType: s.orgType || "society",
         // Subscription plan info.
         plan: s.plan || "free",
         premium: isPremium(s),
@@ -145,9 +146,12 @@ superadminRouter.get("/societies", async (_req, res) => {
 
 // POST /api/superadmin/societies — create a society and (optionally) its first admin.
 superadminRouter.post("/societies", async (req, res) => {
-  const { name, city, address, adminName, adminEmail, adminPassword } = req.body || {};
+  const { name, city, address, adminName, adminEmail, adminPassword, orgType } = req.body || {};
   if (!name || !String(name).trim()) {
     return res.status(400).json({ message: "Society name is required" });
+  }
+  if (orgType !== undefined && !["society", "preschool"].includes(orgType)) {
+    return res.status(400).json({ message: "orgType must be 'society' or 'preschool'" });
   }
 
   // If admin details are provided, validate them before creating anything.
@@ -171,6 +175,7 @@ superadminRouter.post("/societies", async (req, res) => {
       name: String(name).trim(),
       city: city ? String(city).trim() : null,
       address: address ? String(address).trim() : null,
+      orgType: orgType || "society",
     },
   });
 
@@ -186,7 +191,7 @@ superadminRouter.post("/societies", async (req, res) => {
 
 // PATCH /api/superadmin/societies/:id — edit details, activate, or set plan.
 superadminRouter.patch("/societies/:id", async (req, res) => {
-  const { name, city, address, active, plan, planExpiresAt, planAmount, planNote } = req.body || {};
+  const { name, city, address, active, plan, planExpiresAt, planAmount, planNote, orgType } = req.body || {};
   const society = await prisma.society.findUnique({ where: { id: req.params.id } });
   if (!society) return res.status(404).json({ message: "Society not found" });
 
@@ -195,6 +200,10 @@ superadminRouter.patch("/societies/:id", async (req, res) => {
   if (city !== undefined) data.city = city ? String(city).trim() : null;
   if (address !== undefined) data.address = address ? String(address).trim() : null;
   if (active !== undefined) data.active = Boolean(active);
+  if (orgType !== undefined) {
+    if (!["society", "preschool"].includes(orgType)) return res.status(400).json({ message: "orgType must be 'society' or 'preschool'" });
+    data.orgType = orgType;
+  }
   if (plan !== undefined) {
     if (!["free", "premium"].includes(plan)) return res.status(400).json({ message: "plan must be 'free' or 'premium'" });
     data.plan = plan;

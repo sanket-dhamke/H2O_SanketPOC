@@ -21,6 +21,21 @@ export function publicUser(u) {
     // Subscription plan of the user's society (so the app can gate premium perks).
     societyPlan: u.society?.plan || null,
     societyPlanExpiresAt: u.society?.planExpiresAt || null,
+    // Tenant type ("society" | "preschool") so the app can adapt labels/features.
+    societyOrgType: u.society?.orgType || "society",
+  };
+}
+
+export function serializeStaffAttendance(s) {
+  return {
+    id: s.id,
+    name: s.name,
+    role: s.role || null,
+    phone: s.phone || null,
+    date: s.date,
+    inAt: s.inAt,
+    outAt: s.outAt,
+    createdAt: s.createdAt,
   };
 }
 
@@ -64,6 +79,7 @@ export function serializeVisitor(v) {
     status: v.status,
     createdAt: v.createdAt,
     decidedAt: v.decidedAt,
+    exitAt: v.exitAt || null,
   };
 }
 

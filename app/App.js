@@ -17,6 +17,8 @@ import GateScreen from "./src/screens/GateScreen";
 import AssistantScreen from "./src/screens/AssistantScreen";
 import CommunityScreen from "./src/screens/CommunityScreen";
 import AmenitiesScreen from "./src/screens/AmenitiesScreen";
+import StaffAttendanceScreen from "./src/screens/StaffAttendanceScreen";
+import { isPreschool, labelsFor } from "./src/lib/org";
 import AdminDashboardScreen from "./src/screens/admin/AdminDashboardScreen";
 import ManageUsersScreen from "./src/screens/admin/ManageUsersScreen";
 import CreateAccountScreen from "./src/screens/admin/CreateAccountScreen";
@@ -46,6 +48,7 @@ const TAB_ICONS = {
   Gate: "person-add",
   Community: "megaphone",
   Amenities: "calendar",
+  Staff: "id-card",
   Overview: "planet",
   Societies: "business",
 };
@@ -102,26 +105,32 @@ function FinanceStackScreen() {
 }
 
 function AdminTabs() {
+  const { user } = useAuth();
+  const preschool = isPreschool(user);
+  const L = labelsFor(user);
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-      <Tab.Screen name="Finance" component={FinanceStackScreen} />
-      <Tab.Screen name="Members" component={MembersStackScreen} options={{ headerShown: false }} />
+      <Tab.Screen name="Finance" component={FinanceStackScreen} options={{ tabBarLabel: L.feesShort }} />
+      <Tab.Screen name="Members" component={MembersStackScreen} options={{ headerShown: false, tabBarLabel: L.members }} />
+      {preschool && <Tab.Screen name="Staff" component={StaffAttendanceScreen} />}
       <Tab.Screen name="Community" component={CommunityScreen} />
-      <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: "Gate log" }} />
-      <Tab.Screen name="Assistant" component={AssistantScreen} />
+      <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: L.gate }} />
+      {!preschool && <Tab.Screen name="Assistant" component={AssistantScreen} />}
     </Tab.Navigator>
   );
 }
 
 function ResidentTabs() {
+  const { user } = useAuth();
+  const L = labelsFor(user);
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-      <Tab.Screen name="Maintenance" component={MaintenanceScreen} />
+      <Tab.Screen name="Maintenance" component={MaintenanceScreen} options={{ tabBarLabel: L.feesShort }} />
       <Tab.Screen name="Community" component={CommunityScreen} />
       <Tab.Screen name="Amenities" component={AmenitiesScreen} />
-      <Tab.Screen name="Visitors" component={VisitorsScreen} />
+      <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ tabBarLabel: L.visitors }} />
       <Tab.Screen name="Assistant" component={AssistantScreen} />
     </Tab.Navigator>
   );
@@ -137,12 +146,16 @@ function SuperAdminTabs() {
 }
 
 function GuardTabs() {
+  const { user } = useAuth();
+  const preschool = isPreschool(user);
+  const L = labelsFor(user);
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
       <Tab.Screen name="Gate" component={GateScreen} />
+      {preschool && <Tab.Screen name="Staff" component={StaffAttendanceScreen} />}
       <Tab.Screen name="Community" component={CommunityScreen} />
-      <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: "Gate log" }} />
+      <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: L.gate }} />
       <Tab.Screen name="Assistant" component={AssistantScreen} />
     </Tab.Navigator>
   );

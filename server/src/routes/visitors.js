@@ -84,6 +84,22 @@ visitorsRouter.get("/visitors", authRequired, async (req, res) => {
   res.json({ visitors: visitors.map(serializeVisitor) });
 });
 
+// Guard/admin marks a visitor as having left (entry/exit tracking). Records the
+// exit time so "who's still inside" and time-on-premise can be shown.
+visitorsRouter.post("/visitors/:id/exit", authRequired, roleRequired("guard", "admin"), async (req, res) => {
+  const visitor = await prisma.visitor.findFirst({
+    where: { id: req.params.id, flat: { societyId: req.user.societyId || "__none__" } },
+  });
+  if (!visitor) return res.status(404).json({ message: "Visitor not found" });
+  if (visitor.exitAt) return res.status(400).json({ message: "Already marked out" });
+  const updated = await prisma.visitor.update({
+    where: { id: visitor.id },
+    data: { exitAt: new Date(), exitBy: req.user.id },
+    include: { flat: true },
+  });
+  res.json({ visitor: serializeVisitor(updated) });
+});
+
 // Resident decides: approved | rejected | leave_at_gate -> guard gets a push.
 visitorsRouter.post("/visitors/:id/decision", authRequired, async (req, res) => {
   const { status } = req.body || {};

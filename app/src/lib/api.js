@@ -109,6 +109,15 @@ export const api = {
     request("/api/visitors", { method: "POST", body: payload }),
   decideVisitor: (id, status) =>
     request(`/api/visitors/${id}/decision`, { method: "POST", body: { status } }),
+  markVisitorExit: (id) =>
+    request(`/api/visitors/${id}/exit`, { method: "POST" }),
+
+  // Staff/teacher gate attendance (preschool)
+  staffAttendance: (date) => request(`/api/staff-attendance${qs({ date })}`),
+  staffCheckIn: (payload) =>
+    request("/api/staff-attendance", { method: "POST", body: payload }),
+  staffCheckOut: (id) =>
+    request(`/api/staff-attendance/${id}/checkout`, { method: "POST" }),
 
   // Admin: accounts + flats
   adminListUsers: (role) => request(`/api/admin/users${qs({ role })}`),

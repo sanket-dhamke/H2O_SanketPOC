@@ -105,7 +105,10 @@ export default function SocietiesScreen() {
             <View style={styles.cardTop}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.name}>{s.name}</Text>
-                <Text style={styles.city}>{s.city || "—"}</Text>
+                <Text style={styles.city}>
+                  {s.orgType === "preschool" ? "🏫 Preschool" : "🏢 Society"}
+                  {s.city ? ` · ${s.city}` : ""}
+                </Text>
               </View>
               <View style={{ alignItems: "flex-end", gap: 6 }}>
                 <View style={[styles.badge, s.active ? styles.badgeOn : styles.badgeOff]}>
@@ -329,12 +332,14 @@ function Chip({ icon, text }) {
 
 function CreateSocietyModal({ visible, onClose, onDone }) {
   const [f, setF] = useState({ name: "", city: "", address: "", adminName: "", adminEmail: "", adminPassword: "" });
+  const [orgType, setOrgType] = useState("society");
   const [busy, setBusy] = useState(false);
   const set = (k) => (v) => setF((p) => ({ ...p, [k]: v }));
+  const preschool = orgType === "preschool";
 
   const submit = async () => {
     if (!f.name.trim()) {
-      Alert.alert("Missing info", "Enter a society name.");
+      Alert.alert("Missing info", `Enter a ${preschool ? "preschool" : "society"} name.`);
       return;
     }
     setBusy(true);
@@ -343,12 +348,14 @@ function CreateSocietyModal({ visible, onClose, onDone }) {
         name: f.name.trim(),
         city: f.city.trim(),
         address: f.address.trim(),
+        orgType,
         adminName: f.adminName.trim() || undefined,
         adminEmail: f.adminEmail.trim() || undefined,
         adminPassword: f.adminPassword || undefined,
       });
-      Alert.alert("Society created", f.adminName ? "The admin can now log in." : "Add an admin from the list.");
+      Alert.alert(`${preschool ? "Preschool" : "Society"} created`, f.adminName ? "The admin can now log in." : "Add an admin from the list.");
       setF({ name: "", city: "", address: "", adminName: "", adminEmail: "", adminPassword: "" });
+      setOrgType("society");
       onClose();
       onDone();
     } catch (e) {
@@ -359,9 +366,20 @@ function CreateSocietyModal({ visible, onClose, onDone }) {
   };
 
   return (
-    <FormModal visible={visible} onClose={onClose} title="Onboard a society" icon="business-outline" busy={busy} onSubmit={submit}>
-      <Label>Society name *</Label>
-      <TextInput style={styles.input} value={f.name} onChangeText={set("name")} placeholder="Green Valley Residency" />
+    <FormModal visible={visible} onClose={onClose} title="Onboard an organization" icon="business-outline" busy={busy} onSubmit={submit}>
+      <Label>Type</Label>
+      <View style={styles.typeRow}>
+        <TouchableOpacity style={[styles.typeChip, !preschool && styles.typeChipActive]} onPress={() => setOrgType("society")}>
+          <Ionicons name="business-outline" size={16} color={!preschool ? "#fff" : "#0B6E8F"} />
+          <Text style={[styles.typeText, !preschool && { color: "#fff" }]}>Society</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.typeChip, preschool && styles.typeChipActive]} onPress={() => setOrgType("preschool")}>
+          <Ionicons name="school-outline" size={16} color={preschool ? "#fff" : "#0B6E8F"} />
+          <Text style={[styles.typeText, preschool && { color: "#fff" }]}>Preschool</Text>
+        </TouchableOpacity>
+      </View>
+      <Label>{preschool ? "Preschool" : "Society"} name *</Label>
+      <TextInput style={styles.input} value={f.name} onChangeText={set("name")} placeholder={preschool ? "Little Stars Preschool" : "Green Valley Residency"} />
       <Label>City</Label>
       <TextInput style={styles.input} value={f.city} onChangeText={set("city")} placeholder="Pune" />
       <Label>Address</Label>
@@ -556,6 +574,10 @@ const styles = StyleSheet.create({
   planToggleSub: { color: "#6B7B85", fontSize: 12, marginTop: 2, maxWidth: 200 },
   invoiceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 16 },
   invoiceText: { color: "#334", fontWeight: "600", flex: 1 },
+  typeRow: { flexDirection: "row", gap: 10 },
+  typeChip: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 1, borderColor: "#CFE0E6", borderRadius: 10, paddingVertical: 11 },
+  typeChipActive: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },
+  typeText: { color: "#0B6E8F", fontWeight: "700" },
   statsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
   chip: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#EAF4F7", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
   chipText: { color: "#0B6E8F", fontSize: 12, fontWeight: "600" },

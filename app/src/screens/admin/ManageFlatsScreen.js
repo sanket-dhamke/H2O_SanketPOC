@@ -12,9 +12,13 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
+import { useAuth } from "../../lib/auth";
+import { labelsFor } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
 
 export default function ManageFlatsScreen({ navigation }) {
+  const { user } = useAuth();
+  const L = labelsFor(user);
   const [flats, setFlats] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [flatNo, setFlatNo] = useState("");
@@ -66,8 +70,8 @@ export default function ManageFlatsScreen({ navigation }) {
     <View style={styles.container}>
       <ScreenHeader
         icon="business"
-        title="Flats"
-        subtitle="Add & view society flats"
+        title={L.units}
+        subtitle={`Add & view ${L.units.toLowerCase()}`}
         onBack={() => navigation.goBack()}
         right={
           <TouchableOpacity
@@ -81,14 +85,14 @@ export default function ManageFlatsScreen({ navigation }) {
         }
       />
       <View style={styles.form}>
-        <Text style={styles.formTitle}>Add a flat</Text>
+        <Text style={styles.formTitle}>Add a {L.unit.toLowerCase()}</Text>
         <View style={styles.formRow}>
-          <TextInput style={[styles.input, { flex: 1 }]} value={flatNo} onChangeText={setFlatNo} placeholder="Flat no (A-101)" autoCapitalize="characters" />
-          <TextInput style={[styles.input, { width: 80 }]} value={block} onChangeText={setBlock} placeholder="Block" autoCapitalize="characters" />
+          <TextInput style={[styles.input, { flex: 1 }]} value={flatNo} onChangeText={setFlatNo} placeholder={L.unit + " no (A-101)"} autoCapitalize="characters" />
+          <TextInput style={[styles.input, { width: 80 }]} value={block} onChangeText={setBlock} placeholder={L.wing} autoCapitalize="characters" />
         </View>
         <TextInput style={styles.input} value={ownerName} onChangeText={setOwnerName} placeholder="Owner name (optional)" />
         <TouchableOpacity style={[styles.addBtn, busy && { opacity: 0.6 }]} onPress={addFlat} disabled={busy}>
-          <Text style={styles.addBtnText}>{busy ? "Adding..." : "Add flat"}</Text>
+          <Text style={styles.addBtnText}>{busy ? "Adding..." : `Add ${L.unit.toLowerCase()}`}</Text>
         </TouchableOpacity>
       </View>
 
@@ -97,7 +101,7 @@ export default function ManageFlatsScreen({ navigation }) {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={<Text style={styles.empty}>No flats yet.</Text>}
+        ListEmptyComponent={<Text style={styles.empty}>No {L.units.toLowerCase()} yet.</Text>}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={{ flex: 1 }}>

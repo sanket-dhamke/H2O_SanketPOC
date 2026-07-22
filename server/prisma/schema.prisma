@@ -26,6 +26,9 @@ model Society {
   city          String?
   address       String?
   active        Boolean          @default(true)
+  // Tenant type: "society" (default, unchanged behavior) or "preschool"
+  // (school-flavored labels + entry/exit & staff attendance features).
+  orgType       String           @default("society")
   // Subscription plan: "free" | "premium". Premium is a yearly paid plan set by
   // the H2O superadmin; unlocks perks like the vendor venue marketplace & voice AI.
   plan          String           @default("free")
@@ -42,6 +45,7 @@ model Society {
   amenities     Amenity[]
   bookings      Booking[]
   venueBookings VenueBooking[]
+  staffAttendance StaffAttendance[]
 }
 
 // A commercial booking of a society premise by an OUTSIDE vendor (not a resident):
@@ -161,8 +165,29 @@ model Visitor {
   decidedBy String?
   createdAt DateTime  @default(now())
   decidedAt DateTime?
+  // Gate exit timestamp (entry/exit tracking; used by preschools especially).
+  exitAt    DateTime?
+  exitBy    String?
 
   @@index([flatId])
+}
+
+// Staff/teacher gate attendance (check-in / check-out). Used by preschool
+// tenants; scoped per society and per day.
+model StaffAttendance {
+  id        String    @id @default(uuid())
+  society   Society   @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId String
+  name      String
+  role      String?   // teacher | helper | security | admin-staff | other
+  phone     String?
+  date      String // "2026-07-22"
+  inAt      DateTime  @default(now())
+  outAt     DateTime?
+  markedBy  String?
+  createdAt DateTime  @default(now())
+
+  @@index([societyId, date])
 }
 
 model Expense {

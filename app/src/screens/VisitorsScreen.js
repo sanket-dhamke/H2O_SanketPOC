@@ -12,7 +12,13 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { labelsFor, isPreschool } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
+
+function timeAt(iso) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+}
 
 function timeAgo(iso) {
   if (!iso) return "";
@@ -67,13 +73,24 @@ export default function VisitorsScreen() {
     }
   };
 
+  const markExit = async (visitor) => {
+    try {
+      await api.markVisitorExit(visitor.id);
+      await load();
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    }
+  };
+
+  const L = labelsFor(user);
+  const preschool = isPreschool(user);
   const isResident = user.role === "resident";
   return (
     <View style={styles.container}>
       <ScreenHeader
         icon="people"
-        title={isResident ? "Visitors" : "Gate log"}
-        subtitle={isResident ? "Approve or review your gate entries" : "All society gate entries"}
+        title={isResident ? L.visitors : L.gate}
+        subtitle={isResident ? "Approve or review your gate entries" : `All ${preschool ? "preschool" : "society"} gate entries`}
       />
       <FlatList
         data={visitors}
@@ -87,6 +104,8 @@ export default function VisitorsScreen() {
           const meta = STATUS_META[item.status] || STATUS_META.pending;
           const isResident = user.role === "resident";
           const canDecide = isResident && item.status === "pending";
+          // Preschool: guard/admin can mark a visitor out once they've entered.
+          const canExit = preschool && !isResident && !item.exitAt && item.status !== "rejected";
           return (
             <View style={styles.card}>
               <View style={styles.cardTop}>
@@ -102,11 +121,15 @@ export default function VisitorsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.name}>{item.name}</Text>
                   <Text style={styles.meta}>
-                    {item.purpose} · Flat {item.flatNo}
+                    {item.purpose} · {L.unit} {item.flatNo}
                     {item.phone ? ` · ${item.phone}` : ""}
                     {item.vehicleNo ? ` · ${item.vehicleNo}` : ""}
                   </Text>
-                  <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
+                  <Text style={styles.time}>
+                    {timeAgo(item.createdAt)}
+                    {preschool && item.exitAt ? ` · Out at ${timeAt(item.exitAt)}` : ""}
+                    {preschool && !item.exitAt && item.status !== "rejected" ? " · Inside" : ""}
+                  </Text>
                 </View>
                 <View style={[styles.badge, { backgroundColor: meta.bg }]}>
                   <Text style={[styles.badgeText, { color: meta.color }]}>{meta.label}</Text>
@@ -135,6 +158,12 @@ export default function VisitorsScreen() {
                   </TouchableOpacity>
                 </View>
               )}
+
+              {canExit && (
+                <TouchableOpacity style={styles.exitBtn} onPress={() => markExit(item)}>
+                  <Text style={styles.exitText}>Mark exit</Text>
+                </TouchableOpacity>
+              )}
             </View>
           );
         }}
@@ -159,4 +188,6 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", gap: 8, marginTop: 14 },
   action: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: "center" },
   actionText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  exitBtn: { marginTop: 12, borderWidth: 1, borderColor: "#0B6E8F", borderRadius: 8, paddingVertical: 10, alignItems: "center" },
+  exitText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
 });
