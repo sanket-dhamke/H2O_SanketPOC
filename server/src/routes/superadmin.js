@@ -16,92 +16,97 @@ export const superadminRouter = Router();
 
 superadminRouter.use(authRequired, roleRequired("superadmin"));
 
-// Builds per-society financial + membership aggregates from already-fetched rows.
-function summarize(societies, users, bills, expenses, venueBookings) {
-  const byId = new Map(
-    societies.map((s) => [
-      s.id,
-      {
-        id: s.id,
-        name: s.name,
-        city: s.city || null,
-        address: s.address || null,
-        active: s.active,
-        createdAt: s.createdAt,
-        orgType: s.orgType || "society",
-        slug: s.slug || null,
-        logoUrl: s.logoUrl || null,
-        // Subscription plan info.
-        plan: s.plan || "free",
-        premium: isPremium(s),
-        planExpiresAt: s.planExpiresAt || null,
-        planAmount: s.planAmount ?? null,
-        flats: s._count?.flats ?? 0,
-        residents: 0,
-        guards: 0,
-        admins: 0,
-        adminEmails: [],
-        collected: 0,
-        pending: 0,
-        expenses: 0,
-        balance: 0,
-        // H2O platform earnings from this society's vendor bookings.
-        platformFees: 0,
-        vendorBookings: 0,
-      },
-    ])
-  );
-
-  for (const v of venueBookings || []) {
-    const row = byId.get(v.societyId);
-    if (!row) continue;
-    row.vendorBookings++;
-    if (["paid", "completed"].includes(v.status)) row.platformFees += v.platformFee;
-  }
-
-  for (const u of users) {
-    const row = byId.get(u.societyId);
-    if (!row) continue;
-    if (u.role === "resident") row.residents++;
-    else if (u.role === "guard") row.guards++;
-    else if (u.role === "admin") {
-      row.admins++;
-      row.adminEmails.push(u.email);
-    }
-  }
-  for (const b of bills) {
-    const row = byId.get(b.flat?.societyId);
-    if (!row) continue;
-    // Partial-payment aware: count what's actually been paid vs. still owed.
-    const paid = b.status === "paid" ? b.amount : b.paidAmount || 0;
-    row.collected += paid;
-    row.pending += Math.max(0, (b.amount || 0) - paid);
-  }
-  for (const e of expenses) {
-    const row = byId.get(e.societyId);
-    if (!row) continue;
-    row.expenses += e.amount;
-  }
-  for (const row of byId.values()) row.balance = row.collected - row.expenses;
-  return [...byId.values()];
+function baseRow(s) {
+  return {
+    id: s.id,
+    name: s.name,
+    city: s.city || null,
+    address: s.address || null,
+    active: s.active,
+    createdAt: s.createdAt,
+    orgType: s.orgType || "society",
+    slug: s.slug || null,
+    logoUrl: s.logoUrl || null,
+    plan: s.plan || "free",
+    premium: isPremium(s),
+    planExpiresAt: s.planExpiresAt || null,
+    planAmount: s.planAmount ?? null,
+    flats: s._count?.flats ?? 0,
+    residents: 0,
+    guards: 0,
+    admins: 0,
+    adminEmails: [],
+    collected: 0,
+    pending: 0,
+    expenses: 0,
+    balance: 0,
+    platformFees: 0,
+    vendorBookings: 0,
+  };
 }
 
 // Cross-society snapshot used by both the overview totals and the societies list.
+// Aggregation is pushed to the DATABASE (groupBy + one grouped raw join for
+// bills) instead of loading every row into Node — so this scales to many
+// societies / hundreds of thousands of bills with a tiny, constant memory cost.
 async function loadSummaries() {
-  const [societies, users, bills, expenses, venueBookings] = await Promise.all([
-    prisma.society.findMany({
-      include: { _count: { select: { flats: true } } },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.user.findMany({
+  const societies = await prisma.society.findMany({
+    include: { _count: { select: { flats: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  const byId = new Map(societies.map((s) => [s.id, baseRow(s)]));
+
+  const [userGroups, adminList, billRows, expenseGroups, venueGroups] = await Promise.all([
+    prisma.user.groupBy({
+      by: ["societyId", "role"],
       where: { role: { in: ["resident", "guard", "admin"] } },
-      select: { societyId: true, role: true, email: true },
+      _count: { _all: true },
     }),
-    prisma.bill.findMany({ include: { flat: { select: { societyId: true } } } }),
-    prisma.expense.findMany({ select: { societyId: true, amount: true } }),
-    prisma.venueBooking.findMany({ select: { societyId: true, status: true, platformFee: true } }),
+    // Admin emails are shown in the UI; there are few admins, so fetch just those.
+    prisma.user.findMany({ where: { role: "admin" }, select: { societyId: true, email: true } }),
+    // Bills live under flats, so group by the flat's societyId in SQL.
+    prisma.$queryRaw`
+      SELECT f."societyId" AS "societyId", b.status AS status,
+             COALESCE(SUM(b.amount), 0) AS amount,
+             COALESCE(SUM(b."paidAmount"), 0) AS paid
+      FROM "Bill" b JOIN "Flat" f ON f.id = b."flatId"
+      GROUP BY f."societyId", b.status`,
+    prisma.expense.groupBy({ by: ["societyId"], _sum: { amount: true } }),
+    prisma.venueBooking.groupBy({ by: ["societyId", "status"], _sum: { platformFee: true }, _count: { _all: true } }),
   ]);
-  return summarize(societies, users, bills, expenses, venueBookings);
+
+  for (const g of userGroups) {
+    const row = byId.get(g.societyId);
+    if (!row) continue;
+    if (g.role === "resident") row.residents = g._count._all;
+    else if (g.role === "guard") row.guards = g._count._all;
+    else if (g.role === "admin") row.admins = g._count._all;
+  }
+  for (const a of adminList) {
+    const row = byId.get(a.societyId);
+    if (row) row.adminEmails.push(a.email);
+  }
+  for (const r of billRows) {
+    const row = byId.get(r.societyId);
+    if (!row) continue;
+    const amount = Number(r.amount) || 0;
+    // Partial-payment aware: fully-paid rows count their full amount as paid.
+    const paid = r.status === "paid" ? amount : Number(r.paid) || 0;
+    row.collected += paid;
+    row.pending += Math.max(0, amount - paid);
+  }
+  for (const g of expenseGroups) {
+    const row = byId.get(g.societyId);
+    if (row) row.expenses = g._sum.amount || 0;
+  }
+  for (const g of venueGroups) {
+    const row = byId.get(g.societyId);
+    if (!row) continue;
+    row.vendorBookings += g._count._all;
+    if (["paid", "completed"].includes(g.status)) row.platformFees += g._sum.platformFee || 0;
+  }
+  for (const row of byId.values()) row.balance = row.collected - row.expenses;
+  return [...byId.values()];
 }
 
 // GET /api/superadmin/overview — platform-wide totals for the owner dashboard.
