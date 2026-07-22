@@ -13,7 +13,7 @@ import {
   Linking,
 } from "react-native";
 import { useAuth } from "../lib/auth";
-import { getBaseUrl, setBaseUrl, getOrgMode, clearOrgMode, api } from "../lib/api";
+import { getBaseUrl, setBaseUrl, clearOrgMode, api } from "../lib/api";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
 
 // Extracts a tenant slug from a branded link / deep link, supporting both
@@ -27,10 +27,11 @@ function slugFromUrl(url) {
   return null;
 }
 
-// One shared, multi-tenant login. By default it shows a NEUTRAL brand (no
-// society/preschool wording). It only switches to a tenant-specific look when
-// opened via that tenant's branded link/QR, or from the org type remembered
-// after the last successful login. Wide art on web, portrait on phones.
+// One shared, multi-tenant login. It ALWAYS shows a NEUTRAL brand (no
+// society/preschool wording) unless the app was opened via a tenant's branded
+// link/QR (?t=<slug> or /t/<slug>), in which case it shows that tenant's look.
+// The plain URL is always neutral — branding is never "sticky" across refresh.
+// Wide art on web, portrait on phones.
 const isWeb = Platform.OS === "web";
 const BACKDROPS = {
   neutral: {
@@ -71,11 +72,14 @@ export default function LoginScreen() {
     getBaseUrl().then(setServerUrl);
   }, []);
 
-  // Auto-brand the login: 1) from a branded link/QR (?t=slug or /t/slug), else
-  // 2) from the tenant type remembered after the last successful login.
+  // Auto-brand the login ONLY from a branded link/QR (?t=slug or /t/slug).
+  // With no such link, we stay neutral — branding is never remembered/sticky,
+  // so a plain refresh always returns to the neutral H2O login.
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Clear any previously-remembered tenant so it can never re-stick.
+      clearOrgMode().catch(() => {});
       let launchUrl = null;
       if (Platform.OS === "web" && typeof window !== "undefined") {
         launchUrl = window.location?.href || null;
@@ -83,16 +87,6 @@ export default function LoginScreen() {
         try {
           launchUrl = await Linking.getInitialURL();
         } catch {}
-      }
-      // ?reset=1 forces the neutral login (and forgets the remembered tenant) —
-      // handy for signing in as the superadmin/owner from a branded device.
-      if (launchUrl && /[?&]reset=1\b/.test(launchUrl)) {
-        await clearOrgMode();
-        if (!cancelled) {
-          setOrgMode("neutral");
-          setTenantName(null);
-        }
-        return;
       }
       const slug = slugFromUrl(launchUrl);
       if (slug) {
@@ -102,11 +96,9 @@ export default function LoginScreen() {
             setOrgMode(b.orgType === "preschool" ? "preschool" : "society");
             setTenantName(b.name);
           }
-          return;
         } catch {}
       }
-      const remembered = await getOrgMode();
-      if (!cancelled && remembered) setOrgMode(remembered);
+      // No slug → remain on the neutral default set in useState.
     })();
     return () => {
       cancelled = true;
