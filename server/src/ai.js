@@ -58,14 +58,17 @@ async function buildContext(user) {
       prisma.bill.findMany({ where: { flatId }, orderBy: { period: "desc" } }),
       prisma.booking.findMany({ where: { residentId: user.id }, include: { amenity: true, slot: true }, orderBy: { createdAt: "desc" }, take: 30 }),
     ]);
+    const now = new Date();
+    const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     return {
       role: "resident",
+      currentPeriod,
       flat: dbUser?.flat?.flatNo,
       visitors: visitors.map((v) => ({
         name: v.name, purpose: v.purpose, vehicleNo: v.vehicleNo, phone: v.phone,
         status: v.status, at: v.createdAt,
       })),
-      bills: bills.map((b) => ({ period: b.period, amount: b.amount, status: b.status, dueDate: b.dueDate })),
+      bills: bills.map((b) => ({ period: b.period, amount: b.amount, status: b.status, dueDate: b.dueDate, paidAt: b.paidAt })),
       amenities: amenitiesInfo,
       myBookings: bookings.map((b) => ({
         amenity: b.amenity?.name, slot: b.slot?.label, date: b.date, status: b.status, amount: b.amount,
@@ -81,15 +84,40 @@ async function buildContext(user) {
     prisma.flat.findMany({ where: { societyId } }),
     prisma.booking.findMany({ where: { societyId }, include: { amenity: true, slot: true, resident: { include: { flat: true } } }, orderBy: { createdAt: "desc" }, take: 60 }),
   ]);
-  const collected = bills.filter((b) => b.status === "paid").reduce((s, b) => s + b.amount, 0);
+  const paidBills = bills.filter((b) => b.status === "paid");
+  const collected = paidBills.reduce((s, b) => s + b.amount, 0);
   const pending = bills.filter((b) => b.status === "pending").reduce((s, b) => s + b.amount, 0);
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+
+  // Month-aware aggregates so the assistant can answer time-based questions
+  // ("this month", "in July", etc.). period is "YYYY-MM"; paidAt is a timestamp.
+  const now = new Date();
+  const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const collectedThisMonth = paidBills
+    .filter((b) => (b.paidAt ? new Date(b.paidAt).toISOString().slice(0, 7) : b.period) === currentPeriod)
+    .reduce((s, b) => s + b.amount, 0);
+  const byPeriodMap = {};
+  for (const b of bills) {
+    const p = b.period || "unknown";
+    if (!byPeriodMap[p]) byPeriodMap[p] = { period: p, billed: 0, collected: 0, pending: 0 };
+    byPeriodMap[p].billed += b.amount;
+    if (b.status === "paid") byPeriodMap[p].collected += b.amount;
+    if (b.status === "pending") byPeriodMap[p].pending += b.amount;
+  }
+  const byPeriod = Object.values(byPeriodMap).sort((a, b) => (a.period < b.period ? 1 : -1)).slice(0, 12);
+
   return {
     role: user.role,
+    currentPeriod,
     society: {
       flats: flats.length,
-      collected, pending, totalExpenses, balance: collected - totalExpenses,
+      collectedThisMonth,
+      collectedAllTime: collected,
+      pendingAllTime: pending,
+      totalExpenses,
+      balance: collected - totalExpenses,
     },
+    collectionByMonth: byPeriod,
     dues: flats
       .map((f) => {
         const due = bills.filter((b) => b.flatId === f.id && b.status === "pending").reduce((s, b) => s + b.amount, 0);
@@ -120,7 +148,11 @@ export async function assistantAnswer(user, question) {
         role: "system",
         content:
           "You are H2O, a helpful society-management assistant. Answer ONLY from the provided JSON data. " +
-          "Be concise and specific (dates, names, amounts in INR). If the data does not contain the answer, say so. " +
+          "Be concise and specific (dates, names, amounts in INR, formatted like ₹1,200). If the data does not contain the answer, say so. " +
+          "Money fields: society.collectedThisMonth = maintenance collected in the current month (data.currentPeriod, format YYYY-MM); " +
+          "society.collectedAllTime = collected across all time; society.pendingAllTime = outstanding dues; " +
+          "society.balance = collected minus expenses. collectionByMonth breaks down billed/collected/pending per month. " +
+          "When the user says 'this month' use data.currentPeriod; for a named month, match it in collectionByMonth. " +
           "The data may include 'amenities' (bookable facilities like a clubhouse, with slots and prices) and bookings. " +
           "If the user asks to book a clubhouse/amenity, you cannot book it yourself — tell them the available amenities, " +
           "slots and prices from the data, and direct them to open the 'Amenities' tab to request a slot (admin approves, then they pay in-app). " +
