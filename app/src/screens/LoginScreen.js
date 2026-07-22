@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -28,10 +28,22 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [serverUrl, setServerUrl] = useState("");
+  const passwordRef = useRef(null);
 
   useEffect(() => {
     getBaseUrl().then(setServerUrl);
   }, []);
+
+  const onForgotPassword = () => {
+    Alert.alert(
+      "Forgot your password?",
+      "For security, passwords are reset by an administrator:\n\n" +
+        "• Residents & guards: ask your society admin — they can set a new password for you.\n\n" +
+        "• Society admins: contact your H2O platform owner (support), who can reset it for you.\n\n" +
+        "You can change your password yourself any time after logging in (Home → key icon).",
+      [{ text: "Got it" }]
+    );
+  };
 
   const onSubmit = async () => {
     if (!email.trim() || !password) {
@@ -75,10 +87,14 @@ export default function LoginScreen() {
           autoCapitalize="none"
           keyboardType="email-address"
           placeholder="you@society.com"
+          returnKeyType="next"
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          blurOnSubmit={false}
         />
         <Text style={styles.label}>Password</Text>
         <View style={styles.passwordRow}>
           <TextInput
+            ref={passwordRef}
             style={styles.passwordInput}
             value={password}
             onChangeText={setPassword}
@@ -88,6 +104,8 @@ export default function LoginScreen() {
             autoCorrect={false}
             autoComplete="off"
             textContentType="password"
+            returnKeyType="go"
+            onSubmitEditing={onSubmit}
           />
           <TouchableOpacity
             style={styles.showBtn}
@@ -102,6 +120,10 @@ export default function LoginScreen() {
           disabled={busy}
         >
           <Text style={styles.buttonText}>{busy ? "Signing in..." : "Sign In"}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={onForgotPassword}>
+          <Text style={styles.forgot}>Forgot password?</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => setShowAdvanced((v) => !v)}>
@@ -192,6 +214,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  forgot: { color: "#0B6E8F", fontWeight: "700", fontSize: 13, textAlign: "center", marginTop: 14 },
   advancedToggle: { color: "#0B6E8F", fontWeight: "600", fontSize: 13, textAlign: "center", marginTop: 16 },
   hint: { color: "#8895A0", fontSize: 12, textAlign: "center", marginTop: 16, lineHeight: 18 },
 });

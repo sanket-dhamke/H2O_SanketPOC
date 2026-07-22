@@ -168,6 +168,41 @@ superadminRouter.patch("/societies/:id", async (req, res) => {
   res.json({ society: updated });
 });
 
+// GET /api/superadmin/users?query= — search users across ALL societies (for
+// password resets when someone — even a society admin — forgets their password).
+superadminRouter.get("/users", async (req, res) => {
+  const q = String(req.query.query || "").trim();
+  const where = q
+    ? {
+        OR: [
+          { email: { contains: q.toLowerCase() } },
+          { name: { contains: q, mode: "insensitive" } },
+        ],
+      }
+    : {};
+  const users = await prisma.user.findMany({
+    where,
+    include: { society: true, flat: true },
+    orderBy: { email: "asc" },
+    take: 30,
+  });
+  res.json({ users: users.map(publicUser) });
+});
+
+// POST /api/superadmin/users/:id/reset-password — set a new password for any user.
+superadminRouter.post("/users/:id/reset-password", async (req, res) => {
+  const { newPassword } = req.body || {};
+  const policyError = validatePassword(newPassword);
+  if (policyError) return res.status(400).json({ message: policyError });
+  const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+  if (!user) return res.status(404).json({ message: "User not found" });
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash: bcrypt.hashSync(newPassword, 10) },
+  });
+  res.json({ ok: true, user: publicUser(user) });
+});
+
 // POST /api/superadmin/societies/:id/admins — add an admin to an existing society.
 superadminRouter.post("/societies/:id/admins", async (req, res) => {
   const { name, email, password, phone } = req.body || {};

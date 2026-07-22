@@ -23,6 +23,7 @@ export default function SocietiesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [createModal, setCreateModal] = useState(false);
   const [adminFor, setAdminFor] = useState(null); // society object when adding an admin
+  const [resetModal, setResetModal] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -54,10 +55,15 @@ export default function SocietiesScreen() {
     }
   };
 
-  const addBtn = (
-    <TouchableOpacity onPress={() => setCreateModal(true)} style={styles.addBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-      <Ionicons name="add" size={24} color="#fff" />
-    </TouchableOpacity>
+  const headerBtns = (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+      <TouchableOpacity onPress={() => setResetModal(true)} style={styles.addBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <Ionicons name="key-outline" size={20} color="#fff" />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => setCreateModal(true)} style={styles.addBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <Ionicons name="add" size={24} color="#fff" />
+      </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -66,7 +72,7 @@ export default function SocietiesScreen() {
         icon="business"
         title="Societies"
         subtitle={`${societies.length} onboarded`}
-        right={addBtn}
+        right={headerBtns}
       />
       <ScrollView
         contentContainerStyle={{ padding: 16 }}
@@ -141,7 +147,135 @@ export default function SocietiesScreen() {
 
       <CreateSocietyModal visible={createModal} onClose={() => setCreateModal(false)} onDone={load} />
       <AddAdminModal society={adminFor} onClose={() => setAdminFor(null)} onDone={load} />
+      <ResetPasswordModal visible={resetModal} onClose={() => setResetModal(false)} />
     </View>
+  );
+}
+
+const ROLE_LABEL = { superadmin: "Owner", admin: "Admin", guard: "Guard", resident: "Resident" };
+
+// Superadmin tool: find any user across societies and set a new password for them
+// (used when someone — even a society admin — forgets their password).
+function ResetPasswordModal({ visible, onClose }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const reset = () => {
+    setQuery("");
+    setResults([]);
+    setSelected(null);
+    setNewPassword("");
+  };
+
+  const search = async () => {
+    setSearching(true);
+    try {
+      const r = await api.superSearchUsers(query.trim());
+      setResults(r.users || []);
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const doReset = async () => {
+    if (!selected || !newPassword) {
+      Alert.alert("Missing info", "Pick a user and enter a new password.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.superResetPassword(selected.id, newPassword);
+      Alert.alert("Password reset", `New password set for ${selected.email}. Share it with them securely.`);
+      reset();
+      onClose();
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <View style={styles.modalCard}>
+          <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
+            <View style={styles.modalHeaderIcon}>
+              <Ionicons name="key-outline" size={20} color="#fff" />
+            </View>
+            <Text style={styles.modalTitle}>Reset a user's password</Text>
+          </LinearGradient>
+          <ScrollView style={{ maxHeight: 480 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
+            <Label>Find user by email or name</Label>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                value={query}
+                onChangeText={setQuery}
+                placeholder="admin@society.com"
+                autoCapitalize="none"
+                onSubmitEditing={search}
+                returnKeyType="search"
+              />
+              <TouchableOpacity style={styles.searchBtn} onPress={search} disabled={searching}>
+                <Ionicons name="search" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {searching && <Text style={styles.muted}>Searching…</Text>}
+            {!searching && results.length === 0 && !!query && (
+              <Text style={styles.muted}>No users found. Try a different email or name.</Text>
+            )}
+
+            {results.map((u) => {
+              const active = selected?.id === u.id;
+              return (
+                <TouchableOpacity key={u.id} style={[styles.userRow, active && styles.userRowActive]} onPress={() => setSelected(u)}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.userName}>{u.name}</Text>
+                    <Text style={styles.userMeta}>{u.email}</Text>
+                    <Text style={styles.userMeta}>
+                      {ROLE_LABEL[u.role] || u.role}
+                      {u.societyName ? ` · ${u.societyName}` : u.role === "superadmin" ? " · Platform" : ""}
+                      {u.flatNo ? ` · ${u.flatNo}` : ""}
+                    </Text>
+                  </View>
+                  <Ionicons name={active ? "radio-button-on" : "radio-button-off"} size={20} color={active ? "#0B6E8F" : "#B7C1C8"} />
+                </TouchableOpacity>
+              );
+            })}
+
+            {!!selected && (
+              <>
+                <Label>New password for {selected.email}</Label>
+                <TextInput
+                  style={styles.input}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  placeholder="At least 8 chars, 1 upper, 1 lower, 1 number"
+                  autoCapitalize="none"
+                />
+              </>
+            )}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={() => { reset(); onClose(); }}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalBtn, (busy || !selected) && { opacity: 0.6 }]} onPress={doReset} disabled={busy || !selected}>
+                <Text style={styles.modalBtnText}>{busy ? "Saving…" : "Reset password"}</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -322,4 +456,10 @@ const styles = StyleSheet.create({
   modalBtnText: { color: "#fff", fontWeight: "700" },
   cancelBtn: { backgroundColor: "#EEF2F4" },
   cancelText: { color: "#6B7B85", fontWeight: "700" },
+  searchBtn: { width: 48, backgroundColor: "#0B6E8F", borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  muted: { color: "#8895A0", fontSize: 13, marginTop: 12 },
+  userRow: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#E1E8EC", borderRadius: 10, padding: 12, marginTop: 10 },
+  userRowActive: { borderColor: "#0B6E8F", backgroundColor: "#F1F8FB" },
+  userName: { fontWeight: "800", color: "#1B2B33" },
+  userMeta: { color: "#6B7B85", fontSize: 12, marginTop: 2 },
 });

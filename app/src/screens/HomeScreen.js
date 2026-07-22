@@ -13,6 +13,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import AdsCarousel from "../components/AdsCarousel";
+import ChangePasswordModal from "../components/ChangePasswordModal";
 
 const HERO = {
   resident: require("../../assets/home-resident.png"),
@@ -27,6 +28,7 @@ export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [totalDue, setTotalDue] = useState(0);
   const [pendingVisitors, setPendingVisitors] = useState(0);
+  const [pwModal, setPwModal] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -73,12 +75,19 @@ export default function HomeScreen({ navigation }) {
               </Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-            <Ionicons name="log-out-outline" size={16} color="#fff" />
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
+          <View style={styles.heroActions}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => setPwModal(true)}>
+              <Ionicons name="key-outline" size={16} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+              <Ionicons name="log-out-outline" size={16} color="#fff" />
+              <Text style={styles.logoutText}>Logout</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ImageBackground>
+
+      <ChangePasswordModal visible={pwModal} onClose={() => setPwModal(false)} />
 
       <View style={styles.body}>
         {user.role === "resident" && (
@@ -196,6 +205,15 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   badgeText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  heroActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  iconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.22)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   logoutBtn: {
     flexDirection: "row",
     alignItems: "center",

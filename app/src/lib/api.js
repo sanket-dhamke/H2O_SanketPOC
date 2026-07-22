@@ -85,6 +85,8 @@ export const api = {
   login: (email, password) =>
     request("/api/auth/login", { method: "POST", body: { email, password } }),
   me: () => request("/api/me"),
+  changePassword: (currentPassword, newPassword) =>
+    request("/api/me/password", { method: "POST", body: { currentPassword, newPassword } }),
   registerPushToken: (token) =>
     request("/api/push-token", { method: "POST", body: { token } }),
   flats: () => request("/api/flats"),
@@ -141,6 +143,9 @@ export const api = {
     request(`/api/superadmin/societies/${id}`, { method: "PATCH", body: payload }),
   superAddAdmin: (id, payload) =>
     request(`/api/superadmin/societies/${id}/admins`, { method: "POST", body: payload }),
+  superSearchUsers: (query) => request(`/api/superadmin/users${qs({ query })}`),
+  superResetPassword: (id, newPassword) =>
+    request(`/api/superadmin/users/${id}/reset-password`, { method: "POST", body: { newPassword } }),
 
   // Admin: record a cash payment against a bill
   adminMarkCash: (id, payload) =>

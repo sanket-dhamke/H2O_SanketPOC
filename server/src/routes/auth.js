@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../prisma.js";
 import { signToken, authRequired } from "../auth.js";
 import { publicUser } from "../serializers.js";
+import { validatePassword } from "../passwordPolicy.js";
 
 export const authRouter = Router();
 
@@ -30,6 +31,25 @@ authRouter.get("/me", authRequired, async (req, res) => {
   });
   if (!user) return res.status(404).json({ message: "User not found" });
   res.json({ user: publicUser(user) });
+});
+
+// Any signed-in user can change their own password (verifies the current one).
+authRouter.post("/me/password", authRequired, async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: "Current and new password are required" });
+  }
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user) return res.status(404).json({ message: "User not found" });
+  const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!ok) return res.status(400).json({ message: "Current password is incorrect" });
+  const policyError = validatePassword(newPassword);
+  if (policyError) return res.status(400).json({ message: policyError });
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash: bcrypt.hashSync(newPassword, 10) },
+  });
+  res.json({ ok: true });
 });
 
 // Register the device's Expo push token so we can notify this user.
