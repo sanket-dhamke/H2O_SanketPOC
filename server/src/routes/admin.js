@@ -9,6 +9,7 @@ import { buildSocietyBackup, emailSocietyBackup, buildWingReport, listBlocks } f
 import { parseCsv } from "../csv.js";
 import { isPremium } from "../plan.js";
 import { razorpay, razorpayEnabled } from "../razorpay.js";
+import { onBillPaid } from "../paymentNotify.js";
 
 export const adminRouter = Router();
 
@@ -280,6 +281,8 @@ adminRouter.post("/bills/:id/cash", async (req, res) => {
     },
     include: { flat: true },
   });
+  // Email the resident a receipt PDF + notify admins.
+  onBillPaid(updated.id);
   res.json({ bill: serializeBill(updated) });
 });
 

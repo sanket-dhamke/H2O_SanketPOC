@@ -4,6 +4,7 @@ import { prisma } from "../prisma.js";
 import { authRequired } from "../auth.js";
 import { serializeBill } from "../serializers.js";
 import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorpay.js";
+import { onBillPaid } from "../paymentNotify.js";
 
 export const maintenanceRouter = Router();
 
@@ -70,6 +71,8 @@ maintenanceRouter.post("/maintenance/:id/pay", authRequired, async (req, res) =>
     },
     include: { flat: true },
   });
+  // Email the resident a receipt PDF + notify admins (fire-and-forget).
+  onBillPaid(updated.id);
   res.json({ bill: serializeBill(updated) });
 });
 
@@ -159,5 +162,6 @@ maintenanceRouter.post("/maintenance/:id/verify", authRequired, async (req, res)
     data: { status: "paid", paidAt: new Date(), paymentRef: razorpay_payment_id },
     include: { flat: true },
   });
+  onBillPaid(updated.id);
   res.json({ bill: serializeBill(updated) });
 });
