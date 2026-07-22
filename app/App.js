@@ -22,6 +22,7 @@ import ManageUsersScreen from "./src/screens/admin/ManageUsersScreen";
 import CreateAccountScreen from "./src/screens/admin/CreateAccountScreen";
 import ManageFlatsScreen from "./src/screens/admin/ManageFlatsScreen";
 import BankAccountScreen from "./src/screens/admin/BankAccountScreen";
+import ReportsScreen from "./src/screens/admin/ReportsScreen";
 import SuperAdminDashboardScreen from "./src/screens/superadmin/SuperAdminDashboardScreen";
 import SocietiesScreen from "./src/screens/superadmin/SocietiesScreen";
 
@@ -91,6 +92,7 @@ function FinanceStackScreen() {
       <FinanceStack.Screen name="FinanceHome" component={AdminDashboardScreen} />
       <FinanceStack.Screen name="Collections" component={MaintenanceScreen} />
       <FinanceStack.Screen name="Amenities" component={AmenitiesScreen} />
+      <FinanceStack.Screen name="Reports" component={ReportsScreen} />
     </FinanceStack.Navigator>
   );
 }

@@ -5,6 +5,7 @@ import { authRequired, roleRequired } from "../auth.js";
 import { publicUser, serializeBill } from "../serializers.js";
 import { validatePassword } from "../passwordPolicy.js";
 import { sendPush } from "../push.js";
+import { buildSocietyBackup, emailSocietyBackup, buildWingReport, listBlocks } from "../backup.js";
 
 export const adminRouter = Router();
 
@@ -326,4 +327,40 @@ adminRouter.post("/expenses", async (req, res) => {
     },
   });
   res.status(201).json({ expense });
+});
+
+/* --------------------------- Reports & backup ---------------------------- */
+// Distinct wings/blocks for the admin's society (for the report picker).
+adminRouter.get("/blocks", async (req, res) => {
+  res.json({ blocks: await listBlocks(sid(req)) });
+});
+
+// Wing-wise (block) report data. ?block=B  (omit or __all__ for whole society)
+adminRouter.get("/report", async (req, res) => {
+  try {
+    const report = await buildWingReport(sid(req), { block: req.query.block });
+    res.json({ report });
+  } catch (e) {
+    res.status(400).json({ message: e.message });
+  }
+});
+
+// Full society backup as JSON (for download in the app / on web).
+adminRouter.get("/backup", async (req, res) => {
+  try {
+    const backup = await buildSocietyBackup(sid(req), { period: req.query.period });
+    res.json({ backup: backup.json, stats: backup.stats });
+  } catch (e) {
+    res.status(400).json({ message: e.message });
+  }
+});
+
+// Email the full backup to all admins of this society right now.
+adminRouter.post("/backup/email", async (req, res) => {
+  try {
+    const result = await emailSocietyBackup(sid(req), { period: req.body?.period });
+    res.json(result);
+  } catch (e) {
+    res.status(400).json({ message: e.message });
+  }
 });

@@ -29,35 +29,56 @@ function getSmtpTransport() {
   return smtpTransport;
 }
 
-async function sendViaResend({ to, subject, text, html }) {
+// attachments: [{ filename, content (utf-8 string), contentType }]
+async function sendViaResend({ to, subject, text, html, attachments }) {
+  const body = { from: FROM, to: [to], subject, text, html };
+  if (attachments?.length) {
+    body.attachments = attachments.map((a) => ({
+      filename: a.filename,
+      content: Buffer.from(a.content).toString("base64"),
+    }));
+  }
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ from: FROM, to: [to], subject, text, html }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`Resend error ${res.status}: ${body}`);
+    const errBody = await res.text().catch(() => "");
+    throw new Error(`Resend error ${res.status}: ${errBody}`);
   }
 }
 
 // Returns { delivered: boolean, dev: boolean }. Never throws in DEV mode.
-export async function sendEmail({ to, subject, text, html }) {
+export async function sendEmail({ to, subject, text, html, attachments }) {
   if (!emailConfigured) {
+    const names = (attachments || []).map((a) => a.filename).join(", ");
     console.log(
       `\n[email:DEV] No email provider configured — would send to ${to}\n` +
-        `  Subject: ${subject}\n  ${text}\n`
+        `  Subject: ${subject}\n  ${text}\n` +
+        (names ? `  Attachments: ${names}\n` : "")
     );
     return { delivered: false, dev: true };
   }
   try {
     if (PROVIDER === "resend") {
-      await sendViaResend({ to, subject, text, html });
+      await sendViaResend({ to, subject, text, html, attachments });
     } else if (PROVIDER === "smtp") {
-      await getSmtpTransport().sendMail({ from: FROM, to, subject, text, html });
+      await getSmtpTransport().sendMail({
+        from: FROM,
+        to,
+        subject,
+        text,
+        html,
+        attachments: (attachments || []).map((a) => ({
+          filename: a.filename,
+          content: Buffer.from(a.content),
+          contentType: a.contentType,
+        })),
+      });
     }
     return { delivered: true, dev: false };
   } catch (e) {

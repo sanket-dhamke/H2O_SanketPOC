@@ -26,6 +26,7 @@
     "expo-server-sdk": "^3.10.0",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
+    "node-cron": "^4.6.0",
     "nodemailer": "^9.0.3",
     "openai": "^6.48.0",
     "razorpay": "^2.9.4"

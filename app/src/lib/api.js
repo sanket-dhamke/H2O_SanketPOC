@@ -140,6 +140,12 @@ export const api = {
   adminAddExpense: (payload) =>
     request("/api/admin/expenses", { method: "POST", body: payload }),
 
+  // Admin: reports & backup
+  adminBlocks: () => request("/api/admin/blocks"),
+  adminReport: (block) => request(`/api/admin/report${qs({ block })}`),
+  adminBackup: () => request("/api/admin/backup"),
+  adminEmailBackup: () => request("/api/admin/backup/email", { method: "POST" }),
+
   // Super admin (H2O platform owner): cross-society overview + management
   superOverview: () => request("/api/superadmin/overview"),
   superListSocieties: () => request("/api/superadmin/societies"),
