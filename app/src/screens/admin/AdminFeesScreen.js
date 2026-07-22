@@ -34,6 +34,7 @@ export default function AdminFeesScreen({ navigation }) {
   const { user } = useAuth();
   const L = labelsFor(user);
   const [data, setData] = useState({ students: [], summary: {} });
+  const [wa, setWa] = useState(null); // { enabled, mode, businessNumber }
   const [refreshing, setRefreshing] = useState(false);
   const [editing, setEditing] = useState(null); // student object
   const [running, setRunning] = useState(false);
@@ -44,6 +45,11 @@ export default function AdminFeesScreen({ navigation }) {
       setData(res);
     } catch (e) {
       notify("Error", e.message);
+    }
+    try {
+      setWa(await api.adminWhatsappStatus());
+    } catch {
+      // Non-fatal: leave the badge hidden if status can't be fetched.
     }
   }, []);
 
@@ -91,6 +97,8 @@ export default function AdminFeesScreen({ navigation }) {
         contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        {wa && <WhatsappBadge wa={wa} />}
+
         <View style={styles.kpiRow}>
           <Kpi label="Total fees" value={money(totalFees)} tint="#0B6E8F" />
           <Kpi label="Collected" value={money(totalCollected)} tint="#2E9E52" />
@@ -312,6 +320,23 @@ function FeeEditorModal({ student, onClose, onDone, L }) {
   );
 }
 
+function WhatsappBadge({ wa }) {
+  const live = wa.enabled;
+  const c = live
+    ? { bg: "#E7F6EC", fg: "#1E7A3D", dot: "#25D366", label: "WhatsApp: LIVE" }
+    : { bg: "#FEF3E2", fg: "#B0620B", dot: "#E0952A", label: "WhatsApp: dev mode" };
+  return (
+    <View style={[styles.waBadge, { backgroundColor: c.bg }]}>
+      <View style={[styles.waDot, { backgroundColor: c.dot }]} />
+      <Ionicons name="logo-whatsapp" size={15} color={c.fg} />
+      <Text style={[styles.waLabel, { color: c.fg }]}>{c.label}</Text>
+      <Text style={[styles.waSub, { color: c.fg }]} numberOfLines={1}>
+        {live ? `Auto-sending via +${wa.businessNumber}` : "Reminders prepared as tap-to-send links"}
+      </Text>
+    </View>
+  );
+}
+
 function Kpi({ label, value, tint }) {
   return (
     <View style={styles.kpi}>
@@ -334,6 +359,10 @@ function Label({ children }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
+  waBadge: { flexDirection: "row", alignItems: "center", gap: 7, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12 },
+  waDot: { width: 8, height: 8, borderRadius: 4 },
+  waLabel: { fontWeight: "800", fontSize: 12.5 },
+  waSub: { flex: 1, fontSize: 11, opacity: 0.85 },
   kpiRow: { flexDirection: "row", gap: 10 },
   kpi: { flex: 1, backgroundColor: "#fff", borderRadius: 14, padding: 14, alignItems: "center" },
   kpiValue: { fontSize: 17, fontWeight: "800" },

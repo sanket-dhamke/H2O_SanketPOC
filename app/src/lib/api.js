@@ -225,6 +225,7 @@ export const api = {
     request(`/api/admin/bills/${id}/remind`, { method: "POST" }),
   adminRunFeeReminders: () =>
     request("/api/admin/fees/run-reminders", { method: "POST" }),
+  adminWhatsappStatus: () => request("/api/admin/whatsapp-status"),
 
   // Community: announcements (admin -> all) + posts board (residents)
   announcements: () => request("/api/announcements"),

@@ -10,7 +10,7 @@ import { parseCsv } from "../csv.js";
 import { isPremium } from "../plan.js";
 import { razorpay, razorpayEnabled } from "../razorpay.js";
 import { recordPayment, effectivePaid, billBalance } from "../billing.js";
-import { sendFeeReminder } from "../whatsapp.js";
+import { sendFeeReminder, whatsappEnabled, WHATSAPP_BUSINESS_NUMBER } from "../whatsapp.js";
 import { runFeeReminders } from "../feeReminders.js";
 
 export const adminRouter = Router();
@@ -389,6 +389,17 @@ adminRouter.post("/bills/:id/remind", async (req, res) => {
 adminRouter.post("/fees/run-reminders", async (req, res) => {
   const result = await runFeeReminders({ societyId: sid(req) });
   res.json({ ok: true, ...result });
+});
+
+// Whether automated WhatsApp sending is live (Cloud API creds present) or in
+// dev mode (logs + wa.me fallback). Powers the status badge in the UI.
+adminRouter.get("/whatsapp-status", async (_req, res) => {
+  res.json({
+    enabled: whatsappEnabled,
+    mode: whatsappEnabled ? "live" : "dev",
+    businessNumber: WHATSAPP_BUSINESS_NUMBER,
+    template: process.env.WHATSAPP_TEMPLATE || "fee_reminder",
+  });
 });
 
 // Student-wise fee status (grouped by class/block). Each student shows their
