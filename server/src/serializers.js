@@ -42,6 +42,8 @@ export function serializeVenueBooking(v) {
     paymentRef: v.paymentRef || null,
     paidAt: v.paidAt,
     notes: v.notes || null,
+    paymentLinkId: v.paymentLinkId || null,
+    paymentLinkUrl: v.paymentLinkUrl || null,
     createdAt: v.createdAt,
   };
 }

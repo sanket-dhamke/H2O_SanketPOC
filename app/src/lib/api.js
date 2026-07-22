@@ -134,6 +134,10 @@ export const api = {
     request(`/api/admin/venue-bookings/${id}`, { method: "PATCH", body: payload }),
   adminDeleteVenueBooking: (id) =>
     request(`/api/admin/venue-bookings/${id}`, { method: "DELETE" }),
+  adminVenuePaymentLink: (id) =>
+    request(`/api/admin/venue-bookings/${id}/payment-link`, { method: "POST" }),
+  adminVenueSync: (id) =>
+    request(`/api/admin/venue-bookings/${id}/sync`, { method: "POST" }),
 
   // Admin: society bank account (Razorpay Route linked account)
   adminGetBankAccount: () => request("/api/admin/bank-account"),
@@ -171,6 +175,10 @@ export const api = {
   superSearchUsers: (query) => request(`/api/superadmin/users${qs({ query })}`),
   superResetPassword: (id, newPassword) =>
     request(`/api/superadmin/users/${id}/reset-password`, { method: "POST", body: { newPassword } }),
+  superSendInvoice: (id, payload) =>
+    request(`/api/superadmin/societies/${id}/invoice`, { method: "POST", body: payload || {} }),
+  superTestEmail: (to) =>
+    request("/api/superadmin/test-email", { method: "POST", body: { to } }),
 
   // Admin: record a cash payment against a bill
   adminMarkCash: (id, payload) =>

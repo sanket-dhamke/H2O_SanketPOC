@@ -8,6 +8,7 @@ import { sendPush } from "../push.js";
 import { buildSocietyBackup, emailSocietyBackup, buildWingReport, listBlocks } from "../backup.js";
 import { parseCsv } from "../csv.js";
 import { isPremium } from "../plan.js";
+import { razorpay, razorpayEnabled } from "../razorpay.js";
 
 export const adminRouter = Router();
 
@@ -569,4 +570,92 @@ adminRouter.delete("/venue-bookings/:id", async (req, res) => {
   if (!existing) return res.status(404).json({ message: "Booking not found" });
   await prisma.venueBooking.delete({ where: { id: existing.id } });
   res.json({ ok: true });
+});
+
+// Create a Razorpay Payment Link the vendor can pay. When the society has a
+// Razorpay Route linked account, the society's 90% (societyNet) is transferred
+// to it and H2O keeps the 10% platform fee on the primary account.
+adminRouter.post("/venue-bookings/:id/payment-link", async (req, res) => {
+  const society = await loadSocietyForPlan(req);
+  if (!isPremium(society)) return res.status(402).json({ premium: false, message: "Premium feature" });
+  const booking = await prisma.venueBooking.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
+  if (!booking) return res.status(404).json({ message: "Booking not found" });
+  if (["paid", "completed"].includes(booking.status)) {
+    return res.status(400).json({ message: "This booking is already paid" });
+  }
+  if (booking.amount <= 0) return res.status(400).json({ message: "Set an amount before creating a payment link" });
+  if (!razorpayEnabled) {
+    return res.json({ enabled: false, message: "Razorpay isn't configured. Record the payment manually with 'Mark paid'." });
+  }
+
+  const account = await prisma.societyAccount.findFirst({
+    where: { societyId: sid(req) },
+    orderBy: { createdAt: "asc" },
+  });
+  const amountPaise = Math.round(booking.amount * 100);
+  const netPaise = Math.round(booking.societyNet * 100);
+
+  // Route the society's share to its linked account (H2O keeps the remainder).
+  const transfers =
+    account?.active && account?.razorpayAccountId
+      ? [{ account: account.razorpayAccountId, amount: netPaise, currency: "INR", notes: { venueBookingId: booking.id } }]
+      : undefined;
+
+  try {
+    const link = await razorpay.paymentLink.create({
+      amount: amountPaise,
+      currency: "INR",
+      description: `${booking.venueName} · ${booking.date} (${booking.slot})`,
+      customer: {
+        name: booking.vendorName,
+        contact: booking.vendorPhone || undefined,
+        email: booking.vendorEmail || undefined,
+      },
+      notify: { sms: !!booking.vendorPhone, email: !!booking.vendorEmail },
+      reminder_enable: true,
+      notes: { venueBookingId: booking.id, societyId: sid(req) },
+      ...(transfers ? { options: { order: { transfers } } } : {}),
+    });
+    const updated = await prisma.venueBooking.update({
+      where: { id: booking.id },
+      data: {
+        paymentLinkId: link.id,
+        paymentLinkUrl: link.short_url,
+        status: booking.status === "requested" ? "approved" : booking.status,
+      },
+    });
+    res.json({ enabled: true, routed: !!transfers, url: link.short_url, booking: serializeVenueBooking(updated) });
+  } catch (err) {
+    const msg = err?.error?.description || err?.message || "Payment link failed";
+    console.error("Razorpay payment link failed:", err?.error || err?.message);
+    const routeIssue = transfers && /route|transfer|linked account/i.test(msg);
+    res.status(502).json({
+      message: routeIssue
+        ? "Payment link failed: ensure Razorpay Route is enabled and the society's linked account id is valid."
+        : `Could not create payment link (${msg})`,
+    });
+  }
+});
+
+// Poll Razorpay for the payment link status and mark the booking paid if settled.
+adminRouter.post("/venue-bookings/:id/sync", async (req, res) => {
+  const booking = await prisma.venueBooking.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
+  if (!booking) return res.status(404).json({ message: "Booking not found" });
+  if (!booking.paymentLinkId) return res.status(400).json({ message: "No payment link to check" });
+  if (!razorpayEnabled) return res.json({ enabled: false });
+
+  try {
+    const link = await razorpay.paymentLink.fetch(booking.paymentLinkId);
+    if (link.status === "paid") {
+      const paymentRef = link.payments?.[0]?.payment_id || link.id;
+      const updated = await prisma.venueBooking.update({
+        where: { id: booking.id },
+        data: { status: "paid", paidAt: new Date(), paymentRef },
+      });
+      return res.json({ paid: true, booking: serializeVenueBooking(updated) });
+    }
+    res.json({ paid: false, status: link.status });
+  } catch (err) {
+    res.status(502).json({ message: err?.error?.description || err?.message || "Could not check payment status" });
+  }
 });

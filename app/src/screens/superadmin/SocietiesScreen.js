@@ -56,8 +56,26 @@ export default function SocietiesScreen() {
     }
   };
 
+  const sendTestEmail = async () => {
+    try {
+      const r = await api.superTestEmail();
+      if (!r.configured || r.dev) {
+        Alert.alert("Email not configured", "No email provider is set up yet. Add RESEND_API_KEY (or SMTP) to the server env, then try again.");
+      } else if (r.delivered) {
+        Alert.alert("Test email sent", `Delivered to ${r.to}. Check the inbox.`);
+      } else {
+        Alert.alert("Send failed", r.error || "Email provider rejected the message.");
+      }
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    }
+  };
+
   const headerBtns = (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+      <TouchableOpacity onPress={sendTestEmail} style={styles.addBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <Ionicons name="mail-outline" size={20} color="#fff" />
+      </TouchableOpacity>
       <TouchableOpacity onPress={() => setResetModal(true)} style={styles.addBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Ionicons name="key-outline" size={20} color="#fff" />
       </TouchableOpacity>
@@ -415,6 +433,7 @@ function EditPlanModal({ society, onClose, onDone }) {
   const [amount, setAmount] = useState("");
   const [expires, setExpires] = useState("");
   const [note, setNote] = useState("");
+  const [emailInvoice, setEmailInvoice] = useState(false);
   const [busy, setBusy] = useState(false);
 
   // Prefill whenever a new society is selected.
@@ -424,19 +443,26 @@ function EditPlanModal({ society, onClose, onDone }) {
     setAmount(society.planAmount ? String(society.planAmount) : "");
     setExpires(society.planExpiresAt ? new Date(society.planExpiresAt).toISOString().slice(0, 10) : "");
     setNote("");
+    setEmailInvoice(false);
   }, [society]);
 
   const submit = async () => {
     setBusy(true);
     try {
-      await api.superUpdateSociety(society.id, {
+      const res = await api.superUpdateSociety(society.id, {
         plan: premium ? "premium" : "free",
         planAmount: amount === "" ? null : Number(amount),
         planExpiresAt: premium ? (expires || undefined) : null,
         planNote: note || undefined,
+        sendInvoice: emailInvoice && premium,
       });
       onClose();
       onDone();
+      if (res?.invoice) {
+        if (res.invoice.error) Alert.alert("Invoice not sent", res.invoice.error);
+        else if (res.invoice.dev) Alert.alert("Saved", "Plan updated. Email isn't configured yet, so the invoice was logged on the server (dev mode).");
+        else if (res.invoice.delivered) Alert.alert("Invoice emailed", `Sent to ${res.invoice.admins} admin(s).`);
+      }
     } catch (e) {
       Alert.alert("Error", e.message);
     } finally {
@@ -470,6 +496,12 @@ function EditPlanModal({ society, onClose, onDone }) {
       )}
       <Label>Note (optional)</Label>
       <TextInput style={styles.input} value={note} onChangeText={setNote} placeholder="Payment ref / remarks" />
+      {premium && (
+        <TouchableOpacity style={styles.invoiceRow} onPress={() => setEmailInvoice((v) => !v)}>
+          <Ionicons name={emailInvoice ? "checkbox" : "square-outline"} size={22} color={emailInvoice ? "#0B6E8F" : "#B7C1C8"} />
+          <Text style={styles.invoiceText}>Email invoice to society admins now</Text>
+        </TouchableOpacity>
+      )}
     </FormModal>
   );
 }
@@ -522,6 +554,8 @@ const styles = StyleSheet.create({
   planToggle: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#F6F9FA", borderRadius: 12, padding: 14, marginTop: 6 },
   planToggleTitle: { fontWeight: "800", color: "#1B2B33", fontSize: 15 },
   planToggleSub: { color: "#6B7B85", fontSize: 12, marginTop: 2, maxWidth: 200 },
+  invoiceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 16 },
+  invoiceText: { color: "#334", fontWeight: "600", flex: 1 },
   statsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
   chip: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#EAF4F7", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
   chipText: { color: "#0B6E8F", fontSize: 12, fontWeight: "600" },

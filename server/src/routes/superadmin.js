@@ -5,6 +5,8 @@ import { authRequired, roleRequired } from "../auth.js";
 import { publicUser } from "../serializers.js";
 import { validatePassword } from "../passwordPolicy.js";
 import { isPremium } from "../plan.js";
+import { emailPremiumInvoice } from "../invoice.js";
+import { sendEmail, emailConfigured } from "../email.js";
 
 // Platform-owner ("superadmin") routes. The superadmin belongs to no society and
 // can see a cross-society summary and manage (create / activate) societies and
@@ -209,7 +211,46 @@ superadminRouter.patch("/societies/:id", async (req, res) => {
   if (planNote !== undefined) data.planNote = planNote || null;
 
   const updated = await prisma.society.update({ where: { id: society.id }, data });
-  res.json({ society: updated });
+
+  // Optionally email the premium invoice to the society's admins right away.
+  let invoice = null;
+  if (req.body?.sendInvoice && updated.plan === "premium") {
+    try {
+      invoice = await emailPremiumInvoice(updated.id, { amount: updated.planAmount, expiresAt: updated.planExpiresAt, note: updated.planNote });
+    } catch (e) {
+      invoice = { error: e.message };
+    }
+  }
+  res.json({ society: updated, invoice });
+});
+
+// POST /api/superadmin/societies/:id/invoice — (re)send the premium invoice email.
+superadminRouter.post("/societies/:id/invoice", async (req, res) => {
+  const society = await prisma.society.findUnique({ where: { id: req.params.id } });
+  if (!society) return res.status(404).json({ message: "Society not found" });
+  try {
+    const result = await emailPremiumInvoice(society.id, req.body || {});
+    res.json(result);
+  } catch (e) {
+    res.status(400).json({ message: e.message });
+  }
+});
+
+// POST /api/superadmin/test-email — verify email delivery is configured.
+superadminRouter.post("/test-email", async (req, res) => {
+  let to = String(req.body?.to || req.user.email || "").trim();
+  if (!to) {
+    const me = await prisma.user.findUnique({ where: { id: req.user.id }, select: { email: true } });
+    to = me?.email || "";
+  }
+  if (!to) return res.status(400).json({ message: "Provide a 'to' address" });
+  const r = await sendEmail({
+    to,
+    subject: "H2O test email",
+    text: "This is a test email from H2O. If you received this, email delivery is working.",
+    html: "<p>This is a <b>test email</b> from H2O. If you received this, email delivery is working. ✅</p>",
+  });
+  res.json({ configured: emailConfigured, to, ...r });
 });
 
 // GET /api/superadmin/users?query= — search users across ALL societies (for

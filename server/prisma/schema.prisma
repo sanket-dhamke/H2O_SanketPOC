@@ -68,6 +68,10 @@ model VenueBooking {
   paidAt         DateTime?
   notes          String?
   createdBy      String?
+  // Razorpay Payment Link the vendor pays; on payment, societyNet (90%) is
+  // routed to the society's linked account and H2O keeps the platform fee.
+  paymentLinkId  String?
+  paymentLinkUrl String?
   createdAt      DateTime  @default(now())
 
   @@index([societyId])

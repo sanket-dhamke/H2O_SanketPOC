@@ -9,6 +9,8 @@ import {
   Alert,
   Modal,
   RefreshControl,
+  Share,
+  Linking,
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -65,6 +67,44 @@ export default function VenueMarketplaceScreen() {
     try {
       await api.adminUpdateVenueBooking(b.id, { status });
       load();
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    }
+  };
+
+  const makeLink = async (b) => {
+    try {
+      const r = await api.adminVenuePaymentLink(b.id);
+      if (r.enabled === false) {
+        Alert.alert("Razorpay not set up", r.message || "Record the payment manually with 'Mark paid'.");
+        return;
+      }
+      await load();
+      const routedNote = r.routed
+        ? `\n\n90% (${money(b.societyNet)}) will settle to the society; H2O keeps the ${b.platformFeePct}% fee.`
+        : "\n\n(Society bank account not linked to Razorpay Route yet — full amount settles to the platform account; settle the society's share manually.)";
+      Alert.alert("Payment link ready", `Share this with ${b.vendorName}:\n${r.url}${routedNote}`, [
+        { text: "Close" },
+        { text: "Share", onPress: () => Share.share({ message: `Payment for ${b.venueName} on ${b.date}: ${r.url}` }) },
+      ]);
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    }
+  };
+
+  const checkPayment = async (b) => {
+    try {
+      const r = await api.adminVenueSync(b.id);
+      if (r.enabled === false) {
+        Alert.alert("Razorpay not set up", "Use 'Mark paid' to record it manually.");
+        return;
+      }
+      if (r.paid) {
+        Alert.alert("Payment received ✔", "The booking is now marked paid.");
+        load();
+      } else {
+        Alert.alert("Not paid yet", `Payment link status: ${r.status || "pending"}.`);
+      }
     } catch (e) {
       Alert.alert("Error", e.message);
     }
@@ -175,12 +215,25 @@ export default function VenueMarketplaceScreen() {
               <Fee label="Society gets" value={money(b.societyNet)} strong />
             </View>
 
+            {!!b.paymentLinkUrl && !["paid", "completed"].includes(b.status) && (
+              <TouchableOpacity style={styles.linkRow} onPress={() => Linking.openURL(b.paymentLinkUrl)}>
+                <Ionicons name="link-outline" size={15} color="#0B6E8F" />
+                <Text style={styles.linkText} numberOfLines={1}>{b.paymentLinkUrl}</Text>
+              </TouchableOpacity>
+            )}
+
             <View style={styles.actions}>
               {b.status === "requested" && (
                 <>
                   <Act icon="checkmark-circle-outline" label="Approve" color="#0B6E8F" onPress={() => setStatus(b, "approved")} />
                   <Act icon="close-circle-outline" label="Reject" color="#B42318" onPress={() => setStatus(b, "rejected")} />
                 </>
+              )}
+              {["requested", "approved"].includes(b.status) && b.amount > 0 && (
+                <Act icon="card-outline" label={b.paymentLinkUrl ? "Resend link" : "Payment link"} color="#0B6E8F" onPress={() => makeLink(b)} />
+              )}
+              {!!b.paymentLinkUrl && !["paid", "completed"].includes(b.status) && (
+                <Act icon="refresh-outline" label="Check payment" color="#0B6E8F" onPress={() => checkPayment(b)} />
               )}
               {b.status === "approved" && (
                 <Act icon="cash-outline" label="Mark paid" color="#2E9E52" onPress={() => setStatus(b, "paid")} />
@@ -346,6 +399,8 @@ const styles = StyleSheet.create({
   feeBox: { flex: 1, backgroundColor: "#F6F9FA", borderRadius: 10, padding: 10 },
   feeLabel: { color: "#6B7B85", fontSize: 11 },
   feeVal: { fontSize: 14, fontWeight: "700", color: "#1B2B33", marginTop: 2 },
+  linkRow: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#EAF4F7", borderRadius: 8, padding: 10, marginTop: 12 },
+  linkText: { color: "#0B6E8F", fontSize: 12, flex: 1 },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
   act: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#EEF4F6", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 },
   actText: { fontWeight: "700", fontSize: 12 },
