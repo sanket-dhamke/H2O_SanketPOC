@@ -38,6 +38,9 @@ export async function getOrgMode() {
 export async function setOrgMode(mode) {
   if (mode === "society" || mode === "preschool") await AsyncStorage.setItem(ORG_MODE_KEY, mode);
 }
+export async function clearOrgMode() {
+  await AsyncStorage.removeItem(ORG_MODE_KEY);
+}
 
 export async function getToken() {
   return AsyncStorage.getItem(TOKEN_KEY);

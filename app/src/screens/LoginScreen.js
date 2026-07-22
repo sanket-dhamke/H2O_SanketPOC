@@ -13,7 +13,7 @@ import {
   Linking,
 } from "react-native";
 import { useAuth } from "../lib/auth";
-import { getBaseUrl, setBaseUrl, getOrgMode, api } from "../lib/api";
+import { getBaseUrl, setBaseUrl, getOrgMode, clearOrgMode, api } from "../lib/api";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
 
 // Extracts a tenant slug from a branded link / deep link, supporting both
@@ -83,6 +83,16 @@ export default function LoginScreen() {
         try {
           launchUrl = await Linking.getInitialURL();
         } catch {}
+      }
+      // ?reset=1 forces the neutral login (and forgets the remembered tenant) —
+      // handy for signing in as the superadmin/owner from a branded device.
+      if (launchUrl && /[?&]reset=1\b/.test(launchUrl)) {
+        await clearOrgMode();
+        if (!cancelled) {
+          setOrgMode("neutral");
+          setTenantName(null);
+        }
+        return;
       }
       const slug = slugFromUrl(launchUrl);
       if (slug) {
