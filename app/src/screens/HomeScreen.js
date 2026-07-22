@@ -150,9 +150,14 @@ function getActions(role, L, preschool) {
     ];
     if (preschool) {
       admin.splice(2, 0, { label: "Staff attendance", subtitle: "Teacher & staff check-in/out", icon: "id-card-outline", tint: "#7A5AC2", route: "Staff" });
-    } else {
-      admin.push({ label: "Ask the assistant", subtitle: "Query anything about the society", icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant" });
     }
+    admin.push({
+      label: "Ask the assistant",
+      subtitle: preschool ? "Query visitors, fees & attendance" : "Query anything about the society",
+      icon: "sparkles-outline",
+      tint: "#6D3BD1",
+      route: "Assistant",
+    });
     return admin;
   }
   const guard = [

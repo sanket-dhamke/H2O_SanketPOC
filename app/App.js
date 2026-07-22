@@ -116,7 +116,7 @@ function AdminTabs() {
       {preschool && <Tab.Screen name="Staff" component={StaffAttendanceScreen} />}
       <Tab.Screen name="Community" component={CommunityScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: L.gate }} />
-      {!preschool && <Tab.Screen name="Assistant" component={AssistantScreen} />}
+      <Tab.Screen name="Assistant" component={AssistantScreen} />
     </Tab.Navigator>
   );
 }

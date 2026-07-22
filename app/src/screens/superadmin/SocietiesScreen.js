@@ -18,6 +18,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import ScreenHeader from "../../components/ScreenHeader";
 
+// Cross-platform alert: RN's Alert.alert is a no-op on web, so fall back to the
+// browser's native dialog there (otherwise clicks appear to "do nothing").
+function notify(title, message) {
+  if (Platform.OS === "web" && typeof window !== "undefined" && window.alert) {
+    window.alert(message ? `${title}\n\n${message}` : title);
+  } else {
+    Alert.alert(title, message);
+  }
+}
+
 // Builds the branded-login links for a tenant. `web` opens the browser app
 // already themed; `app` is a deep link that themes the installed mobile app.
 function tenantLinks(slug) {
@@ -42,6 +52,7 @@ export default function SocietiesScreen() {
   const [shareFor, setShareFor] = useState(null); // society object when sharing login link
   const [brandFor, setBrandFor] = useState(null); // society object when editing name/logo branding
   const [resetModal, setResetModal] = useState(false);
+  const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -77,16 +88,23 @@ export default function SocietiesScreen() {
     try {
       const r = await api.superTestEmail();
       if (!r.configured || r.dev) {
-        Alert.alert("Email not configured", "No email provider is set up yet. Add RESEND_API_KEY (or SMTP) to the server env, then try again.");
+        notify("Email not configured", "No email provider is set up yet. Add RESEND_API_KEY (or SMTP) to the server env, then try again.");
       } else if (r.delivered) {
-        Alert.alert("Test email sent", `Delivered to ${r.to}. Check the inbox.`);
+        notify("Test email sent", `Delivered to ${r.to}. Check the inbox.`);
       } else {
-        Alert.alert("Send failed", r.error || "Email provider rejected the message.");
+        notify("Send failed", r.error || "Email provider rejected the message.");
       }
     } catch (e) {
-      Alert.alert("Error", e.message);
+      notify("Error", e.message);
     }
   };
+
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? societies.filter(
+        (s) => (s.name || "").toLowerCase().includes(q) || (s.city || "").toLowerCase().includes(q)
+      )
+    : societies;
 
   const headerBtns = (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -113,11 +131,33 @@ export default function SocietiesScreen() {
       <ScrollView
         contentContainerStyle={{ padding: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        keyboardShouldPersistTaps="handled"
       >
+        {societies.length > 5 && (
+          <View style={styles.searchRow}>
+            <Ionicons name="search-outline" size={18} color="#6B7B85" />
+            <TextInput
+              style={styles.searchInput}
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search by name or city"
+              placeholderTextColor="#9AA7AF"
+              autoCapitalize="none"
+            />
+            {query.length > 0 && (
+              <TouchableOpacity onPress={() => setQuery("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close-circle" size={18} color="#B7C2C9" />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
         {societies.length === 0 && (
           <Text style={styles.empty}>No societies yet. Tap + to onboard the first one.</Text>
         )}
-        {societies.map((s) => (
+        {filtered.length === 0 && societies.length > 0 && (
+          <Text style={styles.empty}>No tenants match “{query}”.</Text>
+        )}
+        {filtered.map((s) => (
           <View key={s.id} style={styles.card}>
             <View style={styles.cardTop}>
               <View style={{ flex: 1 }}>
@@ -794,4 +834,17 @@ const styles = StyleSheet.create({
   brandPreviewInitial: { color: "#fff", fontWeight: "800", fontSize: 18 },
   brandPreviewName: { color: "#fff", fontWeight: "800", fontSize: 16 },
   brandPreviewSub: { color: "#CDE7F0", fontSize: 11, marginTop: 2 },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === "web" ? 10 : 8,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#E3EAEE",
+  },
+  searchInput: { flex: 1, fontSize: 14, color: "#1B2B33", outlineStyle: "none" },
 });
