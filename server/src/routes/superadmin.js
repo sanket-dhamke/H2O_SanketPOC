@@ -30,6 +30,7 @@ function summarize(societies, users, bills, expenses, venueBookings) {
         createdAt: s.createdAt,
         orgType: s.orgType || "society",
         slug: s.slug || null,
+        logoUrl: s.logoUrl || null,
         // Subscription plan info.
         plan: s.plan || "free",
         premium: isPremium(s),
@@ -148,7 +149,7 @@ superadminRouter.get("/societies", async (_req, res) => {
 
 // POST /api/superadmin/societies — create a society and (optionally) its first admin.
 superadminRouter.post("/societies", async (req, res) => {
-  const { name, city, address, adminName, adminEmail, adminPassword, orgType } = req.body || {};
+  const { name, city, address, adminName, adminEmail, adminPassword, orgType, logoUrl } = req.body || {};
   if (!name || !String(name).trim()) {
     return res.status(400).json({ message: "Society name is required" });
   }
@@ -179,6 +180,7 @@ superadminRouter.post("/societies", async (req, res) => {
       city: city ? String(city).trim() : null,
       address: address ? String(address).trim() : null,
       orgType: orgType || "society",
+      logoUrl: logoUrl ? String(logoUrl).trim() : null,
       slug,
     },
   });
@@ -195,7 +197,7 @@ superadminRouter.post("/societies", async (req, res) => {
 
 // PATCH /api/superadmin/societies/:id — edit details, activate, or set plan.
 superadminRouter.patch("/societies/:id", async (req, res) => {
-  const { name, city, address, active, plan, planExpiresAt, planAmount, planNote, orgType } = req.body || {};
+  const { name, city, address, active, plan, planExpiresAt, planAmount, planNote, orgType, logoUrl } = req.body || {};
   const society = await prisma.society.findUnique({ where: { id: req.params.id } });
   if (!society) return res.status(404).json({ message: "Society not found" });
 
@@ -203,6 +205,7 @@ superadminRouter.patch("/societies/:id", async (req, res) => {
   if (name !== undefined) data.name = String(name).trim();
   if (city !== undefined) data.city = city ? String(city).trim() : null;
   if (address !== undefined) data.address = address ? String(address).trim() : null;
+  if (logoUrl !== undefined) data.logoUrl = logoUrl ? String(logoUrl).trim() : null;
   if (active !== undefined) data.active = Boolean(active);
   if (orgType !== undefined) {
     if (!["society", "preschool"].includes(orgType)) return res.status(400).json({ message: "orgType must be 'society' or 'preschool'" });

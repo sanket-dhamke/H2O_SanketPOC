@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ImageBackground,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -67,6 +68,18 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.heroOverlay} />
         <View style={[styles.heroContent, { paddingTop: 26 + insets.top }]}>
           <View style={{ flex: 1 }}>
+            {user.societyName ? (
+              <View style={styles.brandRow}>
+                {user.societyLogoUrl ? (
+                  <Image source={{ uri: user.societyLogoUrl }} style={styles.brandLogo} resizeMode="cover" />
+                ) : (
+                  <View style={[styles.brandLogo, styles.brandLogoFallback]}>
+                    <Text style={styles.brandLogoInitial}>{user.societyName.trim().charAt(0).toUpperCase()}</Text>
+                  </View>
+                )}
+                <Text style={styles.brandName} numberOfLines={1}>{user.societyName}</Text>
+              </View>
+            ) : null}
             <Text style={styles.welcome}>Welcome back</Text>
             <Text style={styles.hi}>Hi, {user.name.split(" ")[0]}</Text>
             <View style={styles.badge}>
@@ -192,6 +205,26 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingTop: 26,
+  },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
+  brandLogo: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.6)",
+  },
+  brandLogoFallback: { alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.22)" },
+  brandLogoInitial: { color: "#fff", fontWeight: "800", fontSize: 15 },
+  brandName: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "800",
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   welcome: { color: "#DCEDF3", fontSize: 13, fontWeight: "600" },
   hi: {

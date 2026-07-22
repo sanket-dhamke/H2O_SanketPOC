@@ -32,6 +32,9 @@ model Society {
   // Tenant type: "society" (default, unchanged behavior) or "preschool"
   // (school-flavored labels + entry/exit & staff attendance features).
   orgType       String           @default("society")
+  // Optional tenant logo (image URL). Shown in-app after login so each
+  // tenant's staff/residents see their own brand (name + logo).
+  logoUrl       String?
   // Subscription plan: "free" | "premium". Premium is a yearly paid plan set by
   // the H2O superadmin; unlocks perks like the vendor venue marketplace & voice AI.
   plan          String           @default("free")

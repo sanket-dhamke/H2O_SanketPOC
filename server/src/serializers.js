@@ -23,6 +23,8 @@ export function publicUser(u) {
     societyPlanExpiresAt: u.society?.planExpiresAt || null,
     // Tenant type ("society" | "preschool") so the app can adapt labels/features.
     societyOrgType: u.society?.orgType || "society",
+    // Optional tenant logo shown in-app so each tenant sees their own brand.
+    societyLogoUrl: u.society?.logoUrl || null,
   };
 }
 

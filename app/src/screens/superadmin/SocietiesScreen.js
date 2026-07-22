@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -40,6 +40,7 @@ export default function SocietiesScreen() {
   const [adminFor, setAdminFor] = useState(null); // society object when adding an admin
   const [planFor, setPlanFor] = useState(null); // society object when editing plan
   const [shareFor, setShareFor] = useState(null); // society object when sharing login link
+  const [brandFor, setBrandFor] = useState(null); // society object when editing name/logo branding
   const [resetModal, setResetModal] = useState(false);
 
   const load = useCallback(async () => {
@@ -188,6 +189,10 @@ export default function SocietiesScreen() {
                 <Ionicons name="qr-code-outline" size={16} color="#0B6E8F" />
                 <Text style={styles.actionGhostText}>Login link</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={styles.actionGhost} onPress={() => setBrandFor(s)}>
+                <Ionicons name="color-palette-outline" size={16} color="#6D3BD1" />
+                <Text style={[styles.actionGhostText, { color: "#6D3BD1" }]}>Branding</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionGhost, !s.active && styles.actionOn]}
                 onPress={() => toggleActive(s)}
@@ -210,6 +215,7 @@ export default function SocietiesScreen() {
       <AddAdminModal society={adminFor} onClose={() => setAdminFor(null)} onDone={load} />
       <EditPlanModal society={planFor} onClose={() => setPlanFor(null)} onDone={load} />
       <ShareLinkModal society={shareFor} onClose={() => setShareFor(null)} />
+      <BrandingModal society={brandFor} onClose={() => setBrandFor(null)} onDone={load} />
       <ResetPasswordModal visible={resetModal} onClose={() => setResetModal(false)} />
     </View>
   );
@@ -287,6 +293,65 @@ function ShareLinkModal({ society, onClose }) {
         </View>
       </View>
     </Modal>
+  );
+}
+
+// Superadmin tool: set a tenant's display name + logo. These show on the Home
+// screen after members log in, so each tenant reads as their own brand.
+function BrandingModal({ society, onClose, onDone }) {
+  const [name, setName] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const isPre = society?.orgType === "preschool";
+
+  useEffect(() => {
+    if (society) {
+      setName(society.name || "");
+      setLogoUrl(society.logoUrl || "");
+    }
+  }, [society]);
+
+  const submit = async () => {
+    if (!name.trim()) {
+      Alert.alert("Missing info", "Enter a display name.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.superUpdateSociety(society.id, { name: name.trim(), logoUrl: logoUrl.trim() });
+      Alert.alert("Branding saved", "Members will see the new name/logo the next time they open the app.");
+      onClose();
+      onDone();
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <FormModal visible={!!society} onClose={onClose} title="Branding" icon="color-palette-outline" busy={busy} onSubmit={submit}>
+      <Label>Display name *</Label>
+      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder={isPre ? "Little Millennium Preschool" : "Green Valley Residency"} />
+      <Label>Logo URL (optional)</Label>
+      <TextInput style={styles.input} value={logoUrl} onChangeText={setLogoUrl} placeholder="https://.../logo.png" autoCapitalize="none" keyboardType="url" />
+      <View style={styles.brandPreview}>
+        {logoUrl.trim() ? (
+          <Image source={{ uri: logoUrl.trim() }} style={styles.brandPreviewLogo} resizeMode="cover" />
+        ) : (
+          <View style={[styles.brandPreviewLogo, styles.brandPreviewFallback]}>
+            <Text style={styles.brandPreviewInitial}>{(name.trim() || "?").charAt(0).toUpperCase()}</Text>
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={styles.brandPreviewName} numberOfLines={1}>{name.trim() || "Display name"}</Text>
+          <Text style={styles.brandPreviewSub}>Preview of the Home header</Text>
+        </View>
+      </View>
+      <Text style={styles.shareHint}>
+        Paste a public image URL (PNG/JPG). Leave blank to show the first letter of the name as a badge.
+      </Text>
+    </FormModal>
   );
 }
 
@@ -427,7 +492,7 @@ function Chip({ icon, text }) {
 }
 
 function CreateSocietyModal({ visible, onClose, onDone }) {
-  const [f, setF] = useState({ name: "", city: "", address: "", adminName: "", adminEmail: "", adminPassword: "" });
+  const [f, setF] = useState({ name: "", city: "", address: "", logoUrl: "", adminName: "", adminEmail: "", adminPassword: "" });
   const [orgType, setOrgType] = useState("society");
   const [busy, setBusy] = useState(false);
   const set = (k) => (v) => setF((p) => ({ ...p, [k]: v }));
@@ -444,13 +509,14 @@ function CreateSocietyModal({ visible, onClose, onDone }) {
         name: f.name.trim(),
         city: f.city.trim(),
         address: f.address.trim(),
+        logoUrl: f.logoUrl.trim() || undefined,
         orgType,
         adminName: f.adminName.trim() || undefined,
         adminEmail: f.adminEmail.trim() || undefined,
         adminPassword: f.adminPassword || undefined,
       });
       Alert.alert(`${preschool ? "Preschool" : "Society"} created`, f.adminName ? "The admin can now log in." : "Add an admin from the list.");
-      setF({ name: "", city: "", address: "", adminName: "", adminEmail: "", adminPassword: "" });
+      setF({ name: "", city: "", address: "", logoUrl: "", adminName: "", adminEmail: "", adminPassword: "" });
       setOrgType("society");
       onClose();
       onDone();
@@ -480,6 +546,8 @@ function CreateSocietyModal({ visible, onClose, onDone }) {
       <TextInput style={styles.input} value={f.city} onChangeText={set("city")} placeholder="Pune" />
       <Label>Address</Label>
       <TextInput style={styles.input} value={f.address} onChangeText={set("address")} placeholder="Baner Road, Pune" />
+      <Label>Logo URL (optional)</Label>
+      <TextInput style={styles.input} value={f.logoUrl} onChangeText={set("logoUrl")} placeholder="https://.../logo.png" autoCapitalize="none" keyboardType="url" />
       <Text style={styles.divider}>First admin (optional)</Text>
       <Label>Admin name</Label>
       <TextInput style={styles.input} value={f.adminName} onChangeText={set("adminName")} placeholder="Society Admin" />
@@ -712,4 +780,18 @@ const styles = StyleSheet.create({
   linkBox: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: "#F8FAFB" },
   linkText: { flex: 1, color: "#0B6E8F", fontWeight: "600", fontSize: 13 },
   shareHint: { color: "#8895A0", fontSize: 12, marginTop: 12, lineHeight: 17 },
+  brandPreview: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#0B6E8F",
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 14,
+  },
+  brandPreviewLogo: { width: 40, height: 40, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.9)" },
+  brandPreviewFallback: { alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.22)" },
+  brandPreviewInitial: { color: "#fff", fontWeight: "800", fontSize: 18 },
+  brandPreviewName: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  brandPreviewSub: { color: "#CDE7F0", fontSize: 11, marginTop: 2 },
 });
