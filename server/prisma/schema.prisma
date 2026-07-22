@@ -91,9 +91,16 @@ model Flat {
   id        String    @id @default(uuid())
   society   Society   @relation(fields: [societyId], references: [id], onDelete: Cascade)
   societyId String
+  // For societies this is the flat/unit number; for preschools it is the
+  // student's name/roll. `block` doubles as the wing (society) or class (preschool).
   flatNo    String
   block     String?
   ownerName String?
+  // Preschool: the child's guardian/parent contact used for fee reminders even
+  // when no parent login exists yet. Ignored for societies.
+  guardianName  String?
+  guardianPhone String?
+  guardianEmail String?
   residents User[]
   bills     Bill[]
   visitors  Visitor[]
@@ -140,9 +147,17 @@ model Bill {
   flat       Flat      @relation(fields: [flatId], references: [id], onDelete: Cascade)
   flatId     String
   period     String // e.g. "2026-07"
-  amount     Float
+  amount     Float // total amount due for this bill
   dueDate    String // e.g. "2026-07-10"
+  // "pending" | "partial" (some paid) | "paid" (fully settled).
   status     String    @default("pending")
+  // Cumulative amount received so far (supports partial / installment payments).
+  paidAmount Float     @default(0)
+  // Preschool fees: the next installment the guardian is asked to pay now
+  // (e.g. pay 15k of a 30k balance) and the date a reminder should be sent.
+  nextDueAmount  Float?
+  remindOn       String?  // "YYYY-MM-DD"; a reminder is auto-sent on/after this date
+  lastRemindedAt DateTime?
   paidAt     DateTime?
   paymentRef String?
   orderId    String?
@@ -151,9 +166,26 @@ model Bill {
   // For cash payments: who collected it (society member) and their phone.
   collectedBy   String?
   collectorPhone String?
+  payments   Payment[]
   createdAt  DateTime  @default(now())
 
   @@index([flatId])
+}
+
+// Ledger of individual payments against a bill (enables partial/installment
+// payments and a full payment history per student/flat).
+model Payment {
+  id             String   @id @default(uuid())
+  bill           Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
+  billId         String
+  amount         Float
+  mode           String   @default("online") // online | cash
+  ref            String?
+  collectedBy    String?  // for cash: who collected it
+  collectorPhone String?
+  createdAt      DateTime @default(now())
+
+  @@index([billId])
 }
 
 model Visitor {

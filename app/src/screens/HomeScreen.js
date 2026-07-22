@@ -125,7 +125,7 @@ export default function HomeScreen({ navigation }) {
 
         <Text style={styles.sectionTitle}>{roleLabel}</Text>
         {actions.map((a) => (
-          <ActionTile key={a.label} {...a} onPress={() => navigation.navigate(a.route)} />
+          <ActionTile key={a.label} {...a} onPress={() => navigation.navigate(a.route, a.params)} />
         ))}
 
         <AdsCarousel />
@@ -149,7 +149,15 @@ function getActions(role, L, preschool) {
       { label: "Gate log", subtitle: L.gateAdminSub, icon: "shield-checkmark-outline", tint: "#C2571A", route: "Visitors" },
     ];
     if (preschool) {
-      admin.splice(2, 0, { label: "Staff attendance", subtitle: "Teacher & staff check-in/out", icon: "id-card-outline", tint: "#7A5AC2", route: "Staff" });
+      admin.splice(1, 0, {
+        label: "Student fees",
+        subtitle: "Track paid/pending & send reminders",
+        icon: "cash-outline",
+        tint: "#1E7A3D",
+        route: "Finance",
+        params: { screen: "StudentFees" },
+      });
+      admin.splice(3, 0, { label: "Staff attendance", subtitle: "Teacher & staff check-in/out", icon: "id-card-outline", tint: "#7A5AC2", route: "Staff" });
     }
     admin.push({
       label: "Ask the assistant",

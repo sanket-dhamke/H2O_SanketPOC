@@ -17,18 +17,14 @@ export default function CreateAccountScreen({ navigation }) {
   const { user } = useAuth();
   const L = labelsFor(user);
   const preschool = isPreschool(user);
-  // Preschool app is for guards & admins only (no parent/resident logins).
-  const ROLES = preschool
-    ? [
-        { id: "guard", label: "Guard" },
-        { id: "admin", label: "Admin" },
-      ]
-    : [
-        { id: "resident", label: L.payer },
-        { id: "guard", label: "Guard" },
-        { id: "admin", label: "Admin" },
-      ];
-  const [role, setRole] = useState(preschool ? "guard" : "resident");
+  // Parents (preschool) and residents (society) are the same underlying role;
+  // just labeled per tenant. Both are linked to a unit/student.
+  const ROLES = [
+    { id: "resident", label: L.payer },
+    { id: "guard", label: "Guard" },
+    { id: "admin", label: "Admin" },
+  ];
+  const [role, setRole] = useState("resident");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -77,7 +73,7 @@ export default function CreateAccountScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader icon="person-add" title="New account" subtitle={preschool ? "Add a guard or admin" : `Add a ${L.payer.toLowerCase()}, guard or admin`} onBack={() => navigation.goBack()} />
+      <ScreenHeader icon="person-add" title="New account" subtitle={`Add a ${L.payer.toLowerCase()}, guard or admin`} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
       <Text style={styles.label}>Role</Text>
       <View style={styles.chips}>

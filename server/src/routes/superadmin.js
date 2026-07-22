@@ -72,8 +72,10 @@ function summarize(societies, users, bills, expenses, venueBookings) {
   for (const b of bills) {
     const row = byId.get(b.flat?.societyId);
     if (!row) continue;
-    if (b.status === "paid") row.collected += b.amount;
-    else row.pending += b.amount;
+    // Partial-payment aware: count what's actually been paid vs. still owed.
+    const paid = b.status === "paid" ? b.amount : b.paidAmount || 0;
+    row.collected += paid;
+    row.pending += Math.max(0, (b.amount || 0) - paid);
   }
   for (const e of expenses) {
     const row = byId.get(e.societyId);

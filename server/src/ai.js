@@ -93,9 +93,10 @@ async function buildContext(user) {
     prisma.flat.findMany({ where: { societyId } }),
     prisma.booking.findMany({ where: { societyId }, include: { amenity: true, slot: true, resident: { include: { flat: true } } }, orderBy: { createdAt: "desc" }, take: 60 }),
   ]);
-  const paidBills = bills.filter((b) => b.status === "paid");
-  const collected = paidBills.reduce((s, b) => s + b.amount, 0);
-  const pending = bills.filter((b) => b.status === "pending").reduce((s, b) => s + b.amount, 0);
+  const paidOf = (b) => (b.status === "paid" ? b.amount : b.paidAmount || 0);
+  const paidBills = bills.filter((b) => paidOf(b) > 0);
+  const collected = bills.reduce((s, b) => s + paidOf(b), 0);
+  const pending = bills.reduce((s, b) => s + Math.max(0, (b.amount || 0) - paidOf(b)), 0);
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
 
   // Month-aware aggregates so the assistant can answer time-based questions
@@ -104,14 +105,14 @@ async function buildContext(user) {
   const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const collectedThisMonth = paidBills
     .filter((b) => (b.paidAt ? new Date(b.paidAt).toISOString().slice(0, 7) : b.period) === currentPeriod)
-    .reduce((s, b) => s + b.amount, 0);
+    .reduce((s, b) => s + paidOf(b), 0);
   const byPeriodMap = {};
   for (const b of bills) {
     const p = b.period || "unknown";
     if (!byPeriodMap[p]) byPeriodMap[p] = { period: p, billed: 0, collected: 0, pending: 0 };
     byPeriodMap[p].billed += b.amount;
-    if (b.status === "paid") byPeriodMap[p].collected += b.amount;
-    if (b.status === "pending") byPeriodMap[p].pending += b.amount;
+    byPeriodMap[p].collected += paidOf(b);
+    byPeriodMap[p].pending += Math.max(0, (b.amount || 0) - paidOf(b));
   }
   const byPeriod = Object.values(byPeriodMap).sort((a, b) => (a.period < b.period ? 1 : -1)).slice(0, 12);
 

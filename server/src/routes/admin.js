@@ -9,7 +9,9 @@ import { buildSocietyBackup, emailSocietyBackup, buildWingReport, listBlocks } f
 import { parseCsv } from "../csv.js";
 import { isPremium } from "../plan.js";
 import { razorpay, razorpayEnabled } from "../razorpay.js";
-import { onBillPaid } from "../paymentNotify.js";
+import { recordPayment, effectivePaid, billBalance } from "../billing.js";
+import { sendFeeReminder } from "../whatsapp.js";
+import { runFeeReminders } from "../feeReminders.js";
 
 export const adminRouter = Router();
 
@@ -129,20 +131,47 @@ adminRouter.get("/flats", async (req, res) => {
       flatNo: f.flatNo,
       block: f.block,
       ownerName: f.ownerName,
+      guardianName: f.guardianName || null,
+      guardianPhone: f.guardianPhone || null,
+      guardianEmail: f.guardianEmail || null,
       residentCount: f._count.residents,
     })),
   });
 });
 
 adminRouter.post("/flats", async (req, res) => {
-  const { flatNo, block, ownerName } = req.body || {};
+  const { flatNo, block, ownerName, guardianName, guardianPhone, guardianEmail } = req.body || {};
   if (!flatNo) return res.status(400).json({ message: "flatNo is required" });
   const existing = await prisma.flat.findFirst({ where: { flatNo, societyId: sid(req) } });
   if (existing) return res.status(409).json({ message: "Flat already exists" });
   const flat = await prisma.flat.create({
-    data: { flatNo, block: block || null, ownerName: ownerName || null, societyId: req.user.societyId },
+    data: {
+      flatNo,
+      block: block || null,
+      ownerName: ownerName || null,
+      guardianName: guardianName ? String(guardianName).trim() : null,
+      guardianPhone: guardianPhone ? String(guardianPhone).trim() : null,
+      guardianEmail: guardianEmail ? String(guardianEmail).trim().toLowerCase() : null,
+      societyId: req.user.societyId,
+    },
   });
   res.status(201).json({ flat });
+});
+
+// Edit a student/flat (class = block, guardian contact). Preschool-friendly.
+adminRouter.patch("/flats/:id", async (req, res) => {
+  const flat = await prisma.flat.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
+  if (!flat) return res.status(404).json({ message: "Not found" });
+  const { flatNo, block, ownerName, guardianName, guardianPhone, guardianEmail } = req.body || {};
+  const data = {};
+  if (flatNo !== undefined) data.flatNo = String(flatNo).trim();
+  if (block !== undefined) data.block = block ? String(block).trim() : null;
+  if (ownerName !== undefined) data.ownerName = ownerName ? String(ownerName).trim() : null;
+  if (guardianName !== undefined) data.guardianName = guardianName ? String(guardianName).trim() : null;
+  if (guardianPhone !== undefined) data.guardianPhone = guardianPhone ? String(guardianPhone).trim() : null;
+  if (guardianEmail !== undefined) data.guardianEmail = guardianEmail ? String(guardianEmail).trim().toLowerCase() : null;
+  const updated = await prisma.flat.update({ where: { id: flat.id }, data });
+  res.json({ flat: updated });
 });
 
 /* --------------------------- Bank account -------------------------------- */
@@ -206,15 +235,15 @@ adminRouter.get("/finance", async (req, res) => {
     prisma.expense.findMany({ where: { societyId: sid(req) } }),
   ]);
 
-  const totalCollected = bills.filter((b) => b.status === "paid").reduce((s, b) => s + b.amount, 0);
-  const totalPending = bills.filter((b) => b.status === "pending").reduce((s, b) => s + b.amount, 0);
+  const totalCollected = bills.reduce((s, b) => s + effectivePaid(b), 0);
+  const totalPending = bills.reduce((s, b) => s + billBalance(b), 0);
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
   const balance = totalCollected - totalExpenses;
 
   const perFlat = flats.map((f) => {
     const flatBills = bills.filter((b) => b.flatId === f.id);
-    const paid = flatBills.filter((b) => b.status === "paid").reduce((s, b) => s + b.amount, 0);
-    const pending = flatBills.filter((b) => b.status === "pending").reduce((s, b) => s + b.amount, 0);
+    const paid = flatBills.reduce((s, b) => s + effectivePaid(b), 0);
+    const pending = flatBills.reduce((s, b) => s + billBalance(b), 0);
     return { flatId: f.id, flatNo: f.flatNo, paid, pending };
   });
 
@@ -256,34 +285,141 @@ adminRouter.post("/bills", async (req, res) => {
 });
 
 // Record a CASH payment for a bill (collected offline by a society member).
-// Captures who collected it + their phone so there's an audit trail.
+// Captures who collected it + their phone so there's an audit trail. Supports a
+// partial amount (body.amount); omit amount to clear the full balance.
 adminRouter.post("/bills/:id/cash", async (req, res) => {
-  const { collectedBy, collectorPhone } = req.body || {};
+  const { collectedBy, collectorPhone, amount } = req.body || {};
   if (!collectedBy || !String(collectedBy).trim()) {
     return res.status(400).json({ message: "collectedBy (who collected the cash) is required" });
   }
   const bill = await prisma.bill.findFirst({
     where: { id: req.params.id, flat: { societyId: sid(req) } },
-    include: { flat: true },
   });
   if (!bill) return res.status(404).json({ message: "Bill not found" });
   if (bill.status === "paid") return res.status(400).json({ message: "Bill already paid" });
 
-  const updated = await prisma.bill.update({
-    where: { id: bill.id },
-    data: {
-      status: "paid",
-      paidAt: new Date(),
-      paymentMode: "cash",
-      paymentRef: "CASH-" + bill.id.slice(0, 8).toUpperCase(),
+  try {
+    const { bill: updated } = await recordPayment(bill.id, {
+      amount: amount != null ? Number(amount) : undefined,
+      mode: "cash",
+      ref: "CASH-" + bill.id.slice(0, 8).toUpperCase(),
       collectedBy: String(collectedBy).trim(),
       collectorPhone: collectorPhone ? String(collectorPhone).trim() : null,
-    },
-    include: { flat: true },
-  });
-  // Email the resident a receipt PDF + notify admins.
-  onBillPaid(updated.id);
+    });
+    res.json({ bill: serializeBill(updated) });
+  } catch (e) {
+    res.status(400).json({ message: e.message });
+  }
+});
+
+/* -------------------------- Fees (student-wise) -------------------------- */
+// Create/replace a fee for a single student (flat). Used by preschools to set
+// each child's total fee, an optional current installment, and a reminder date.
+adminRouter.post("/fees", async (req, res) => {
+  const { flatId, period, amount, dueDate, nextDueAmount, remindOn } = req.body || {};
+  if (!flatId || amount === undefined) {
+    return res.status(400).json({ message: "flatId and amount are required" });
+  }
+  const flat = await prisma.flat.findFirst({ where: { id: flatId, societyId: sid(req) } });
+  if (!flat) return res.status(404).json({ message: "Student/flat not found" });
+  const p = period || new Date().toISOString().slice(0, 7);
+  const existing = await prisma.bill.findFirst({ where: { flatId: flat.id, period: p } });
+  const data = {
+    amount: Number(amount),
+    dueDate: dueDate || `${p}-10`,
+    nextDueAmount: nextDueAmount != null && nextDueAmount !== "" ? Number(nextDueAmount) : null,
+    remindOn: remindOn || null,
+  };
+  let bill;
+  if (existing) {
+    // Don't lower amount below what's already been paid.
+    if (data.amount < effectivePaid(existing)) data.amount = effectivePaid(existing);
+    const status = effectivePaid(existing) >= data.amount - 0.01 ? "paid" : existing.paidAmount > 0 ? "partial" : "pending";
+    bill = await prisma.bill.update({ where: { id: existing.id }, data: { ...data, status, lastRemindedAt: null }, include: { flat: true, payments: true } });
+  } else {
+    bill = await prisma.bill.create({ data: { ...data, flatId: flat.id, period: p, status: "pending" }, include: { flat: true, payments: true } });
+  }
+  res.status(existing ? 200 : 201).json({ bill: serializeBill(bill) });
+});
+
+// Edit a bill's fee terms (total, installment, reminder date, due date).
+adminRouter.patch("/bills/:id", async (req, res) => {
+  const bill = await prisma.bill.findFirst({ where: { id: req.params.id, flat: { societyId: sid(req) } } });
+  if (!bill) return res.status(404).json({ message: "Bill not found" });
+  const { amount, dueDate, nextDueAmount, remindOn } = req.body || {};
+  const data = {};
+  if (amount !== undefined) data.amount = Math.max(Number(amount), effectivePaid(bill));
+  if (dueDate !== undefined) data.dueDate = dueDate || bill.dueDate;
+  if (nextDueAmount !== undefined) data.nextDueAmount = nextDueAmount === "" || nextDueAmount == null ? null : Number(nextDueAmount);
+  if (remindOn !== undefined) { data.remindOn = remindOn || null; data.lastRemindedAt = null; }
+  if (data.amount !== undefined) {
+    const paid = effectivePaid(bill);
+    data.status = paid >= data.amount - 0.01 ? "paid" : paid > 0 ? "partial" : "pending";
+  }
+  const updated = await prisma.bill.update({ where: { id: bill.id }, data, include: { flat: true, payments: true } });
   res.json({ bill: serializeBill(updated) });
+});
+
+// Send a fee reminder for one bill right now (WhatsApp + email). Returns a
+// wa.me link fallback so the admin can send manually if automation is off.
+adminRouter.post("/bills/:id/remind", async (req, res) => {
+  const bill = await prisma.bill.findFirst({
+    where: { id: req.params.id, flat: { societyId: sid(req) } },
+    include: { flat: { include: { society: true, residents: true } } },
+  });
+  if (!bill) return res.status(404).json({ message: "Bill not found" });
+  const flat = bill.flat;
+  const parent = (flat.residents || []).find((u) => u.role === "resident");
+  const guardian = flat.guardianName || parent?.name || flat.ownerName || null;
+  const phone = flat.guardianPhone || parent?.phone || null;
+  const amount = bill.nextDueAmount && bill.nextDueAmount > 0 ? bill.nextDueAmount : billBalance(bill);
+  const result = await sendFeeReminder({
+    toPhone: phone,
+    orgName: flat.society?.name,
+    guardian,
+    student: flat.flatNo,
+    amount,
+    dueDate: bill.remindOn || bill.dueDate,
+  });
+  await prisma.bill.update({ where: { id: bill.id }, data: { lastRemindedAt: new Date() } });
+  res.json({ ok: true, ...result });
+});
+
+// Run the whole society's due reminders now (manual trigger of the daily sweep).
+adminRouter.post("/fees/run-reminders", async (req, res) => {
+  const result = await runFeeReminders({ societyId: sid(req) });
+  res.json({ ok: true, ...result });
+});
+
+// Student-wise fee status (grouped by class/block). Each student shows their
+// latest fee bill's total/paid/balance/next-installment/reminder date.
+adminRouter.get("/fees", async (req, res) => {
+  const flats = await prisma.flat.findMany({
+    where: { societyId: sid(req) },
+    include: { bills: { orderBy: { period: "desc" } }, residents: true },
+    orderBy: [{ block: "asc" }, { flatNo: "asc" }],
+  });
+  let totalFees = 0, totalCollected = 0, totalBalance = 0;
+  const students = flats.map((f) => {
+    const bill = f.bills[0] || null; // latest fee bill
+    const parent = (f.residents || []).find((u) => u.role === "resident") || null;
+    const paid = bill ? effectivePaid(bill) : 0;
+    const balance = bill ? billBalance(bill) : 0;
+    totalFees += bill?.amount || 0;
+    totalCollected += paid;
+    totalBalance += balance;
+    return {
+      flatId: f.id,
+      name: f.flatNo,
+      class: f.block || "Unassigned",
+      guardianName: f.guardianName || parent?.name || null,
+      guardianPhone: f.guardianPhone || parent?.phone || null,
+      guardianEmail: f.guardianEmail || parent?.email || null,
+      hasParentLogin: !!parent,
+      bill: bill ? serializeBill(bill) : null,
+    };
+  });
+  res.json({ students, summary: { totalFees, totalCollected, totalBalance, count: students.length } });
 });
 
 // Push a reminder to every resident who still has a pending bill.

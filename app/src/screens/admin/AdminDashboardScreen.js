@@ -97,6 +97,12 @@ export default function AdminDashboardScreen() {
       >
         <Text style={styles.remindText}>{busy ? "Sending..." : L.remindLabel}</Text>
       </TouchableOpacity>
+      {preschool && (
+        <TouchableOpacity style={[styles.collectBtn, styles.feesBtn]} onPress={() => navigation.navigate("StudentFees")}>
+          <Ionicons name="cash-outline" size={18} color="#fff" />
+          <Text style={[styles.collectText, { color: "#fff" }]}>Student fees — track & remind</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("Collections")}>
         <Ionicons name="cash-outline" size={18} color="#0B6E8F" />
         <Text style={styles.collectText}>Record cash / view collections</Text>
@@ -275,6 +281,7 @@ const styles = StyleSheet.create({
   remindBtn: { backgroundColor: "#C2571A", borderRadius: 10, paddingVertical: 14, alignItems: "center", marginTop: 12 },
   remindText: { color: "#fff", fontWeight: "700" },
   collectBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#fff", borderRadius: 10, paddingVertical: 14, marginTop: 12, borderWidth: 1, borderColor: "#CFE0E6" },
+  feesBtn: { backgroundColor: "#1E7A3D", borderColor: "#1E7A3D" },
   collectText: { color: "#0B6E8F", fontWeight: "700" },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: "#1B2B33", marginTop: 26, marginBottom: 10 },
   flatRow: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 10, padding: 14, marginBottom: 8 },

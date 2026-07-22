@@ -114,9 +114,11 @@ export const api = {
   flats: () => request("/api/flats"),
 
   maintenance: () => request("/api/maintenance"),
-  payBill: (id) => request(`/api/maintenance/${id}/pay`, { method: "POST" }),
-  createOrder: (id) =>
-    request(`/api/maintenance/${id}/create-order`, { method: "POST" }),
+  // `amount` optional → pay an installment; omit to clear the full balance.
+  payBill: (id, amount) =>
+    request(`/api/maintenance/${id}/pay`, { method: "POST", body: amount != null ? { amount } : {} }),
+  createOrder: (id, amount) =>
+    request(`/api/maintenance/${id}/create-order`, { method: "POST", body: amount != null ? { amount } : {} }),
   verifyPayment: (id, payload) =>
     request(`/api/maintenance/${id}/verify`, { method: "POST", body: payload }),
 
@@ -207,9 +209,22 @@ export const api = {
   superTestEmail: (to) =>
     request("/api/superadmin/test-email", { method: "POST", body: { to } }),
 
-  // Admin: record a cash payment against a bill
+  // Admin: record a cash payment against a bill (optional partial `amount`)
   adminMarkCash: (id, payload) =>
     request(`/api/admin/bills/${id}/cash`, { method: "POST", body: payload }),
+
+  // Admin: student-wise fees (preschool)
+  adminFees: () => request("/api/admin/fees"),
+  adminSetFee: (payload) =>
+    request("/api/admin/fees", { method: "POST", body: payload }),
+  adminUpdateFlat: (id, payload) =>
+    request(`/api/admin/flats/${id}`, { method: "PATCH", body: payload }),
+  adminUpdateBill: (id, payload) =>
+    request(`/api/admin/bills/${id}`, { method: "PATCH", body: payload }),
+  adminRemindBill: (id) =>
+    request(`/api/admin/bills/${id}/remind`, { method: "POST" }),
+  adminRunFeeReminders: () =>
+    request("/api/admin/fees/run-reminders", { method: "POST" }),
 
   // Community: announcements (admin -> all) + posts board (residents)
   announcements: () => request("/api/announcements"),

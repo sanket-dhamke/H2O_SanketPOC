@@ -13,17 +13,22 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
-import { labelsFor } from "../../lib/org";
+import { labelsFor, isPreschool } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
 
 export default function ManageFlatsScreen({ navigation }) {
   const { user } = useAuth();
   const L = labelsFor(user);
+  const preschool = isPreschool(user);
+  const classOptions = L.classOptions || [];
   const [flats, setFlats] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [flatNo, setFlatNo] = useState("");
   const [block, setBlock] = useState("");
   const [ownerName, setOwnerName] = useState("");
+  const [guardianName, setGuardianName] = useState("");
+  const [guardianPhone, setGuardianPhone] = useState("");
+  const [guardianEmail, setGuardianEmail] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -54,10 +59,20 @@ export default function ManageFlatsScreen({ navigation }) {
     }
     setBusy(true);
     try {
-      await api.adminCreateFlat({ flatNo: flatNo.trim(), block: block.trim(), ownerName: ownerName.trim() });
+      await api.adminCreateFlat({
+        flatNo: flatNo.trim(),
+        block: block.trim(),
+        ownerName: ownerName.trim(),
+        guardianName: guardianName.trim(),
+        guardianPhone: guardianPhone.trim(),
+        guardianEmail: guardianEmail.trim(),
+      });
       setFlatNo("");
       setBlock("");
       setOwnerName("");
+      setGuardianName("");
+      setGuardianPhone("");
+      setGuardianEmail("");
       await load();
     } catch (e) {
       Alert.alert("Error", e.message);
@@ -86,11 +101,37 @@ export default function ManageFlatsScreen({ navigation }) {
       />
       <View style={styles.form}>
         <Text style={styles.formTitle}>Add a {L.unit.toLowerCase()}</Text>
-        <View style={styles.formRow}>
-          <TextInput style={[styles.input, { flex: 1 }]} value={flatNo} onChangeText={setFlatNo} placeholder={L.unit + " no (A-101)"} autoCapitalize="characters" />
-          <TextInput style={[styles.input, { width: 80 }]} value={block} onChangeText={setBlock} placeholder={L.wing} autoCapitalize="characters" />
-        </View>
-        <TextInput style={styles.input} value={ownerName} onChangeText={setOwnerName} placeholder="Owner name (optional)" />
+        {preschool ? (
+          <>
+            <TextInput style={styles.input} value={flatNo} onChangeText={setFlatNo} placeholder="Student name / roll no" />
+            {classOptions.length > 0 && (
+              <View style={styles.classRow}>
+                {classOptions.map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    style={[styles.classChip, block === c && styles.classChipActive]}
+                    onPress={() => setBlock(block === c ? "" : c)}
+                  >
+                    <Text style={[styles.classChipText, block === c && styles.classChipTextActive]}>{c}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            <TextInput style={styles.input} value={guardianName} onChangeText={setGuardianName} placeholder="Guardian / parent name" />
+            <View style={styles.formRow}>
+              <TextInput style={[styles.input, { flex: 1 }]} value={guardianPhone} onChangeText={setGuardianPhone} placeholder="Guardian phone (for reminders)" keyboardType="phone-pad" />
+            </View>
+            <TextInput style={styles.input} value={guardianEmail} onChangeText={setGuardianEmail} placeholder="Guardian email (optional)" autoCapitalize="none" keyboardType="email-address" />
+          </>
+        ) : (
+          <>
+            <View style={styles.formRow}>
+              <TextInput style={[styles.input, { flex: 1 }]} value={flatNo} onChangeText={setFlatNo} placeholder={L.unit + " no (A-101)"} autoCapitalize="characters" />
+              <TextInput style={[styles.input, { width: 80 }]} value={block} onChangeText={setBlock} placeholder={L.wing} autoCapitalize="characters" />
+            </View>
+            <TextInput style={styles.input} value={ownerName} onChangeText={setOwnerName} placeholder="Owner name (optional)" />
+          </>
+        )}
         <TouchableOpacity style={[styles.addBtn, busy && { opacity: 0.6 }]} onPress={addFlat} disabled={busy}>
           <Text style={styles.addBtnText}>{busy ? "Adding..." : `Add ${L.unit.toLowerCase()}`}</Text>
         </TouchableOpacity>
@@ -105,9 +146,11 @@ export default function ManageFlatsScreen({ navigation }) {
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.flatNo}>{item.flatNo}</Text>
+              <Text style={styles.flatNo}>{item.flatNo}{item.block ? `  ·  ${item.block}` : ""}</Text>
               <Text style={styles.meta}>
-                {item.ownerName ? item.ownerName : "No owner set"} · {item.residentCount} resident(s)
+                {preschool
+                  ? `${item.guardianName || "No guardian set"}${item.guardianPhone ? ` · ${item.guardianPhone}` : ""}`
+                  : `${item.ownerName ? item.ownerName : "No owner set"} · ${item.residentCount} resident(s)`}
               </Text>
             </View>
           </View>
@@ -124,6 +167,11 @@ const styles = StyleSheet.create({
   form: { backgroundColor: "#fff", padding: 16, borderBottomWidth: 1, borderBottomColor: "#E6EDF0" },
   formTitle: { fontSize: 16, fontWeight: "800", color: "#1B2B33", marginBottom: 10 },
   formRow: { flexDirection: "row", gap: 10 },
+  classRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
+  classChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: "#F1F5F7", borderWidth: 1, borderColor: "#D6DEE3" },
+  classChipActive: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },
+  classChipText: { color: "#334", fontWeight: "600", fontSize: 13 },
+  classChipTextActive: { color: "#fff" },
   input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, backgroundColor: "#F8FAFB", marginBottom: 10 },
   addBtn: { backgroundColor: "#0B6E8F", borderRadius: 10, paddingVertical: 13, alignItems: "center" },
   addBtnText: { color: "#fff", fontWeight: "700" },

@@ -86,12 +86,20 @@ export function serializeVisitor(v) {
 }
 
 export function serializeBill(b) {
+  const paidAmount = b.paidAmount ?? (b.status === "paid" ? b.amount : 0);
+  const balance = Math.max(0, (b.amount || 0) - paidAmount);
   return {
     id: b.id,
     flatId: b.flatId,
     flatNo: b.flat?.flatNo || null,
+    block: b.flat?.block || null,
     period: b.period,
     amount: b.amount,
+    paidAmount,
+    balance,
+    nextDueAmount: b.nextDueAmount ?? null,
+    remindOn: b.remindOn || null,
+    lastRemindedAt: b.lastRemindedAt || null,
     dueDate: b.dueDate,
     status: b.status,
     paidAt: b.paidAt,
@@ -99,6 +107,10 @@ export function serializeBill(b) {
     paymentMode: b.paymentMode || null,
     collectedBy: b.collectedBy || null,
     collectorPhone: b.collectorPhone || null,
+    payments: (b.payments || []).map((p) => ({
+      id: p.id, amount: p.amount, mode: p.mode, ref: p.ref || null,
+      collectedBy: p.collectedBy || null, createdAt: p.createdAt,
+    })),
   };
 }
 

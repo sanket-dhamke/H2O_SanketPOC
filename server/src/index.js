@@ -19,6 +19,8 @@ import { aiRouter } from "./routes/ai.js";
 import cron from "node-cron";
 import { runMonthlyBackups } from "./backup.js";
 import { backfillSlugs } from "./slug.js";
+import { recordPayment } from "./billing.js";
+import { runFeeReminders } from "./feeReminders.js";
 
 const app = express();
 app.use(cors());
@@ -39,14 +41,18 @@ app.post("/api/razorpay/webhook", express.raw({ type: "*/*" }), async (req, res)
       event.payload?.payment?.entity?.order_id || event.payload?.order?.entity?.id;
     const bill = orderId ? await prisma.bill.findFirst({ where: { orderId } }) : null;
     if (bill && bill.status !== "paid") {
-      await prisma.bill.update({
-        where: { id: bill.id },
-        data: {
-          status: "paid",
-          paidAt: new Date(),
-          paymentRef: event.payload?.payment?.entity?.id || bill.paymentRef,
-        },
-      });
+      // The amount actually captured (paise → rupees) supports partial payments.
+      const paise = event.payload?.payment?.entity?.amount;
+      const amount = paise ? paise / 100 : undefined;
+      try {
+        await recordPayment(bill.id, {
+          amount,
+          mode: "online",
+          ref: event.payload?.payment?.entity?.id || bill.paymentRef,
+        });
+      } catch (e) {
+        console.error("[webhook] recordPayment failed:", e.message);
+      }
     }
   }
   res.json({ ok: true });
@@ -87,6 +93,21 @@ app.post("/api/cron/monthly-backup", async (req, res) => {
   }
 });
 
+// Secure endpoint to trigger the fee-reminder sweep from an external scheduler.
+app.post("/api/cron/fee-reminders", async (req, res) => {
+  const secret = process.env.CRON_SECRET || "";
+  const provided = req.headers["x-cron-secret"] || req.query.secret;
+  if (!secret || provided !== secret) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  try {
+    const result = await runFeeReminders();
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // In-process schedule (works whenever the server is awake): every day at 23:30,
 // if tomorrow is a new month, run the monthly backups. Disable with
 // BACKUP_CRON_ENABLED=false. For sleeping hosts, also wire the external endpoint.
@@ -102,6 +123,20 @@ if (process.env.BACKUP_CRON_ENABLED !== "false") {
       } catch (e) {
         console.error("[backup] monthly run failed:", e.message);
       }
+    }
+  });
+}
+
+// Daily fee-reminder sweep (default 9:00am): sends WhatsApp/email reminders for
+// any bill whose remindOn date has arrived and is still unpaid. Disable with
+// FEE_REMINDER_CRON_ENABLED=false. Also exposed via /api/cron/fee-reminders.
+if (process.env.FEE_REMINDER_CRON_ENABLED !== "false") {
+  cron.schedule(process.env.FEE_REMINDER_CRON || "0 9 * * *", async () => {
+    try {
+      const r = await runFeeReminders();
+      if (r.sent || r.attempted) console.log(`[fees] reminders: sent ${r.sent}/${r.attempted}`);
+    } catch (e) {
+      console.error("[fees] reminder run failed:", e.message);
     }
   });
 }

@@ -73,18 +73,21 @@ export default function MaintenanceScreen() {
   const [payingId, setPayingId] = useState(null);
 
   const pay = async (bill) => {
+    // Pay the pre-set installment if the admin defined one, else the full balance.
+    const balance = bill.balance != null ? bill.balance : bill.amount;
+    const amount = bill.nextDueAmount && bill.nextDueAmount > 0 ? Math.min(bill.nextDueAmount, balance) : balance;
     setPayingId(bill.id);
     try {
-      const result = await payBill(bill);
+      const result = await payBill(bill, amount);
       if (result.cancelled) return;
       const fresh = await load();
-      // Open the receipt for the just-paid bill so it can be downloaded now.
-      const paid = fresh.find((b) => b.id === bill.id) || {
-        ...bill,
-        status: "paid",
-        paidAt: new Date().toISOString(),
-      };
-      setReceipt(paid);
+      const updated = fresh.find((b) => b.id === bill.id);
+      // Show a receipt only when the bill is now fully paid; otherwise confirm the installment.
+      if (updated && updated.status !== "paid") {
+        Alert.alert("Payment received", `₹${amount} paid. Balance now ₹${updated.balance}.`);
+      } else {
+        setReceipt(updated || { ...bill, status: "paid", paidAt: new Date().toISOString() });
+      }
     } catch (e) {
       Alert.alert("Payment failed", e.message);
     } finally {
@@ -153,9 +156,14 @@ export default function MaintenanceScreen() {
               <Text style={styles.period}>{item.period}</Text>
               {item.status === "paid" ? (
                 <Text style={styles.due}>Paid {formatDateTime(item.paidAt)}</Text>
+              ) : item.status === "partial" ? (
+                <Text style={styles.duePartial}>Paid ₹{item.paidAmount} · balance ₹{item.balance}</Text>
               ) : (
                 <Text style={styles.due}>Due {item.dueDate}</Text>
               )}
+              {item.status !== "paid" && item.nextDueAmount ? (
+                <Text style={styles.installment}>Installment ₹{item.nextDueAmount}{item.remindOn ? ` · reminder ${item.remindOn}` : ""}</Text>
+              ) : null}
             </View>
             <Text style={styles.amount}>₹{item.amount}</Text>
             {item.status === "paid" ? (
@@ -174,7 +182,7 @@ export default function MaintenanceScreen() {
                 disabled={payingId === item.id}
               >
                 <Text style={styles.payText}>
-                  {payingId === item.id ? "..." : "Pay"}
+                  {payingId === item.id ? "..." : item.nextDueAmount && item.nextDueAmount > 0 ? `Pay ₹${item.nextDueAmount}` : "Pay"}
                 </Text>
               </TouchableOpacity>
             )}
@@ -346,6 +354,8 @@ const styles = StyleSheet.create({
   },
   period: { fontSize: 16, fontWeight: "700", color: "#1B2B33" },
   due: { color: "#6B7B85", marginTop: 2, fontSize: 12 },
+  duePartial: { color: "#B0620B", marginTop: 2, fontSize: 12, fontWeight: "700" },
+  installment: { color: "#0B6E8F", marginTop: 3, fontSize: 11, fontWeight: "600" },
   amount: { fontSize: 16, fontWeight: "700", color: "#1B2B33" },
   payBtn: { backgroundColor: "#0B6E8F", paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 },
   payText: { color: "#fff", fontWeight: "700" },

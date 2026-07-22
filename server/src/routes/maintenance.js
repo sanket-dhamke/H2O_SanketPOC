@@ -4,7 +4,7 @@ import { prisma } from "../prisma.js";
 import { authRequired } from "../auth.js";
 import { serializeBill } from "../serializers.js";
 import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorpay.js";
-import { onBillPaid } from "../paymentNotify.js";
+import { recordPayment, effectivePaid, billBalance } from "../billing.js";
 
 export const maintenanceRouter = Router();
 
@@ -28,9 +28,7 @@ maintenanceRouter.get("/maintenance", authRequired, async (req, res) => {
     include: { flat: true },
     orderBy: { period: "desc" },
   });
-  const totalDue = bills
-    .filter((b) => b.status === "pending")
-    .reduce((sum, b) => sum + b.amount, 0);
+  const totalDue = bills.reduce((sum, b) => sum + billBalance(b), 0);
   res.json({ bills: bills.map(serializeBill), totalDue });
 });
 
@@ -58,21 +56,26 @@ async function getPayableBill(req, res) {
   return bill;
 }
 
+// The amount to charge now: an explicit body.amount (installment), else the
+// pre-set nextDueAmount, else the full outstanding balance. Clamped to balance.
+function amountToCharge(bill, body) {
+  const balance = billBalance(bill);
+  let amt = body && body.amount != null ? Number(body.amount) : bill.nextDueAmount || balance;
+  if (!(amt > 0)) amt = balance;
+  return Math.min(amt, balance);
+}
+
 // Fallback "mock" payment (used only when Razorpay keys are not configured).
+// Supports partial/installment payments via body.amount.
 maintenanceRouter.post("/maintenance/:id/pay", authRequired, async (req, res) => {
   const bill = await getPayableBill(req, res);
   if (!bill) return;
-  const updated = await prisma.bill.update({
-    where: { id: bill.id },
-    data: {
-      status: "paid",
-      paidAt: new Date(),
-      paymentRef: "PAY-" + randomUUID().slice(0, 8).toUpperCase(),
-    },
-    include: { flat: true },
+  const amount = amountToCharge(bill, req.body);
+  const { bill: updated } = await recordPayment(bill.id, {
+    amount,
+    mode: "online",
+    ref: "PAY-" + randomUUID().slice(0, 8).toUpperCase(),
   });
-  // Email the resident a receipt PDF + notify admins (fire-and-forget).
-  onBillPaid(updated.id);
   res.json({ bill: serializeBill(updated) });
 });
 
@@ -86,7 +89,8 @@ maintenanceRouter.post("/maintenance/:id/create-order", authRequired, async (req
     where: { flatId: bill.flatId, role: "resident" },
   });
 
-  const amountPaise = Math.round(bill.amount * 100);
+  const chargeAmount = amountToCharge(bill, req.body);
+  const amountPaise = Math.round(chargeAmount * 100);
   // If a society Razorpay linked account is configured, route (Razorpay Route)
   // the full amount to it so collections settle into the society's account.
   const society = await prisma.societyAccount.findFirst({
@@ -157,11 +161,12 @@ maintenanceRouter.post("/maintenance/:id/verify", authRequired, async (req, res)
   if (expected !== razorpay_signature) {
     return res.status(400).json({ message: "Payment verification failed" });
   }
-  const updated = await prisma.bill.update({
-    where: { id: bill.id },
-    data: { status: "paid", paidAt: new Date(), paymentRef: razorpay_payment_id },
-    include: { flat: true },
+  if (bill.status === "paid") return res.status(400).json({ message: "Bill already paid" });
+  const amount = amountToCharge(bill, req.body);
+  const { bill: updated } = await recordPayment(bill.id, {
+    amount,
+    mode: "online",
+    ref: razorpay_payment_id,
   });
-  onBillPaid(updated.id);
   res.json({ bill: serializeBill(updated) });
 });

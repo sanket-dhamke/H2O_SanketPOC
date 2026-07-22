@@ -4,12 +4,12 @@ import { api } from "./api";
 // Runs the full payment flow on a real device (iOS/Android dev build):
 // 1) ask backend to create an order, 2) open the native Razorpay sheet,
 // 3) verify the signature on the backend. Returns { paid, mock } or throws.
-export async function payBill(bill) {
-  const order = await api.createOrder(bill.id);
+export async function payBill(bill, amount) {
+  const order = await api.createOrder(bill.id, amount);
 
   // No Razorpay keys on the server -> fall back to the mock pay flow.
   if (!order.enabled) {
-    await api.payBill(bill.id);
+    await api.payBill(bill.id, amount);
     return { paid: true, mock: true };
   }
 
@@ -42,6 +42,7 @@ export async function payBill(bill) {
     razorpay_order_id: result.razorpay_order_id,
     razorpay_payment_id: result.razorpay_payment_id,
     razorpay_signature: result.razorpay_signature,
+    amount,
   });
   return { paid: true };
 }
