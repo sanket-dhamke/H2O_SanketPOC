@@ -13,7 +13,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import AdsCarousel from "../components/AdsCarousel";
-import ChangePasswordModal from "../components/ChangePasswordModal";
+import ProfileModal from "../components/ProfileModal";
 
 const HERO = {
   resident: require("../../assets/home-resident.png"),
@@ -28,7 +28,7 @@ export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [totalDue, setTotalDue] = useState(0);
   const [pendingVisitors, setPendingVisitors] = useState(0);
-  const [pwModal, setPwModal] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -76,8 +76,8 @@ export default function HomeScreen({ navigation }) {
             </View>
           </View>
           <View style={styles.heroActions}>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => setPwModal(true)}>
-              <Ionicons name="key-outline" size={16} color="#fff" />
+            <TouchableOpacity style={styles.iconBtn} onPress={() => setProfileOpen(true)}>
+              <Ionicons name="person-circle-outline" size={22} color="#fff" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
               <Ionicons name="log-out-outline" size={16} color="#fff" />
@@ -87,7 +87,7 @@ export default function HomeScreen({ navigation }) {
         </View>
       </ImageBackground>
 
-      <ChangePasswordModal visible={pwModal} onClose={() => setPwModal(false)} />
+      <ProfileModal visible={profileOpen} onClose={() => setProfileOpen(false)} />
 
       <View style={styles.body}>
         {user.role === "resident" && (

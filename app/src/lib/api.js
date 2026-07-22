@@ -91,6 +91,8 @@ export const api = {
   me: () => request("/api/me"),
   changePassword: (currentPassword, newPassword) =>
     request("/api/me/password", { method: "POST", body: { currentPassword, newPassword } }),
+  updatePreferences: (prefs) =>
+    request("/api/me/preferences", { method: "PATCH", body: prefs }),
   registerPushToken: (token) =>
     request("/api/push-token", { method: "POST", body: { token } }),
   flats: () => request("/api/flats"),

@@ -130,13 +130,33 @@ authRouter.post("/me/password", authRequired, async (req, res) => {
 });
 
 // Register the device's Expo push token so we can notify this user.
+// Honors the user's notification preference: if they've turned notifications off,
+// we never store a token (so no pushes are sent) even if the app tries to register.
 authRouter.post("/push-token", authRequired, async (req, res) => {
   const { token } = req.body || {};
+  const me = await prisma.user.findUnique({ where: { id: req.user.id }, select: { notifyEnabled: true } });
   await prisma.user.update({
     where: { id: req.user.id },
-    data: { expoPushToken: token || null },
+    data: { expoPushToken: me?.notifyEnabled === false ? null : token || null },
   });
   res.json({ ok: true });
+});
+
+// Update the user's own preferences (currently: notifications on/off).
+// Turning notifications off also clears the stored push token immediately.
+authRouter.patch("/me/preferences", authRequired, async (req, res) => {
+  const { notifyEnabled } = req.body || {};
+  const data = {};
+  if (notifyEnabled !== undefined) {
+    data.notifyEnabled = Boolean(notifyEnabled);
+    if (!data.notifyEnabled) data.expoPushToken = null;
+  }
+  const user = await prisma.user.update({
+    where: { id: req.user.id },
+    data,
+    include: { flat: true, society: true },
+  });
+  res.json({ user: publicUser(user) });
 });
 
 // Flat list for pickers (guards choose a flat when logging a visitor).

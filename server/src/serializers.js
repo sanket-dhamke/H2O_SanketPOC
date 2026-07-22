@@ -11,8 +11,12 @@ export function publicUser(u) {
     role: u.role,
     societyId: u.societyId || null,
     societyName: u.society?.name || null,
+    societyCity: u.society?.city || null,
+    societyAddress: u.society?.address || null,
     flatId: u.flatId || null,
     flatNo: u.flat?.flatNo || null,
+    block: u.flat?.block || null,
+    notifyEnabled: u.notifyEnabled ?? true,
     active: u.active,
   };
 }

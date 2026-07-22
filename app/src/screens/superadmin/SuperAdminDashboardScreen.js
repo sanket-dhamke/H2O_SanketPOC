@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import ScreenHeader from "../../components/ScreenHeader";
-import ChangePasswordModal from "../../components/ChangePasswordModal";
+import ProfileModal from "../../components/ProfileModal";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
@@ -21,7 +21,7 @@ export default function SuperAdminDashboardScreen() {
   const { logout } = useAuth();
   const [data, setData] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [pwModal, setPwModal] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -45,8 +45,8 @@ export default function SuperAdminDashboardScreen() {
 
   const headerBtns = (
     <View style={{ flexDirection: "row", alignItems: "center" }}>
-      <TouchableOpacity onPress={() => setPwModal(true)} style={styles.logoutBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-        <Ionicons name="key-outline" size={20} color="#fff" />
+      <TouchableOpacity onPress={() => setProfileOpen(true)} style={styles.logoutBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <Ionicons name="person-circle-outline" size={24} color="#fff" />
       </TouchableOpacity>
       <TouchableOpacity onPress={logout} style={styles.logoutBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Ionicons name="log-out-outline" size={22} color="#fff" />
@@ -62,7 +62,7 @@ export default function SuperAdminDashboardScreen() {
         subtitle="Owner overview across all societies"
         right={headerBtns}
       />
-      <ChangePasswordModal visible={pwModal} onClose={() => setPwModal(false)} />
+      <ProfileModal visible={profileOpen} onClose={() => setProfileOpen(false)} />
       <ScrollView
         contentContainerStyle={{ padding: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}

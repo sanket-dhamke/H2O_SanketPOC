@@ -68,6 +68,8 @@ model User {
   flatId        String?
   expoPushToken String?
   active        Boolean   @default(true)
+  // Whether this user wants push notifications (visitor alerts, reminders, etc.).
+  notifyEnabled Boolean   @default(true)
   createdAt     DateTime  @default(now())
   // Self-service password reset via emailed OTP.
   resetOtpHash      String?
