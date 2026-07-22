@@ -156,6 +156,30 @@ export const api = {
   createPost: (payload) => request("/api/posts", { method: "POST", body: payload }),
   deletePost: (id) => request(`/api/posts/${id}`, { method: "DELETE" }),
 
+  // Amenities & bookings (clubhouse booking engine)
+  amenities: () => request("/api/amenities"),
+  bookings: () => request("/api/bookings"),
+  amenityAvailability: (id) => request(`/api/amenities/${id}/availability`),
+  createBooking: (payload) =>
+    request("/api/bookings", { method: "POST", body: payload }),
+  cancelBooking: (id) => request(`/api/bookings/${id}/cancel`, { method: "POST" }),
+  payBooking: (id) => request(`/api/bookings/${id}/pay`, { method: "POST" }),
+  // Admin amenity management
+  adminListAmenities: () => request("/api/admin/amenities"),
+  adminCreateAmenity: (payload) =>
+    request("/api/admin/amenities", { method: "POST", body: payload }),
+  adminUpdateAmenity: (id, payload) =>
+    request(`/api/admin/amenities/${id}`, { method: "PATCH", body: payload }),
+  adminDeleteAmenity: (id) =>
+    request(`/api/admin/amenities/${id}`, { method: "DELETE" }),
+  adminAddSlot: (id, payload) =>
+    request(`/api/admin/amenities/${id}/slots`, { method: "POST", body: payload }),
+  adminUpdateSlot: (id, payload) =>
+    request(`/api/admin/slots/${id}`, { method: "PATCH", body: payload }),
+  adminDeleteSlot: (id) => request(`/api/admin/slots/${id}`, { method: "DELETE" }),
+  adminDecideBooking: (id, status) =>
+    request(`/api/admin/bookings/${id}/decision`, { method: "POST", body: { status } }),
+
   // AI (phase 5)
   aiAssistant: (question) =>
     request("/api/ai/assistant", { method: "POST", body: { question } }),

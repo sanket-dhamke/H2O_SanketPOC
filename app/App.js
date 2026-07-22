@@ -16,6 +16,7 @@ import VisitorsScreen from "./src/screens/VisitorsScreen";
 import GateScreen from "./src/screens/GateScreen";
 import AssistantScreen from "./src/screens/AssistantScreen";
 import CommunityScreen from "./src/screens/CommunityScreen";
+import AmenitiesScreen from "./src/screens/AmenitiesScreen";
 import AdminDashboardScreen from "./src/screens/admin/AdminDashboardScreen";
 import ManageUsersScreen from "./src/screens/admin/ManageUsersScreen";
 import CreateAccountScreen from "./src/screens/admin/CreateAccountScreen";
@@ -41,6 +42,7 @@ const TAB_ICONS = {
   Members: "people-circle",
   Gate: "person-add",
   Community: "megaphone",
+  Amenities: "calendar",
   Overview: "planet",
   Societies: "business",
 };
@@ -50,13 +52,15 @@ const tabScreenOptions = ({ route }) => ({
   headerShown: false,
   tabBarActiveTintColor: "#0B6E8F",
   tabBarInactiveTintColor: "#93A2AB",
-  tabBarLabelStyle: { fontSize: 11, fontWeight: "700", marginTop: -2 },
+  tabBarLabelStyle: { fontSize: 10, fontWeight: "700", marginTop: -2 },
+  tabBarItemStyle: { paddingHorizontal: 2 },
+  tabBarAllowFontScaling: false,
   tabBarStyle: {
     backgroundColor: "#fff",
     borderTopWidth: 0,
-    height: 64,
+    height: 68,
     paddingTop: 8,
-    paddingBottom: 8,
+    paddingBottom: 10,
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 12,
@@ -86,6 +90,7 @@ function FinanceStackScreen() {
     <FinanceStack.Navigator screenOptions={{ headerShown: false }}>
       <FinanceStack.Screen name="FinanceHome" component={AdminDashboardScreen} />
       <FinanceStack.Screen name="Collections" component={MaintenanceScreen} />
+      <FinanceStack.Screen name="Amenities" component={AmenitiesScreen} />
     </FinanceStack.Navigator>
   );
 }
@@ -109,6 +114,7 @@ function ResidentTabs() {
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
       <Tab.Screen name="Maintenance" component={MaintenanceScreen} />
       <Tab.Screen name="Community" component={CommunityScreen} />
+      <Tab.Screen name="Amenities" component={AmenitiesScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} />
       <Tab.Screen name="Assistant" component={AssistantScreen} />
     </Tab.Navigator>

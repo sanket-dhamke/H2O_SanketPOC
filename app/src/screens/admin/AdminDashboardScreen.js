@@ -96,6 +96,10 @@ export default function AdminDashboardScreen() {
         <Ionicons name="cash-outline" size={18} color="#0B6E8F" />
         <Text style={styles.collectText}>Record cash / view collections</Text>
       </TouchableOpacity>
+      <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("Amenities")}>
+        <Ionicons name="calendar-outline" size={18} color="#0B6E8F" />
+        <Text style={styles.collectText}>Amenities & clubhouse bookings</Text>
+      </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>Flat-wise status</Text>
       {(data?.perFlat || []).map((f) => (

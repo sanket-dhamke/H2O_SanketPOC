@@ -12,6 +12,7 @@ import { visitorsRouter } from "./routes/visitors.js";
 import { adminRouter } from "./routes/admin.js";
 import { superadminRouter } from "./routes/superadmin.js";
 import { communityRouter } from "./routes/community.js";
+import { amenitiesRouter } from "./routes/amenities.js";
 import { aiRouter } from "./routes/ai.js";
 
 const app = express();
@@ -59,6 +60,7 @@ app.use("/api", visitorsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/superadmin", superadminRouter);
 app.use("/api", communityRouter);
+app.use("/api", amenitiesRouter);
 app.use("/api/ai", aiRouter);
 
 const PORT = process.env.PORT || 4000;

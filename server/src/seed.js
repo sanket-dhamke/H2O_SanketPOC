@@ -15,6 +15,11 @@ async function main() {
   const hash = bcrypt.hashSync(PASSWORD, 10);
 
   // Wipe existing data (order matters for FK constraints).
+  await prisma.booking.deleteMany();
+  await prisma.amenitySlot.deleteMany();
+  await prisma.amenity.deleteMany();
+  await prisma.post.deleteMany();
+  await prisma.announcement.deleteMany();
   await prisma.visitor.deleteMany();
   await prisma.bill.deleteMany();
   await prisma.expense.deleteMany();
@@ -141,6 +146,59 @@ async function main() {
       { societyId: green.id, authorId: greenR2.id, category: "query", title: "Good pediatrician nearby?", body: "New to the society, can anyone recommend a good child doctor around Baner?", createdAt: hoursAgo(30) },
       { societyId: green.id, authorId: greenR1.id, category: "lost_found", title: "Found: house keys near gate", body: "A bunch of keys with a blue tag found near the main gate. Collect from the guard.", createdAt: hoursAgo(48) },
     ],
+  });
+
+  // Bookable amenities for Green Valley: Clubhouse (enabled) + a disabled example.
+  const clubhouse = await prisma.amenity.create({
+    data: {
+      societyId: green.id,
+      name: "Clubhouse / Party Hall",
+      description: "Air-conditioned hall for birthdays, functions and small gatherings (up to 60 guests).",
+      enabled: true,
+      slots: {
+        create: [
+          { label: "Morning", startTime: "08:00", endTime: "12:00", price: 1500 },
+          { label: "Afternoon", startTime: "12:00", endTime: "17:00", price: 2000 },
+          { label: "Evening", startTime: "17:00", endTime: "22:00", price: 3000 },
+        ],
+      },
+    },
+    include: { slots: true },
+  });
+  await prisma.amenity.create({
+    data: {
+      societyId: green.id,
+      name: "Terrace Garden",
+      description: "Open terrace for small get-togethers. (Disabled — enable to allow bookings.)",
+      enabled: false,
+      slots: {
+        create: [
+          { label: "Morning", startTime: "08:00", endTime: "12:00", price: 500 },
+          { label: "Evening", startTime: "17:00", endTime: "21:00", price: 800 },
+        ],
+      },
+    },
+  });
+
+  // A couple of demo bookings so residents/admin see the flow end to end.
+  const morningSlot = clubhouse.slots.find((s) => s.label === "Morning");
+  const eveningSlot = clubhouse.slots.find((s) => s.label === "Evening");
+  const dayStr = (d) => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);
+  await prisma.booking.create({
+    data: {
+      societyId: green.id, amenityId: clubhouse.id, slotId: eveningSlot.id,
+      residentId: greenR1.id, flatId: flatA101.id, date: dayStr(6),
+      amount: eveningSlot.price, status: "requested", notes: "Birthday party for my daughter",
+      createdAt: hoursAgo(2),
+    },
+  });
+  await prisma.booking.create({
+    data: {
+      societyId: green.id, amenityId: clubhouse.id, slotId: morningSlot.id,
+      residentId: greenR2.id, flatId: flatA102.id, date: dayStr(-10),
+      amount: morningSlot.price, status: "paid", paidAt: hoursAgo(240),
+      paymentRef: "BOOK-DEMO01", decidedAt: hoursAgo(250), createdAt: hoursAgo(260),
+    },
   });
 
   /* ======================= Society 2: Skyline Towers ===================== */

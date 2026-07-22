@@ -33,6 +33,8 @@ model Society {
   accounts      SocietyAccount[]
   announcements Announcement[]
   posts         Post[]
+  amenities     Amenity[]
+  bookings      Booking[]
 }
 
 model Flat {
@@ -71,6 +73,8 @@ model User {
   loggedVisitors Visitor[] @relation("GuardVisitors")
   // Community board posts authored by this user.
   posts         Post[]
+  // Amenity/clubhouse bookings made by this resident.
+  bookings      Booking[] @relation("ResidentBookings")
 
   @@index([societyId])
 }
@@ -180,4 +184,62 @@ model Post {
 
   @@index([societyId])
   @@index([authorId])
+}
+
+// A bookable society amenity (clubhouse, party hall, etc.). Disabled by default;
+// an admin enables it. Each amenity has time slots with a price.
+model Amenity {
+  id          String        @id @default(uuid())
+  society     Society       @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId   String
+  name        String
+  description String?
+  enabled     Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  slots       AmenitySlot[]
+  bookings    Booking[]
+
+  @@index([societyId])
+}
+
+model AmenitySlot {
+  id        String    @id @default(uuid())
+  amenity   Amenity   @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+  amenityId String
+  label     String // Morning / Afternoon / Evening / custom
+  startTime String? // e.g. "09:00"
+  endTime   String? // e.g. "12:00"
+  price     Float     @default(0)
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  bookings  Booking[]
+
+  @@index([amenityId])
+}
+
+// A resident's booking of a slot on a date. Flow:
+//   requested -> approved -> paid (booked)   |   rejected / cancelled
+model Booking {
+  id         String      @id @default(uuid())
+  society    Society     @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId  String
+  amenity    Amenity     @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+  amenityId  String
+  slot       AmenitySlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  slotId     String
+  resident   User        @relation("ResidentBookings", fields: [residentId], references: [id], onDelete: Cascade)
+  residentId String
+  flatId     String?
+  date       String // "2026-07-25"
+  status     String      @default("requested")
+  amount     Float       @default(0)
+  notes      String?
+  paymentRef String?
+  paidAt     DateTime?
+  decidedBy  String?
+  decidedAt  DateTime?
+  createdAt  DateTime    @default(now())
+
+  @@index([societyId])
+  @@index([slotId, date])
 }

@@ -40,11 +40,23 @@ async function buildContext(user) {
     include: { flat: true },
   });
 
+  const societyId = dbUser?.societyId || user.societyId || "__none__";
+  // Enabled amenities (with slots/prices) that residents can book from the Amenities tab.
+  const amenities = await prisma.amenity.findMany({
+    where: { societyId, enabled: true },
+    include: { slots: { where: { active: true } } },
+  });
+  const amenitiesInfo = amenities.map((a) => ({
+    name: a.name,
+    slots: a.slots.map((s) => ({ label: s.label, time: [s.startTime, s.endTime].filter(Boolean).join("-"), price: s.price })),
+  }));
+
   if (user.role === "resident") {
     const flatId = dbUser?.flatId;
-    const [visitors, bills] = await Promise.all([
+    const [visitors, bills, bookings] = await Promise.all([
       prisma.visitor.findMany({ where: { flatId }, orderBy: { createdAt: "desc" }, take: 40 }),
       prisma.bill.findMany({ where: { flatId }, orderBy: { period: "desc" } }),
+      prisma.booking.findMany({ where: { residentId: user.id }, include: { amenity: true, slot: true }, orderBy: { createdAt: "desc" }, take: 30 }),
     ]);
     return {
       role: "resident",
@@ -54,16 +66,20 @@ async function buildContext(user) {
         status: v.status, at: v.createdAt,
       })),
       bills: bills.map((b) => ({ period: b.period, amount: b.amount, status: b.status, dueDate: b.dueDate })),
+      amenities: amenitiesInfo,
+      myBookings: bookings.map((b) => ({
+        amenity: b.amenity?.name, slot: b.slot?.label, date: b.date, status: b.status, amount: b.amount,
+      })),
     };
   }
 
   // guard / admin: society-wide (bounded) snapshot, scoped to their society.
-  const societyId = dbUser?.societyId || user.societyId || "__none__";
-  const [visitors, bills, expenses, flats] = await Promise.all([
+  const [visitors, bills, expenses, flats, bookings] = await Promise.all([
     prisma.visitor.findMany({ where: { flat: { societyId } }, include: { flat: true }, orderBy: { createdAt: "desc" }, take: 80 }),
     prisma.bill.findMany({ where: { flat: { societyId } }, include: { flat: true } }),
     prisma.expense.findMany({ where: { societyId } }),
     prisma.flat.findMany({ where: { societyId } }),
+    prisma.booking.findMany({ where: { societyId }, include: { amenity: true, slot: true, resident: { include: { flat: true } } }, orderBy: { createdAt: "desc" }, take: 60 }),
   ]);
   const collected = bills.filter((b) => b.status === "paid").reduce((s, b) => s + b.amount, 0);
   const pending = bills.filter((b) => b.status === "pending").reduce((s, b) => s + b.amount, 0);
@@ -84,6 +100,11 @@ async function buildContext(user) {
       name: v.name, flatNo: v.flat?.flatNo, purpose: v.purpose, vehicleNo: v.vehicleNo,
       status: v.status, at: v.createdAt,
     })),
+    amenities: amenitiesInfo,
+    bookings: bookings.map((b) => ({
+      amenity: b.amenity?.name, slot: b.slot?.label, date: b.date, status: b.status,
+      amount: b.amount, flatNo: b.resident?.flat?.flatNo, resident: b.resident?.name,
+    })),
   };
 }
 
@@ -100,6 +121,9 @@ export async function assistantAnswer(user, question) {
         content:
           "You are H2O, a helpful society-management assistant. Answer ONLY from the provided JSON data. " +
           "Be concise and specific (dates, names, amounts in INR). If the data does not contain the answer, say so. " +
+          "The data may include 'amenities' (bookable facilities like a clubhouse, with slots and prices) and bookings. " +
+          "If the user asks to book a clubhouse/amenity, you cannot book it yourself — tell them the available amenities, " +
+          "slots and prices from the data, and direct them to open the 'Amenities' tab to request a slot (admin approves, then they pay in-app). " +
           `Today is ${today}. The user's role is ${user.role}.`,
       },
       { role: "user", content: `DATA:\n${JSON.stringify(context)}\n\nQUESTION: ${question}` },

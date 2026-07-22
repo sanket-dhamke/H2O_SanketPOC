@@ -77,3 +77,44 @@ export function serializePost(p) {
     createdAt: p.createdAt,
   };
 }
+
+export function serializeSlot(s) {
+  return {
+    id: s.id,
+    label: s.label,
+    startTime: s.startTime || null,
+    endTime: s.endTime || null,
+    price: s.price,
+    active: s.active,
+  };
+}
+
+export function serializeAmenity(a) {
+  return {
+    id: a.id,
+    name: a.name,
+    description: a.description || null,
+    enabled: a.enabled,
+    slots: (a.slots || []).map(serializeSlot),
+  };
+}
+
+export function serializeBooking(b) {
+  return {
+    id: b.id,
+    amenityId: b.amenityId,
+    amenityName: b.amenity?.name || null,
+    slotId: b.slotId,
+    slotLabel: b.slot?.label || null,
+    date: b.date,
+    status: b.status,
+    amount: b.amount,
+    notes: b.notes || null,
+    paymentRef: b.paymentRef || null,
+    paidAt: b.paidAt,
+    residentId: b.residentId,
+    residentName: b.resident?.name || null,
+    flatNo: b.resident?.flat?.flatNo || null,
+    createdAt: b.createdAt,
+  };
+}
