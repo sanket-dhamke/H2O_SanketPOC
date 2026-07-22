@@ -86,7 +86,9 @@ export function serializeVisitor(v) {
 }
 
 export function serializeBill(b) {
-  const paidAmount = b.paidAmount ?? (b.status === "paid" ? b.amount : 0);
+  // Status-aware so legacy fully-paid bills (paidAmount defaulted to 0) still
+  // report the full amount as paid and a zero balance.
+  const paidAmount = b.status === "paid" ? (b.amount || 0) : (b.paidAmount || 0);
   const balance = Math.max(0, (b.amount || 0) - paidAmount);
   return {
     id: b.id,
