@@ -10,12 +10,17 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { api } from "../../lib/api";
+import { useAuth } from "../../lib/auth";
+import { labelsFor, isPreschool } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
 
-const ROLE_LABEL = { admin: "Admins", guard: "Guards", resident: "Residents" };
 const ROLE_ORDER = ["admin", "guard", "resident"];
 
 export default function ManageUsersScreen({ navigation }) {
+  const { user } = useAuth();
+  const L = labelsFor(user);
+  const preschool = isPreschool(user);
+  const ROLE_LABEL = { admin: "Admins", guard: "Guards", resident: L.payers };
   const [users, setUsers] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -67,14 +72,16 @@ export default function ManageUsersScreen({ navigation }) {
     ]);
   };
 
-  const sections = ROLE_ORDER.map((role) => ({
+  // Preschool app is for guards & admins only — parents/residents have no account.
+  const roleOrder = preschool ? ["admin", "guard"] : ROLE_ORDER;
+  const sections = roleOrder.map((role) => ({
     title: ROLE_LABEL[role],
     data: users.filter((u) => u.role === role),
   })).filter((s) => s.data.length > 0);
 
   return (
     <View style={styles.container}>
-      <ScreenHeader icon="people-circle" title="Members" subtitle="Residents, guards & admins" />
+      <ScreenHeader icon="people-circle" title={L.members} subtitle={L.membersSub} />
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
@@ -92,7 +99,7 @@ export default function ManageUsersScreen({ navigation }) {
               </Text>
               <Text style={styles.meta}>
                 {item.email}
-                {item.flatNo ? ` · Flat ${item.flatNo}` : ""}
+                {item.flatNo ? ` · ${L.unit} ${item.flatNo}` : ""}
                 {item.phone ? ` · ${item.phone}` : ""}
               </Text>
             </View>
@@ -111,7 +118,7 @@ export default function ManageUsersScreen({ navigation }) {
           <Text style={styles.secondaryFabText}>Bank</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.secondaryFab} onPress={() => navigation.navigate("ManageFlats")}>
-          <Text style={styles.secondaryFabText}>Flats</Text>
+          <Text style={styles.secondaryFabText}>{L.units}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("CreateAccount")}>
           <Text style={styles.fabText}>+ New account</Text>

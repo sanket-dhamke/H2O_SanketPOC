@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
+import { labelsFor, isPreschool } from "../lib/org";
 import AdsCarousel from "../components/AdsCarousel";
 import ProfileModal from "../components/ProfileModal";
 
@@ -20,8 +21,6 @@ const HERO = {
   admin: require("../../assets/home-admin.png"),
   guard: require("../../assets/home-guard.png"),
 };
-
-const ROLE_LABEL = { resident: "Resident", admin: "Society admin", guard: "Gate desk" };
 
 export default function HomeScreen({ navigation }) {
   const { user, logout } = useAuth();
@@ -50,7 +49,9 @@ export default function HomeScreen({ navigation }) {
     }, [user.role])
   );
 
-  const actions = getActions(user.role);
+  const L = labelsFor(user);
+  const roleLabel = { resident: L.payer, admin: L.roleAdmin, guard: "Gate desk" }[user.role];
+  const actions = getActions(user.role, L, isPreschool(user));
 
   return (
     <ScrollView
@@ -71,7 +72,7 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.badge}>
               <Ionicons name="location-outline" size={12} color="#fff" />
               <Text style={styles.badgeText}>
-                {user.flatNo ? `Flat ${user.flatNo}` : ROLE_LABEL[user.role]}
+                {user.flatNo ? `${L.unit} ${user.flatNo}` : roleLabel}
               </Text>
             </View>
           </View>
@@ -109,7 +110,7 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>{ROLE_LABEL[user.role]}</Text>
+        <Text style={styles.sectionTitle}>{roleLabel}</Text>
         {actions.map((a) => (
           <ActionTile key={a.label} {...a} onPress={() => navigation.navigate(a.route)} />
         ))}
@@ -120,27 +121,36 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-function getActions(role) {
+function getActions(role, L, preschool) {
   if (role === "resident") {
     return [
-      { label: "Pay maintenance", subtitle: "View bills & download receipts", icon: "card-outline", tint: "#0B6E8F", route: "Maintenance" },
+      { label: `Pay ${L.feesShort.toLowerCase()}`, subtitle: "View bills & download receipts", icon: "card-outline", tint: "#0B6E8F", route: "Maintenance" },
       { label: "Visitors at gate", subtitle: "Approve, deny or leave at gate", icon: "people-outline", tint: "#C2571A", route: "Visitors" },
-      { label: "Ask the assistant", subtitle: "Get instant answers about your flat", icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant" },
+      { label: "Ask the assistant", subtitle: `Get instant answers about your ${L.unit.toLowerCase()}`, icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant" },
     ];
   }
   if (role === "admin") {
-    return [
+    const admin = [
       { label: "Finances & dues", subtitle: "Balance, collections & reminders", icon: "stats-chart-outline", tint: "#0B6E8F", route: "Finance" },
-      { label: "Manage members & flats", subtitle: "Accounts, flats & bank details", icon: "people-circle-outline", tint: "#2E9E52", route: "Members" },
-      { label: "Gate log", subtitle: "See who visited the society", icon: "shield-checkmark-outline", tint: "#C2571A", route: "Visitors" },
-      { label: "Ask the assistant", subtitle: "Query anything about the society", icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant" },
+      { label: L.manageTile, subtitle: L.manageTileSub, icon: "people-circle-outline", tint: "#2E9E52", route: "Members" },
+      { label: "Gate log", subtitle: L.gateAdminSub, icon: "shield-checkmark-outline", tint: "#C2571A", route: "Visitors" },
     ];
+    if (preschool) {
+      admin.splice(2, 0, { label: "Staff attendance", subtitle: "Teacher & staff check-in/out", icon: "id-card-outline", tint: "#7A5AC2", route: "Staff" });
+    } else {
+      admin.push({ label: "Ask the assistant", subtitle: "Query anything about the society", icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant" });
+    }
+    return admin;
   }
-  return [
-    { label: "Log a new visitor", subtitle: "Photo, flat & purpose in seconds", icon: "person-add-outline", tint: "#0B6E8F", route: "Gate" },
+  const guard = [
+    { label: "Log a new visitor", subtitle: `Photo, ${L.unit.toLowerCase()} & purpose in seconds`, icon: "person-add-outline", tint: "#0B6E8F", route: "Gate" },
     { label: "View gate log", subtitle: "Today's entries & their status", icon: "list-outline", tint: "#C2571A", route: "Visitors" },
     { label: "Ask the assistant", subtitle: "Voice & AI help at the gate", icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant" },
   ];
+  if (preschool) {
+    guard.splice(2, 0, { label: "Staff attendance", subtitle: "Teacher & staff check-in/out", icon: "id-card-outline", tint: "#7A5AC2", route: "Staff" });
+  }
+  return guard;
 }
 
 function StatCard({ icon, title, value, tint, onPress }) {

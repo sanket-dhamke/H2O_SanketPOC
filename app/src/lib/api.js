@@ -131,6 +131,8 @@ export const api = {
     request("/api/staff-attendance", { method: "POST", body: payload }),
   staffCheckOut: (id) =>
     request(`/api/staff-attendance/${id}/checkout`, { method: "POST" }),
+  // Preschool report: visitors + staff attendance history.
+  adminSchoolReport: (days) => request(`/api/admin/school-report${qs({ days })}`),
 
   // Admin: accounts + flats
   adminListUsers: (role) => request(`/api/admin/users${qs({ role })}`),

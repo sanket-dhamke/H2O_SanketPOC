@@ -14,12 +14,17 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
+import { useAuth } from "../../lib/auth";
+import { labelsFor, isPreschool } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
 export default function AdminDashboardScreen() {
   const navigation = useNavigation();
+  const { user } = useAuth();
+  const L = labelsFor(user);
+  const preschool = isPreschool(user);
   const [data, setData] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -51,7 +56,7 @@ export default function AdminDashboardScreen() {
     setBusy(true);
     try {
       const res = await api.adminRemindUnpaid();
-      Alert.alert("Reminders sent", `Notified ${res.notified} resident(s) with dues.`);
+      Alert.alert("Reminders sent", `Notified ${res.notified} ${L.payer.toLowerCase()}(s) with dues.`);
     } catch (e) {
       Alert.alert("Error", e.message);
     } finally {
@@ -67,7 +72,7 @@ export default function AdminDashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
       <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>Society balance</Text>
+        <Text style={styles.balanceLabel}>{L.balanceLabel}</Text>
         <Text style={styles.balanceValue}>{money(data?.balance)}</Text>
         <Text style={styles.balanceSub}>Collected {money(data?.totalCollected)} · Expenses {money(data?.totalExpenses)}</Text>
       </View>
@@ -90,7 +95,7 @@ export default function AdminDashboardScreen() {
         onPress={remind}
         disabled={busy}
       >
-        <Text style={styles.remindText}>{busy ? "Sending..." : "Remind unpaid residents"}</Text>
+        <Text style={styles.remindText}>{busy ? "Sending..." : L.remindLabel}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("Collections")}>
         <Ionicons name="cash-outline" size={18} color="#0B6E8F" />
@@ -98,18 +103,20 @@ export default function AdminDashboardScreen() {
       </TouchableOpacity>
       <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("Amenities")}>
         <Ionicons name="calendar-outline" size={18} color="#0B6E8F" />
-        <Text style={styles.collectText}>Amenities & clubhouse bookings</Text>
+        <Text style={styles.collectText}>{L.amenitiesAdminBtn}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("Reports")}>
         <Ionicons name="document-text-outline" size={18} color="#0B6E8F" />
-        <Text style={styles.collectText}>Reports & backup (wing-wise, PDF)</Text>
+        <Text style={styles.collectText}>{preschool ? "Reports & backup (visitors, staff)" : "Reports & backup (wing-wise, PDF)"}</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("VenueMarketplace")}>
-        <Ionicons name="storefront-outline" size={18} color="#0B6E8F" />
-        <Text style={styles.collectText}>Vendor marketplace (premium)</Text>
-      </TouchableOpacity>
+      {!preschool && (
+        <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("VenueMarketplace")}>
+          <Ionicons name="storefront-outline" size={18} color="#0B6E8F" />
+          <Text style={styles.collectText}>Vendor marketplace (premium)</Text>
+        </TouchableOpacity>
+      )}
 
-      <Text style={styles.sectionTitle}>Flat-wise status</Text>
+      <Text style={styles.sectionTitle}>{L.unit}-wise status</Text>
       {(data?.perFlat || []).map((f) => (
         <View key={f.flatId} style={styles.flatRow}>
           <Text style={styles.flatNo}>{f.flatNo}</Text>
@@ -120,7 +127,7 @@ export default function AdminDashboardScreen() {
         </View>
       ))}
       {data && data.dueList?.length === 0 && (
-        <Text style={styles.allClear}>All flats are up to date.</Text>
+        <Text style={styles.allClear}>All {L.units.toLowerCase()} are up to date.</Text>
       )}
       </ScrollView>
 
@@ -207,7 +214,7 @@ function AddExpenseModal({ visible, onClose, onDone }) {
   };
 
   return (
-    <FormModal visible={visible} onClose={onClose} title="Add society expense" icon="cash-outline" busy={busy} onSubmit={submit}>
+    <FormModal visible={visible} onClose={onClose} title="Add expense" icon="cash-outline" busy={busy} onSubmit={submit}>
       <Label>Label</Label>
       <TextInput style={styles.input} value={label} onChangeText={setLabel} placeholder="Lift AMC" />
       <Label>Amount (Rs.)</Label>

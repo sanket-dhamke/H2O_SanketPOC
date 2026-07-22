@@ -17,6 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { labelsFor } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
@@ -45,18 +46,19 @@ export default function AmenitiesScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
   const isAdmin = user?.role === "admin";
+  const L = labelsFor(user);
 
   const onBack = navigation?.canGoBack?.() ? () => navigation.goBack() : undefined;
 
   return isAdmin ? (
-    <AdminAmenities onBack={onBack} />
+    <AdminAmenities onBack={onBack} L={L} />
   ) : (
-    <ResidentAmenities onBack={onBack} />
+    <ResidentAmenities onBack={onBack} L={L} />
   );
 }
 
 /* ============================ Resident view ============================== */
-function ResidentAmenities({ onBack }) {
+function ResidentAmenities({ onBack, L }) {
   const [tab, setTab] = useState("book");
   const [amenities, setAmenities] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -89,8 +91,8 @@ function ResidentAmenities({ onBack }) {
     <View style={styles.container}>
       <ScreenHeader
         icon="calendar"
-        title="Amenities"
-        subtitle="Book your clubhouse & facilities"
+        title={L.amenities}
+        subtitle={L.amenitiesSubResident}
         onBack={onBack}
       />
       <View style={styles.segment}>
@@ -110,7 +112,7 @@ function ResidentAmenities({ onBack }) {
           <ActivityIndicator style={{ marginTop: 40 }} color="#0B6E8F" />
         ) : tab === "book" ? (
           amenities.length === 0 ? (
-            <Empty text="No amenities are open for booking yet. Your admin can enable the clubhouse from their Amenities screen." />
+            <Empty text={L.amenityEmptyResident} />
           ) : (
             amenities.map((a) => <BookCard key={a.id} amenity={a} onBooked={() => { load(); setTab("mine"); }} />)
           )
@@ -317,7 +319,7 @@ function BookingRow({ booking, onChanged }) {
 }
 
 /* ============================== Admin view =============================== */
-function AdminAmenities({ onBack }) {
+function AdminAmenities({ onBack, L }) {
   const [tab, setTab] = useState("requests");
   const [amenities, setAmenities] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -412,8 +414,8 @@ function AdminAmenities({ onBack }) {
     <View style={styles.container}>
       <ScreenHeader
         icon="calendar"
-        title="Amenities"
-        subtitle="Approve bookings & manage facilities"
+        title={L.amenities}
+        subtitle={L.amenitiesSubAdmin}
         onBack={onBack}
         right={addBtn}
       />
@@ -486,7 +488,7 @@ function AdminAmenities({ onBack }) {
         ) : (
           <>
             {amenities.length === 0 && (
-              <Empty text="No amenities yet. Tap + to add your clubhouse or facility." />
+              <Empty text={L.amenityEmptyAdmin} />
             )}
             {amenities.map((a) => (
               <View key={a.id} style={styles.card}>
@@ -545,13 +547,13 @@ function AdminAmenities({ onBack }) {
         )}
       </ScrollView>
 
-      <AmenityModal visible={amenityModal} onClose={() => setAmenityModal(false)} onDone={load} />
+      <AmenityModal visible={amenityModal} onClose={() => setAmenityModal(false)} onDone={load} L={L} />
       <SlotModal data={slotModal} onClose={() => setSlotModal(null)} onDone={load} />
     </View>
   );
 }
 
-function AmenityModal({ visible, onClose, onDone }) {
+function AmenityModal({ visible, onClose, onDone, L }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [defaultPrice, setDefaultPrice] = useState("");
@@ -583,10 +585,10 @@ function AmenityModal({ visible, onClose, onDone }) {
   };
 
   return (
-    <FormModal visible={visible} onClose={onClose} title="New amenity" icon="business-outline" busy={busy} onSubmit={submit} submitLabel="Create">
-      <Text style={styles.hint}>Creates the facility with Morning, Afternoon and Evening slots (you can edit prices & add more).</Text>
+    <FormModal visible={visible} onClose={onClose} title={`New ${(L?.amenities || "amenity").toLowerCase()}`} icon="business-outline" busy={busy} onSubmit={submit} submitLabel="Create">
+      <Text style={styles.hint}>Creates it with Morning, Afternoon and Evening slots (you can edit prices & add more).</Text>
       <Label>Name</Label>
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Clubhouse / Party Hall" />
+      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder={L?.amenityExample || "Clubhouse / Party Hall"} />
       <Label>Description (optional)</Label>
       <TextInput style={[styles.input, styles.multiline]} value={description} onChangeText={setDescription} placeholder="What is this facility, capacity, rules…" multiline />
       <Label>Default price per slot (Rs.)</Label>

@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
-import { publicUser, serializeBill, serializeVenueBooking } from "../serializers.js";
+import { publicUser, serializeBill, serializeVenueBooking, serializeVisitor, serializeStaffAttendance } from "../serializers.js";
 import { validatePassword } from "../passwordPolicy.js";
 import { sendPush } from "../push.js";
 import { buildSocietyBackup, emailSocietyBackup, buildWingReport, listBlocks } from "../backup.js";
@@ -349,6 +349,50 @@ adminRouter.get("/report", async (req, res) => {
   } catch (e) {
     res.status(400).json({ message: e.message });
   }
+});
+
+// Preschool-flavored report: visitor entries/exits + staff attendance history.
+// Used by preschool tenants instead of the wing-wise financial report.
+adminRouter.get("/school-report", async (req, res) => {
+  const societyId = sid(req);
+  const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 180);
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const sinceDate = since.toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+
+  const society = await prisma.society.findUnique({ where: { id: societyId }, select: { name: true } });
+  const [visitors, staff] = await Promise.all([
+    prisma.visitor.findMany({
+      where: { flat: { societyId } },
+      include: { flat: true },
+      orderBy: { createdAt: "desc" },
+      take: 300,
+    }),
+    prisma.staffAttendance.findMany({
+      where: { societyId, date: { gte: sinceDate } },
+      orderBy: { inAt: "desc" },
+    }),
+  ]);
+
+  const visitorRows = visitors.map((v) => ({ ...serializeVisitor(v), flatNo: v.flat?.flatNo || null }));
+  const staffRows = staff.map(serializeStaffAttendance);
+  res.json({
+    report: {
+      societyName: society?.name || "",
+      generatedAt: new Date().toISOString(),
+      days,
+      visitors: visitorRows,
+      staff: staffRows,
+      totals: {
+        visitorsTotal: visitorRows.length,
+        visitorsToday: visitorRows.filter((v) => String(v.createdAt).slice(0, 10) === today).length,
+        insideNow: visitorRows.filter((v) => !v.exitAt && v.status !== "rejected").length,
+        staffRecords: staffRows.length,
+        staffOnPremise: staffRows.filter((s) => s.date === today && !s.outAt).length,
+      },
+    },
+  });
 });
 
 // Full society backup as JSON (for download in the app / on web).

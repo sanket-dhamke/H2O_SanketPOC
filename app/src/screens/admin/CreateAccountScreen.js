@@ -9,16 +9,26 @@ import {
   Alert,
 } from "react-native";
 import { api } from "../../lib/api";
+import { useAuth } from "../../lib/auth";
+import { labelsFor, isPreschool } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
 
-const ROLES = [
-  { id: "resident", label: "Resident" },
-  { id: "guard", label: "Guard" },
-  { id: "admin", label: "Admin" },
-];
-
 export default function CreateAccountScreen({ navigation }) {
-  const [role, setRole] = useState("resident");
+  const { user } = useAuth();
+  const L = labelsFor(user);
+  const preschool = isPreschool(user);
+  // Preschool app is for guards & admins only (no parent/resident logins).
+  const ROLES = preschool
+    ? [
+        { id: "guard", label: "Guard" },
+        { id: "admin", label: "Admin" },
+      ]
+    : [
+        { id: "resident", label: L.payer },
+        { id: "guard", label: "Guard" },
+        { id: "admin", label: "Admin" },
+      ];
+  const [role, setRole] = useState(preschool ? "guard" : "resident");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -42,7 +52,7 @@ export default function CreateAccountScreen({ navigation }) {
       return;
     }
     if (role === "resident" && !flatId) {
-      setError("Please select a flat for the resident.");
+      setError(`Please select a ${L.unit.toLowerCase()} for the ${L.payer.toLowerCase()}.`);
       return;
     }
     setBusy(true);
@@ -67,7 +77,7 @@ export default function CreateAccountScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader icon="person-add" title="New account" subtitle="Add a resident, guard or admin" onBack={() => navigation.goBack()} />
+      <ScreenHeader icon="person-add" title="New account" subtitle={preschool ? "Add a guard or admin" : `Add a ${L.payer.toLowerCase()}, guard or admin`} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
       <Text style={styles.label}>Role</Text>
       <View style={styles.chips}>
@@ -92,7 +102,7 @@ export default function CreateAccountScreen({ navigation }) {
         onChangeText={setEmail}
         autoCapitalize="none"
         keyboardType="email-address"
-        placeholder="user@society.com"
+        placeholder={preschool ? "user@preschool.com" : "user@society.com"}
       />
 
       <Text style={styles.label}>Phone</Text>
@@ -104,7 +114,7 @@ export default function CreateAccountScreen({ navigation }) {
 
       {role === "resident" && (
         <>
-          <Text style={styles.label}>Flat</Text>
+          <Text style={styles.label}>{L.unit}</Text>
           <View style={styles.chips}>
             {flats.map((f) => (
               <TouchableOpacity
@@ -115,7 +125,7 @@ export default function CreateAccountScreen({ navigation }) {
                 <Text style={[styles.chipText, flatId === f.id && styles.chipTextActive]}>{f.flatNo}</Text>
               </TouchableOpacity>
             ))}
-            {flats.length === 0 && <Text style={styles.hint}>No flats yet. Add one under Flats.</Text>}
+            {flats.length === 0 && <Text style={styles.hint}>No {L.units.toLowerCase()} yet. Add one under {L.units}.</Text>}
           </View>
         </>
       )}
