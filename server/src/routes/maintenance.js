@@ -18,6 +18,9 @@ maintenanceRouter.get("/maintenance", authRequired, async (req, res) => {
   const where = {};
   if (req.user.role === "resident") {
     where.flatId = await currentFlatId(req.user.id);
+  } else {
+    // admin/guard see their whole society's bills.
+    where.flat = { societyId: req.user.societyId || "__none__" };
   }
   const bills = await prisma.bill.findMany({
     where,
@@ -83,7 +86,10 @@ maintenanceRouter.post("/maintenance/:id/create-order", authRequired, async (req
   const amountPaise = Math.round(bill.amount * 100);
   // If a society Razorpay linked account is configured, route (Razorpay Route)
   // the full amount to it so collections settle into the society's account.
-  const society = await prisma.societyAccount.findFirst({ orderBy: { createdAt: "asc" } });
+  const society = await prisma.societyAccount.findFirst({
+    where: { societyId: bill.flat?.societyId || "__none__" },
+    orderBy: { createdAt: "asc" },
+  });
   const transfers =
     society?.active && society?.razorpayAccountId
       ? [

@@ -2,6 +2,7 @@
   "expo": {
     "name": "H2O",
     "slug": "h2o",
+    "owner": "sanket2891",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -21,7 +22,9 @@
         "backgroundColor": "#0B6E8F"
       },
       "permissions": [
-        "NOTIFICATIONS"
+        "android.permission.NOTIFICATIONS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
@@ -54,7 +57,10 @@
       ]
     ],
     "extra": {
-      "apiUrl": "http://192.168.1.9:4000"
+      "apiUrl": "https://h2o-api-5sxc.onrender.com",
+      "eas": {
+        "projectId": "75b8960c-eda5-41bf-a856-751342266f3b"
+      }
     }
   }
 }

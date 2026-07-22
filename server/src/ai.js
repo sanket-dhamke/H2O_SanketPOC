@@ -57,12 +57,13 @@ async function buildContext(user) {
     };
   }
 
-  // guard / admin: society-wide (bounded) snapshot
+  // guard / admin: society-wide (bounded) snapshot, scoped to their society.
+  const societyId = dbUser?.societyId || user.societyId || "__none__";
   const [visitors, bills, expenses, flats] = await Promise.all([
-    prisma.visitor.findMany({ include: { flat: true }, orderBy: { createdAt: "desc" }, take: 80 }),
-    prisma.bill.findMany({ include: { flat: true } }),
-    prisma.expense.findMany(),
-    prisma.flat.findMany(),
+    prisma.visitor.findMany({ where: { flat: { societyId } }, include: { flat: true }, orderBy: { createdAt: "desc" }, take: 80 }),
+    prisma.bill.findMany({ where: { flat: { societyId } }, include: { flat: true } }),
+    prisma.expense.findMany({ where: { societyId } }),
+    prisma.flat.findMany({ where: { societyId } }),
   ]);
   const collected = bills.filter((b) => b.status === "paid").reduce((s, b) => s + b.amount, 0);
   const pending = bills.filter((b) => b.status === "pending").reduce((s, b) => s + b.amount, 0);

@@ -9,6 +9,12 @@ const API_PORT = 4000;
 // browser/OS-firewall blocking calls to a LAN IP like 192.168.x.x.
 function webApiUrl() {
   if (Platform.OS === "web" && typeof window !== "undefined" && window.location?.hostname) {
+    // If a remote API is configured (hosted backend), the browser should use it
+    // directly. Only fall back to same-host:4000 for pure local dev.
+    const configured = Constants.expoConfig?.extra?.apiUrl;
+    if (configured && !/localhost|127\.0\.0\.1/.test(configured)) {
+      return configured.replace(/\/+$/, "");
+    }
     return `${window.location.protocol}//${window.location.hostname}:${API_PORT}`;
   }
   return null;
@@ -125,6 +131,16 @@ export const api = {
   adminListExpenses: () => request("/api/admin/expenses"),
   adminAddExpense: (payload) =>
     request("/api/admin/expenses", { method: "POST", body: payload }),
+
+  // Super admin (H2O platform owner): cross-society overview + management
+  superOverview: () => request("/api/superadmin/overview"),
+  superListSocieties: () => request("/api/superadmin/societies"),
+  superCreateSociety: (payload) =>
+    request("/api/superadmin/societies", { method: "POST", body: payload }),
+  superUpdateSociety: (id, payload) =>
+    request(`/api/superadmin/societies/${id}`, { method: "PATCH", body: payload }),
+  superAddAdmin: (id, payload) =>
+    request(`/api/superadmin/societies/${id}/admins`, { method: "POST", body: payload }),
 
   // AI (phase 5)
   aiAssistant: (question) =>

@@ -20,6 +20,8 @@ import ManageUsersScreen from "./src/screens/admin/ManageUsersScreen";
 import CreateAccountScreen from "./src/screens/admin/CreateAccountScreen";
 import ManageFlatsScreen from "./src/screens/admin/ManageFlatsScreen";
 import BankAccountScreen from "./src/screens/admin/BankAccountScreen";
+import SuperAdminDashboardScreen from "./src/screens/superadmin/SuperAdminDashboardScreen";
+import SocietiesScreen from "./src/screens/superadmin/SocietiesScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -36,6 +38,8 @@ const TAB_ICONS = {
   Finance: "stats-chart",
   Members: "people-circle",
   Gate: "person-add",
+  Overview: "planet",
+  Societies: "business",
 };
 
 const tabScreenOptions = ({ route }) => ({
@@ -97,6 +101,15 @@ function ResidentTabs() {
   );
 }
 
+function SuperAdminTabs() {
+  return (
+    <Tab.Navigator screenOptions={tabScreenOptions}>
+      <Tab.Screen name="Overview" component={SuperAdminDashboardScreen} />
+      <Tab.Screen name="Societies" component={SocietiesScreen} />
+    </Tab.Navigator>
+  );
+}
+
 function GuardTabs() {
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
@@ -138,6 +151,8 @@ function AppInner() {
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Login" component={LoginScreen} />
         </Stack.Navigator>
+      ) : user.role === "superadmin" ? (
+        <SuperAdminTabs />
       ) : user.role === "resident" ? (
         <ResidentTabs />
       ) : user.role === "admin" ? (

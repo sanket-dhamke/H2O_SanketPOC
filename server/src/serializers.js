@@ -9,6 +9,8 @@ export function publicUser(u) {
     email: u.email,
     phone: u.phone || null,
     role: u.role,
+    societyId: u.societyId || null,
+    societyName: u.society?.name || null,
     flatId: u.flatId || null,
     flatNo: u.flat?.flatNo || null,
     active: u.active,

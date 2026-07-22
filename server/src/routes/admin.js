@@ -8,14 +8,19 @@ import { sendPush } from "../push.js";
 
 export const adminRouter = Router();
 
-// Every route here is admin-only.
+// Every route here is admin-only, and every query is scoped to the admin's society.
 adminRouter.use(authRequired, roleRequired("admin"));
+
+// Convenience: the society the current admin manages.
+function sid(req) {
+  return req.user.societyId || "__none__";
+}
 
 /* ------------------------------- Users ----------------------------------- */
 adminRouter.get("/users", async (req, res) => {
   const { role } = req.query;
   const users = await prisma.user.findMany({
-    where: role ? { role } : {},
+    where: { societyId: sid(req), ...(role ? { role } : {}) },
     include: { flat: true },
     orderBy: [{ role: "asc" }, { name: "asc" }],
   });
@@ -39,13 +44,13 @@ adminRouter.post("/users", async (req, res) => {
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existing) return res.status(409).json({ message: "A user with this email already exists" });
 
-  // Residents must be attached to a flat.
+  // Residents must be attached to a flat in this society.
   let resolvedFlatId = null;
   if (role === "resident") {
     const flat = flatId
-      ? await prisma.flat.findUnique({ where: { id: flatId } })
+      ? await prisma.flat.findFirst({ where: { id: flatId, societyId: sid(req) } })
       : flatNo
-        ? await prisma.flat.findUnique({ where: { flatNo } })
+        ? await prisma.flat.findFirst({ where: { flatNo, societyId: sid(req) } })
         : null;
     if (!flat) return res.status(400).json({ message: "A valid flat is required for a resident" });
     resolvedFlatId = flat.id;
@@ -57,6 +62,7 @@ adminRouter.post("/users", async (req, res) => {
       email: normalizedEmail,
       phone: phone || null,
       role,
+      societyId: req.user.societyId,
       flatId: resolvedFlatId,
       passwordHash: bcrypt.hashSync(password, 10),
     },
@@ -67,7 +73,7 @@ adminRouter.post("/users", async (req, res) => {
 
 adminRouter.patch("/users/:id", async (req, res) => {
   const { name, phone, active, password, flatNo, flatId } = req.body || {};
-  const target = await prisma.user.findUnique({ where: { id: req.params.id } });
+  const target = await prisma.user.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
   if (!target) return res.status(404).json({ message: "User not found" });
 
   const data = {};
@@ -81,8 +87,8 @@ adminRouter.patch("/users/:id", async (req, res) => {
   }
   if (target.role === "resident" && (flatNo || flatId)) {
     const flat = flatId
-      ? await prisma.flat.findUnique({ where: { id: flatId } })
-      : await prisma.flat.findUnique({ where: { flatNo } });
+      ? await prisma.flat.findFirst({ where: { id: flatId, societyId: sid(req) } })
+      : await prisma.flat.findFirst({ where: { flatNo, societyId: sid(req) } });
     if (!flat) return res.status(400).json({ message: "Flat not found" });
     data.flatId = flat.id;
   }
@@ -99,15 +105,16 @@ adminRouter.delete("/users/:id", async (req, res) => {
   if (req.params.id === req.user.id) {
     return res.status(400).json({ message: "You cannot delete your own account" });
   }
-  const target = await prisma.user.findUnique({ where: { id: req.params.id } });
+  const target = await prisma.user.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
   if (!target) return res.status(404).json({ message: "User not found" });
   await prisma.user.delete({ where: { id: target.id } });
   res.json({ ok: true });
 });
 
 /* ------------------------------- Flats ----------------------------------- */
-adminRouter.get("/flats", async (_req, res) => {
+adminRouter.get("/flats", async (req, res) => {
   const flats = await prisma.flat.findMany({
+    where: { societyId: sid(req) },
     include: { _count: { select: { residents: true } } },
     orderBy: { flatNo: "asc" },
   });
@@ -125,9 +132,11 @@ adminRouter.get("/flats", async (_req, res) => {
 adminRouter.post("/flats", async (req, res) => {
   const { flatNo, block, ownerName } = req.body || {};
   if (!flatNo) return res.status(400).json({ message: "flatNo is required" });
-  const existing = await prisma.flat.findUnique({ where: { flatNo } });
+  const existing = await prisma.flat.findFirst({ where: { flatNo, societyId: sid(req) } });
   if (existing) return res.status(409).json({ message: "Flat already exists" });
-  const flat = await prisma.flat.create({ data: { flatNo, block: block || null, ownerName: ownerName || null } });
+  const flat = await prisma.flat.create({
+    data: { flatNo, block: block || null, ownerName: ownerName || null, societyId: req.user.societyId },
+  });
   res.status(201).json({ flat });
 });
 
@@ -135,8 +144,11 @@ adminRouter.post("/flats", async (req, res) => {
 // The society bank account maintenance is collected into. razorpayAccountId is
 // a Razorpay Route "Linked Account" id (acc_XXXX) created/KYC'd in the Razorpay
 // dashboard; when present, payments are routed there automatically.
-adminRouter.get("/bank-account", async (_req, res) => {
-  const account = await prisma.societyAccount.findFirst({ orderBy: { createdAt: "asc" } });
+adminRouter.get("/bank-account", async (req, res) => {
+  const account = await prisma.societyAccount.findFirst({
+    where: { societyId: sid(req) },
+    orderBy: { createdAt: "asc" },
+  });
   res.json({ account: account || null });
 });
 
@@ -171,19 +183,22 @@ adminRouter.put("/bank-account", async (req, res) => {
     updatedBy: req.user.id,
   };
 
-  const existing = await prisma.societyAccount.findFirst({ orderBy: { createdAt: "asc" } });
+  const existing = await prisma.societyAccount.findFirst({
+    where: { societyId: sid(req) },
+    orderBy: { createdAt: "asc" },
+  });
   const account = existing
     ? await prisma.societyAccount.update({ where: { id: existing.id }, data })
-    : await prisma.societyAccount.create({ data });
+    : await prisma.societyAccount.create({ data: { ...data, societyId: req.user.societyId } });
   res.json({ account });
 });
 
 /* ------------------------------ Finance ---------------------------------- */
-adminRouter.get("/finance", async (_req, res) => {
+adminRouter.get("/finance", async (req, res) => {
   const [flats, bills, expenses] = await Promise.all([
-    prisma.flat.findMany({ orderBy: { flatNo: "asc" } }),
-    prisma.bill.findMany(),
-    prisma.expense.findMany(),
+    prisma.flat.findMany({ where: { societyId: sid(req) }, orderBy: { flatNo: "asc" } }),
+    prisma.bill.findMany({ where: { flat: { societyId: sid(req) } } }),
+    prisma.expense.findMany({ where: { societyId: sid(req) } }),
   ]);
 
   const totalCollected = bills.filter((b) => b.status === "paid").reduce((s, b) => s + b.amount, 0);
@@ -216,7 +231,7 @@ adminRouter.post("/bills", async (req, res) => {
   if (!period || amount === undefined) {
     return res.status(400).json({ message: "period and amount are required" });
   }
-  const flats = await prisma.flat.findMany();
+  const flats = await prisma.flat.findMany({ where: { societyId: sid(req) } });
   let created = 0;
   for (const flat of flats) {
     const existing = await prisma.bill.findFirst({ where: { flatId: flat.id, period } });
@@ -236,9 +251,9 @@ adminRouter.post("/bills", async (req, res) => {
 });
 
 // Push a reminder to every resident who still has a pending bill.
-adminRouter.post("/reminders", async (_req, res) => {
+adminRouter.post("/reminders", async (req, res) => {
   const pendingBills = await prisma.bill.findMany({
-    where: { status: "pending" },
+    where: { status: "pending", flat: { societyId: sid(req) } },
     include: { flat: { include: { residents: true } } },
   });
   const notified = new Set();
@@ -259,8 +274,11 @@ adminRouter.post("/reminders", async (_req, res) => {
 });
 
 /* ------------------------------ Expenses --------------------------------- */
-adminRouter.get("/expenses", async (_req, res) => {
-  const expenses = await prisma.expense.findMany({ orderBy: { date: "desc" } });
+adminRouter.get("/expenses", async (req, res) => {
+  const expenses = await prisma.expense.findMany({
+    where: { societyId: sid(req) },
+    orderBy: { date: "desc" },
+  });
   res.json({ expenses });
 });
 
@@ -275,6 +293,7 @@ adminRouter.post("/expenses", async (req, res) => {
       amount: Number(amount),
       date: date ? new Date(date) : new Date(),
       createdBy: req.user.id,
+      societyId: req.user.societyId,
     },
   });
   res.status(201).json({ expense });

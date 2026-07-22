@@ -2,9 +2,14 @@
 // PostgreSQL (Supabase in production). Roles/statuses are kept as plain strings
 // for portability rather than DB enums.
 // Allowed values:
-//   User.role      : "resident" | "guard" | "admin"
+//   User.role      : "superadmin" | "admin" | "guard" | "resident"
 //   Bill.status    : "pending"  | "paid"
 //   Visitor.status : "pending"  | "approved" | "rejected" | "leave_at_gate"
+//
+// Multi-tenancy: every society is a Society. Flats, users (admin/guard/resident),
+// expenses and the bank account belong to exactly one society. Bills and visitors
+// are scoped through their flat. The "superadmin" (H2O platform owner) has no
+// society (societyId = null) and can see/manage every society.
 
 generator client {
   provider = "prisma-client-js"
@@ -15,15 +20,34 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Society {
+  id        String           @id @default(uuid())
+  name      String
+  city      String?
+  address   String?
+  active    Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  flats     Flat[]
+  users     User[]
+  expenses  Expense[]
+  accounts  SocietyAccount[]
+}
+
 model Flat {
   id        String    @id @default(uuid())
-  flatNo    String    @unique
+  society   Society   @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId String
+  flatNo    String
   block     String?
   ownerName String?
   residents User[]
   bills     Bill[]
   visitors  Visitor[]
   createdAt DateTime  @default(now())
+
+  // Flat numbers are unique within a society (two societies may both have A-101).
+  @@unique([societyId, flatNo])
+  @@index([societyId])
 }
 
 model User {
@@ -33,6 +57,9 @@ model User {
   phone         String?
   passwordHash  String
   role          String
+  // Society this user belongs to. Null only for the platform superadmin.
+  society       Society?  @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId     String?
   flat          Flat?     @relation(fields: [flatId], references: [id])
   flatId        String?
   expoPushToken String?
@@ -40,6 +67,8 @@ model User {
   createdAt     DateTime  @default(now())
   // Visitors this user (a guard) logged at the gate.
   loggedVisitors Visitor[] @relation("GuardVisitors")
+
+  @@index([societyId])
 }
 
 model Bill {
@@ -79,18 +108,24 @@ model Visitor {
 
 model Expense {
   id        String   @id @default(uuid())
+  society   Society  @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId String
   label     String
   amount    Float
   date      DateTime @default(now())
   createdBy String?
   createdAt DateTime @default(now())
+
+  @@index([societyId])
 }
 
-// The single society bank account that maintenance collections are routed to.
-// razorpayAccountId is a Razorpay Route "Linked Account" id (acc_XXXXXXXX);
-// when set, each maintenance order transfers its full amount to that account.
+// A society's bank account that maintenance collections are routed to (one per
+// society). razorpayAccountId is a Razorpay Route "Linked Account" id
+// (acc_XXXXXXXX); when set, each maintenance order transfers its full amount to it.
 model SocietyAccount {
   id                String   @id @default(uuid())
+  society           Society  @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId         String
   accountHolderName String
   bankName          String?
   accountNumber     String?
@@ -101,4 +136,6 @@ model SocietyAccount {
   updatedBy         String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  @@index([societyId])
 }

@@ -15,9 +15,10 @@ visitorsRouter.post("/visitors", authRequired, roleRequired("guard", "admin"), a
     return res.status(400).json({ message: "name and flat are required" });
   }
 
+  const societyId = req.user.societyId || "__none__";
   const flat = flatId
-    ? await prisma.flat.findUnique({ where: { id: flatId } })
-    : await prisma.flat.findUnique({ where: { flatNo } });
+    ? await prisma.flat.findFirst({ where: { id: flatId, societyId } })
+    : await prisma.flat.findFirst({ where: { flatNo, societyId } });
   if (!flat) {
     return res.status(404).json({ message: `Flat not found: ${flatNo || flatId}` });
   }
@@ -71,6 +72,9 @@ visitorsRouter.get("/visitors", authRequired, async (req, res) => {
   if (req.user.role === "resident") {
     const u = await prisma.user.findUnique({ where: { id: req.user.id }, select: { flatId: true } });
     where.flatId = u?.flatId || "__none__";
+  } else {
+    // guard/admin see the whole gate log for their society.
+    where.flat = { societyId: req.user.societyId || "__none__" };
   }
   const visitors = await prisma.visitor.findMany({
     where,
