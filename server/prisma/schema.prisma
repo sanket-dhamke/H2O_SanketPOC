@@ -69,6 +69,10 @@ model User {
   expoPushToken String?
   active        Boolean   @default(true)
   createdAt     DateTime  @default(now())
+  // Self-service password reset via emailed OTP.
+  resetOtpHash      String?
+  resetOtpExpiresAt DateTime?
+  resetOtpAttempts  Int      @default(0)
   // Visitors this user (a guard) logged at the gate.
   loggedVisitors Visitor[] @relation("GuardVisitors")
   // Community board posts authored by this user.

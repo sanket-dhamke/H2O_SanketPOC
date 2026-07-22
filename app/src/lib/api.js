@@ -84,6 +84,10 @@ const qs = (params) => {
 export const api = {
   login: (email, password) =>
     request("/api/auth/login", { method: "POST", body: { email, password } }),
+  forgotPassword: (email) =>
+    request("/api/auth/forgot-password", { method: "POST", body: { email } }),
+  resetPassword: (email, otp, newPassword) =>
+    request("/api/auth/reset-password", { method: "POST", body: { email, otp, newPassword } }),
   me: () => request("/api/me"),
   changePassword: (currentPassword, newPassword) =>
     request("/api/me/password", { method: "POST", body: { currentPassword, newPassword } }),

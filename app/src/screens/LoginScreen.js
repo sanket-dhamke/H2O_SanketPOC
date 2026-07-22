@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useAuth } from "../lib/auth";
 import { getBaseUrl, setBaseUrl } from "../lib/api";
+import ForgotPasswordModal from "../components/ForgotPasswordModal";
 
 // Wide skyline on desktop/web (landscape viewport), tall portrait shot on phones.
 const BG_IMAGE =
@@ -28,22 +29,12 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [serverUrl, setServerUrl] = useState("");
+  const [forgotOpen, setForgotOpen] = useState(false);
   const passwordRef = useRef(null);
 
   useEffect(() => {
     getBaseUrl().then(setServerUrl);
   }, []);
-
-  const onForgotPassword = () => {
-    Alert.alert(
-      "Forgot your password?",
-      "For security, passwords are reset by an administrator:\n\n" +
-        "• Residents & guards: ask your society admin — they can set a new password for you.\n\n" +
-        "• Society admins: contact your H2O platform owner (support), who can reset it for you.\n\n" +
-        "You can change your password yourself any time after logging in (Home → key icon).",
-      [{ text: "Got it" }]
-    );
-  };
 
   const onSubmit = async () => {
     if (!email.trim() || !password) {
@@ -122,7 +113,7 @@ export default function LoginScreen() {
           <Text style={styles.buttonText}>{busy ? "Signing in..." : "Sign In"}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={onForgotPassword}>
+        <TouchableOpacity onPress={() => setForgotOpen(true)}>
           <Text style={styles.forgot}>Forgot password?</Text>
         </TouchableOpacity>
 
@@ -155,6 +146,11 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <ForgotPasswordModal
+        visible={forgotOpen}
+        onClose={() => setForgotOpen(false)}
+        initialEmail={email.trim()}
+      />
     </ImageBackground>
   );
 }
