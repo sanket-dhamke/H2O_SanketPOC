@@ -142,6 +142,20 @@ export const api = {
   superAddAdmin: (id, payload) =>
     request(`/api/superadmin/societies/${id}/admins`, { method: "POST", body: payload }),
 
+  // Admin: record a cash payment against a bill
+  adminMarkCash: (id, payload) =>
+    request(`/api/admin/bills/${id}/cash`, { method: "POST", body: payload }),
+
+  // Community: announcements (admin -> all) + posts board (residents)
+  announcements: () => request("/api/announcements"),
+  createAnnouncement: (payload) =>
+    request("/api/announcements", { method: "POST", body: payload }),
+  deleteAnnouncement: (id) =>
+    request(`/api/announcements/${id}`, { method: "DELETE" }),
+  posts: () => request("/api/posts"),
+  createPost: (payload) => request("/api/posts", { method: "POST", body: payload }),
+  deletePost: (id) => request(`/api/posts/${id}`, { method: "DELETE" }),
+
   // AI (phase 5)
   aiAssistant: (question) =>
     request("/api/ai/assistant", { method: "POST", body: { question } }),

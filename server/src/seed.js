@@ -124,6 +124,25 @@ async function main() {
     ],
   });
 
+  // Announcements (admin -> everyone) for Green Valley
+  await prisma.announcement.createMany({
+    data: [
+      { societyId: green.id, title: "Water supply maintenance", body: "Water tanks will be cleaned on Sunday 8am-11am. Please store water in advance.", pinned: true, authorName: "Society Admin", createdAt: hoursAgo(20) },
+      { societyId: green.id, title: "Diwali decoration committee", body: "Volunteers needed for the lobby decoration. Meet at the clubhouse this Saturday 6pm.", authorName: "Committee Head", createdAt: hoursAgo(70) },
+    ],
+  });
+
+  // Community board posts (residents)
+  const greenR1 = await prisma.user.findUnique({ where: { email: "resident@h2o.com" } });
+  const greenR2 = await prisma.user.findUnique({ where: { email: "resident2@h2o.com" } });
+  await prisma.post.createMany({
+    data: [
+      { societyId: green.id, authorId: greenR1.id, category: "sale", title: "Sofa set for sale", body: "3+2 seater, 2 years old, excellent condition. Pickup from A-101.", price: 12000, createdAt: hoursAgo(6) },
+      { societyId: green.id, authorId: greenR2.id, category: "query", title: "Good pediatrician nearby?", body: "New to the society, can anyone recommend a good child doctor around Baner?", createdAt: hoursAgo(30) },
+      { societyId: green.id, authorId: greenR1.id, category: "lost_found", title: "Found: house keys near gate", body: "A bunch of keys with a blue tag found near the main gate. Collect from the guard.", createdAt: hoursAgo(48) },
+    ],
+  });
+
   /* ======================= Society 2: Skyline Towers ===================== */
   const sky = await prisma.society.create({
     data: { name: "Skyline Towers", city: "Mumbai", address: "Powai, Mumbai 400076" },

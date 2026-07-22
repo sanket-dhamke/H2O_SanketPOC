@@ -15,6 +15,7 @@ import MaintenanceScreen from "./src/screens/MaintenanceScreen";
 import VisitorsScreen from "./src/screens/VisitorsScreen";
 import GateScreen from "./src/screens/GateScreen";
 import AssistantScreen from "./src/screens/AssistantScreen";
+import CommunityScreen from "./src/screens/CommunityScreen";
 import AdminDashboardScreen from "./src/screens/admin/AdminDashboardScreen";
 import ManageUsersScreen from "./src/screens/admin/ManageUsersScreen";
 import CreateAccountScreen from "./src/screens/admin/CreateAccountScreen";
@@ -26,6 +27,7 @@ import SocietiesScreen from "./src/screens/superadmin/SocietiesScreen";
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 const MembersStack = createNativeStackNavigator();
+const FinanceStack = createNativeStackNavigator();
 
 const screenHeader = { headerStyle: { backgroundColor: "#0B6E8F" }, headerTintColor: "#fff" };
 
@@ -38,6 +40,7 @@ const TAB_ICONS = {
   Finance: "stats-chart",
   Members: "people-circle",
   Gate: "person-add",
+  Community: "megaphone",
   Overview: "planet",
   Societies: "business",
 };
@@ -78,12 +81,22 @@ function MembersStackScreen() {
   );
 }
 
+function FinanceStackScreen() {
+  return (
+    <FinanceStack.Navigator screenOptions={{ headerShown: false }}>
+      <FinanceStack.Screen name="FinanceHome" component={AdminDashboardScreen} />
+      <FinanceStack.Screen name="Collections" component={MaintenanceScreen} />
+    </FinanceStack.Navigator>
+  );
+}
+
 function AdminTabs() {
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-      <Tab.Screen name="Finance" component={AdminDashboardScreen} />
+      <Tab.Screen name="Finance" component={FinanceStackScreen} />
       <Tab.Screen name="Members" component={MembersStackScreen} options={{ headerShown: false }} />
+      <Tab.Screen name="Community" component={CommunityScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: "Gate log" }} />
       <Tab.Screen name="Assistant" component={AssistantScreen} />
     </Tab.Navigator>
@@ -95,6 +108,7 @@ function ResidentTabs() {
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
       <Tab.Screen name="Maintenance" component={MaintenanceScreen} />
+      <Tab.Screen name="Community" component={CommunityScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} />
       <Tab.Screen name="Assistant" component={AssistantScreen} />
     </Tab.Navigator>
@@ -115,6 +129,7 @@ function GuardTabs() {
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
       <Tab.Screen name="Gate" component={GateScreen} />
+      <Tab.Screen name="Community" component={CommunityScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: "Gate log" }} />
       <Tab.Screen name="Assistant" component={AssistantScreen} />
     </Tab.Navigator>

@@ -47,5 +47,33 @@ export function serializeBill(b) {
     status: b.status,
     paidAt: b.paidAt,
     paymentRef: b.paymentRef || null,
+    paymentMode: b.paymentMode || null,
+    collectedBy: b.collectedBy || null,
+    collectorPhone: b.collectorPhone || null,
+  };
+}
+
+export function serializeAnnouncement(a) {
+  return {
+    id: a.id,
+    title: a.title,
+    body: a.body,
+    pinned: a.pinned,
+    authorName: a.authorName || null,
+    createdAt: a.createdAt,
+  };
+}
+
+export function serializePost(p) {
+  return {
+    id: p.id,
+    category: p.category,
+    title: p.title,
+    body: p.body,
+    price: p.price ?? null,
+    authorId: p.authorId,
+    authorName: p.author?.name || null,
+    flatNo: p.author?.flat?.flatNo || null,
+    createdAt: p.createdAt,
   };
 }

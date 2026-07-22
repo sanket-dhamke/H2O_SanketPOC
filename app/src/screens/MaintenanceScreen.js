@@ -8,8 +8,9 @@ import {
   Alert,
   RefreshControl,
   Modal,
+  TextInput,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
@@ -27,12 +28,16 @@ function formatDateTime(iso) {
 
 export default function MaintenanceScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation();
+  const canGoBack = navigation.canGoBack();
   const [bills, setBills] = useState([]);
   const [totalDue, setTotalDue] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [receipt, setReceipt] = useState(null);
   const [payee, setPayee] = useState(null);
   const [downloading, setDownloading] = useState(false);
+  const [cashBill, setCashBill] = useState(null);
+  const isAdmin = user?.role === "admin";
 
   const load = useCallback(async () => {
     let loadedBills = [];
@@ -87,6 +92,19 @@ export default function MaintenanceScreen() {
     }
   };
 
+  const markCash = async ({ collectedBy, collectorPhone }) => {
+    if (!cashBill) return;
+    const bill = cashBill;
+    try {
+      const { bill: updated } = await api.adminMarkCash(bill.id, { collectedBy, collectorPhone });
+      setCashBill(null);
+      await load();
+      setReceipt(updated);
+    } catch (e) {
+      Alert.alert("Could not record cash", e.message);
+    }
+  };
+
   const download = async () => {
     if (!receipt) return;
     setDownloading(true);
@@ -104,8 +122,9 @@ export default function MaintenanceScreen() {
     <View style={styles.container}>
       <ScreenHeader
         icon="card"
-        title="Maintenance"
-        subtitle="Bills, payments & receipts"
+        title={isAdmin ? "Collections" : "Maintenance"}
+        subtitle={isAdmin ? "Society bills & cash entries" : "Bills, payments & receipts"}
+        onBack={canGoBack ? () => navigation.goBack() : undefined}
         right={
           <View style={styles.headerStat}>
             <Text style={styles.headerStatLabel}>Outstanding</Text>
@@ -141,8 +160,12 @@ export default function MaintenanceScreen() {
             <Text style={styles.amount}>₹{item.amount}</Text>
             {item.status === "paid" ? (
               <TouchableOpacity style={styles.paidTag} onPress={() => setReceipt(item)}>
-                <Text style={styles.paidText}>PAID</Text>
+                <Text style={styles.paidText}>{item.paymentMode === "cash" ? "CASH" : "PAID"}</Text>
                 <Text style={styles.receiptLink}>Receipt ›</Text>
+              </TouchableOpacity>
+            ) : isAdmin ? (
+              <TouchableOpacity style={styles.cashBtn} onPress={() => setCashBill(item)}>
+                <Text style={styles.cashText}>Cash</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -196,11 +219,19 @@ export default function MaintenanceScreen() {
             <ReceiptRow
               label="Method"
               value={
-                receipt?.paymentRef?.startsWith("pay_")
-                  ? "Razorpay (UPI/Card)"
-                  : "Test mode"
+                receipt?.paymentMode === "cash"
+                  ? "Cash (collected offline)"
+                  : receipt?.paymentRef?.startsWith("pay_")
+                    ? "Razorpay (UPI/Card)"
+                    : "Test mode"
               }
             />
+            {receipt?.paymentMode === "cash" && (
+              <>
+                <ReceiptRow label="Collected by" value={receipt?.collectedBy || "-"} />
+                <ReceiptRow label="Collector phone" value={receipt?.collectorPhone || "-"} />
+              </>
+            )}
 
             <TouchableOpacity
               style={[styles.downloadBtn, downloading && { opacity: 0.6 }]}
@@ -221,7 +252,67 @@ export default function MaintenanceScreen() {
           </View>
         </View>
       </Modal>
+
+      <CashModal bill={cashBill} onClose={() => setCashBill(null)} onSubmit={markCash} />
     </View>
+  );
+}
+
+function CashModal({ bill, onClose, onSubmit }) {
+  const [collectedBy, setCollectedBy] = useState("");
+  const [collectorPhone, setCollectorPhone] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  React.useEffect(() => {
+    if (bill) {
+      setCollectedBy("");
+      setCollectorPhone("");
+    }
+  }, [bill]);
+
+  const submit = async () => {
+    if (!collectedBy.trim()) {
+      Alert.alert("Missing info", "Enter who collected the cash.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await onSubmit({ collectedBy: collectedBy.trim(), collectorPhone: collectorPhone.trim() });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal visible={!!bill} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.receiptCard}>
+          <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.receiptTop}>
+            <View style={styles.receiptTopRow}>
+              <View style={styles.receiptTopIcon}>
+                <Ionicons name="cash" size={18} color="#fff" />
+              </View>
+              <Text style={styles.receiptTitle}>Record cash payment</Text>
+            </View>
+            <Text style={styles.cashSub}>
+              {bill ? `Flat ${bill.flatNo} · ${bill.period} · ₹${bill.amount}` : ""}
+            </Text>
+          </LinearGradient>
+          <View style={styles.receiptBody}>
+            <Text style={styles.cashLabel}>Collected by (society member) *</Text>
+            <TextInput style={styles.cashInput} value={collectedBy} onChangeText={setCollectedBy} placeholder="e.g. Committee Head" />
+            <Text style={styles.cashLabel}>Collector phone</Text>
+            <TextInput style={styles.cashInput} value={collectorPhone} onChangeText={setCollectorPhone} placeholder="Optional" keyboardType="phone-pad" />
+            <TouchableOpacity style={[styles.downloadBtn, busy && { opacity: 0.6 }]} onPress={submit} disabled={busy}>
+              <Text style={styles.downloadBtnText}>{busy ? "Saving…" : "Mark as paid (cash)"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+              <Text style={styles.closeBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -258,6 +349,11 @@ const styles = StyleSheet.create({
   amount: { fontSize: 16, fontWeight: "700", color: "#1B2B33" },
   payBtn: { backgroundColor: "#0B6E8F", paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 },
   payText: { color: "#fff", fontWeight: "700" },
+  cashBtn: { backgroundColor: "#0E7C4A", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
+  cashText: { color: "#fff", fontWeight: "700" },
+  cashSub: { color: "#CDE9F2", fontSize: 13, marginTop: 12 },
+  cashLabel: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 6, marginTop: 12 },
+  cashInput: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, backgroundColor: "#F8FAFB" },
   paidTag: { backgroundColor: "#E3F5E8", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, alignItems: "center" },
   paidText: { color: "#2E9E52", fontWeight: "700", fontSize: 12 },
   receiptLink: { color: "#2E9E52", fontSize: 10, marginTop: 2 },

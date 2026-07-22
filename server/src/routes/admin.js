@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
-import { publicUser } from "../serializers.js";
+import { publicUser, serializeBill } from "../serializers.js";
 import { validatePassword } from "../passwordPolicy.js";
 import { sendPush } from "../push.js";
 
@@ -248,6 +248,35 @@ adminRouter.post("/bills", async (req, res) => {
     created++;
   }
   res.json({ ok: true, created });
+});
+
+// Record a CASH payment for a bill (collected offline by a society member).
+// Captures who collected it + their phone so there's an audit trail.
+adminRouter.post("/bills/:id/cash", async (req, res) => {
+  const { collectedBy, collectorPhone } = req.body || {};
+  if (!collectedBy || !String(collectedBy).trim()) {
+    return res.status(400).json({ message: "collectedBy (who collected the cash) is required" });
+  }
+  const bill = await prisma.bill.findFirst({
+    where: { id: req.params.id, flat: { societyId: sid(req) } },
+    include: { flat: true },
+  });
+  if (!bill) return res.status(404).json({ message: "Bill not found" });
+  if (bill.status === "paid") return res.status(400).json({ message: "Bill already paid" });
+
+  const updated = await prisma.bill.update({
+    where: { id: bill.id },
+    data: {
+      status: "paid",
+      paidAt: new Date(),
+      paymentMode: "cash",
+      paymentRef: "CASH-" + bill.id.slice(0, 8).toUpperCase(),
+      collectedBy: String(collectedBy).trim(),
+      collectorPhone: collectorPhone ? String(collectorPhone).trim() : null,
+    },
+    include: { flat: true },
+  });
+  res.json({ bill: serializeBill(updated) });
 });
 
 // Push a reminder to every resident who still has a pending bill.

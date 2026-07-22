@@ -10,7 +10,7 @@ import {
   Modal,
   TextInput,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
@@ -19,6 +19,7 @@ import ScreenHeader from "../../components/ScreenHeader";
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
 export default function AdminDashboardScreen() {
+  const navigation = useNavigation();
   const [data, setData] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -90,6 +91,10 @@ export default function AdminDashboardScreen() {
         disabled={busy}
       >
         <Text style={styles.remindText}>{busy ? "Sending..." : "Remind unpaid residents"}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("Collections")}>
+        <Ionicons name="cash-outline" size={18} color="#0B6E8F" />
+        <Text style={styles.collectText}>Record cash / view collections</Text>
       </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>Flat-wise status</Text>
@@ -250,6 +255,8 @@ const styles = StyleSheet.create({
   actionText: { color: "#0B6E8F", fontWeight: "700" },
   remindBtn: { backgroundColor: "#C2571A", borderRadius: 10, paddingVertical: 14, alignItems: "center", marginTop: 12 },
   remindText: { color: "#fff", fontWeight: "700" },
+  collectBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#fff", borderRadius: 10, paddingVertical: 14, marginTop: 12, borderWidth: 1, borderColor: "#CFE0E6" },
+  collectText: { color: "#0B6E8F", fontWeight: "700" },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: "#1B2B33", marginTop: 26, marginBottom: 10 },
   flatRow: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 10, padding: 14, marginBottom: 8 },
   flatNo: { flex: 1, fontWeight: "700", color: "#1B2B33" },
