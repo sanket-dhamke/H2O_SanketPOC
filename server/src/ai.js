@@ -37,10 +37,17 @@ export const transcriptionEnabled = aiEnabled && /whisper/i.test(TRANSCRIBE_MODE
 async function buildContext(user) {
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
-    include: { flat: true },
+    include: { flat: true, society: true },
   });
 
   const societyId = dbUser?.societyId || user.societyId || "__none__";
+  // Contact directory: admins (chairman/office) and guards residents can reach.
+  const staff = await prisma.user.findMany({
+    where: { societyId, role: { in: ["admin", "guard"] }, active: true },
+    select: { name: true, phone: true, role: true },
+    orderBy: { role: "asc" },
+  });
+  const contacts = staff.map((s) => ({ name: s.name, role: s.role, phone: s.phone || null }));
   // Enabled amenities (with slots/prices) that residents can book from the Amenities tab.
   const amenities = await prisma.amenity.findMany({
     where: { societyId, enabled: true },
@@ -63,6 +70,8 @@ async function buildContext(user) {
     return {
       role: "resident",
       currentPeriod,
+      society: { name: dbUser?.society?.name || null },
+      contacts,
       flat: dbUser?.flat?.flatNo,
       visitors: visitors.map((v) => ({
         name: v.name, purpose: v.purpose, vehicleNo: v.vehicleNo, phone: v.phone,
@@ -109,7 +118,9 @@ async function buildContext(user) {
   return {
     role: user.role,
     currentPeriod,
+    contacts,
     society: {
+      name: dbUser?.society?.name || null,
       flats: flats.length,
       collectedThisMonth,
       collectedAllTime: collected,
@@ -153,6 +164,11 @@ export async function assistantAnswer(user, question) {
           "society.collectedAllTime = collected across all time; society.pendingAllTime = outstanding dues; " +
           "society.balance = collected minus expenses. collectionByMonth breaks down billed/collected/pending per month. " +
           "When the user says 'this month' use data.currentPeriod; for a named month, match it in collectionByMonth. " +
+          "'contacts' lists the society's admins (office/chairman) and guards with their phone numbers — use it to answer " +
+          "'who is my guard/admin/chairman' and give their name and phone (say the number isn't on file if phone is null). " +
+          "For paying maintenance: a resident can only pay bills that appear in 'bills' with status 'pending', from the 'Maintenance' tab. " +
+          "Paying next month or a full year in advance is NOT supported yet — if asked, explain that only bills already issued can be paid, " +
+          "list their pending bills (period, amount, due date), and suggest contacting the admin to raise advance bills. " +
           "The data may include 'amenities' (bookable facilities like a clubhouse, with slots and prices) and bookings. " +
           "If the user asks to book a clubhouse/amenity, you cannot book it yourself — tell them the available amenities, " +
           "slots and prices from the data, and direct them to open the 'Amenities' tab to request a slot (admin approves, then they pay in-app). " +
