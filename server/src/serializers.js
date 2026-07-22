@@ -18,6 +18,31 @@ export function publicUser(u) {
     block: u.flat?.block || null,
     notifyEnabled: u.notifyEnabled ?? true,
     active: u.active,
+    // Subscription plan of the user's society (so the app can gate premium perks).
+    societyPlan: u.society?.plan || null,
+    societyPlanExpiresAt: u.society?.planExpiresAt || null,
+  };
+}
+
+export function serializeVenueBooking(v) {
+  return {
+    id: v.id,
+    venueName: v.venueName,
+    vendorName: v.vendorName,
+    vendorPhone: v.vendorPhone || null,
+    vendorEmail: v.vendorEmail || null,
+    purpose: v.purpose || null,
+    date: v.date,
+    slot: v.slot,
+    amount: v.amount,
+    platformFeePct: v.platformFeePct,
+    platformFee: v.platformFee,
+    societyNet: v.societyNet,
+    status: v.status,
+    paymentRef: v.paymentRef || null,
+    paidAt: v.paidAt,
+    notes: v.notes || null,
+    createdAt: v.createdAt,
   };
 }
 

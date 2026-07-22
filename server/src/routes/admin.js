@@ -2,10 +2,12 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
-import { publicUser, serializeBill } from "../serializers.js";
+import { publicUser, serializeBill, serializeVenueBooking } from "../serializers.js";
 import { validatePassword } from "../passwordPolicy.js";
 import { sendPush } from "../push.js";
 import { buildSocietyBackup, emailSocietyBackup, buildWingReport, listBlocks } from "../backup.js";
+import { parseCsv } from "../csv.js";
+import { isPremium } from "../plan.js";
 
 export const adminRouter = Router();
 
@@ -363,4 +365,208 @@ adminRouter.post("/backup/email", async (req, res) => {
   } catch (e) {
     res.status(400).json({ message: e.message });
   }
+});
+
+/* ------------------------- Onboarding / bulk setup ----------------------- */
+// Compliant temporary password for bulk-created residents.
+function tempPassword() {
+  return "H2o" + Math.floor(1000 + Math.random() * 9000) + "x!";
+}
+
+// Generate a whole society structure at once: wings × floors × flats-per-floor.
+// Flat numbers look like  A-101, A-102 ... B-201  (block = wing).
+adminRouter.post("/flats/generate", async (req, res) => {
+  let { wings, floors, flatsPerFloor, startFloor = 1, startUnit = 1 } = req.body || {};
+  if (typeof wings === "string") wings = wings.split(",").map((w) => w.trim()).filter(Boolean);
+  if (!Array.isArray(wings) || wings.length === 0) wings = [""]; // single unnamed wing
+  floors = Number(floors);
+  flatsPerFloor = Number(flatsPerFloor);
+  startFloor = Number(startFloor);
+  startUnit = Number(startUnit);
+  if (!floors || !flatsPerFloor || floors < 1 || flatsPerFloor < 1) {
+    return res.status(400).json({ message: "floors and flatsPerFloor must be at least 1" });
+  }
+  const total = wings.length * floors * flatsPerFloor;
+  if (total > 3000) return res.status(400).json({ message: `That would create ${total} flats. Please keep it under 3000.` });
+
+  const existing = new Set(
+    (await prisma.flat.findMany({ where: { societyId: sid(req) }, select: { flatNo: true } })).map((f) => f.flatNo)
+  );
+  const toCreate = [];
+  const sample = [];
+  for (const w of wings) {
+    for (let fl = startFloor; fl < startFloor + floors; fl++) {
+      for (let u = startUnit; u < startUnit + flatsPerFloor; u++) {
+        const unit = `${fl}${String(u).padStart(2, "0")}`;
+        const flatNo = w ? `${w}-${unit}` : unit;
+        if (existing.has(flatNo)) continue;
+        existing.add(flatNo);
+        toCreate.push({ flatNo, block: w || null, societyId: req.user.societyId });
+        if (sample.length < 6) sample.push(flatNo);
+      }
+    }
+  }
+  if (toCreate.length) await prisma.flat.createMany({ data: toCreate, skipDuplicates: true });
+  res.json({ created: toCreate.length, skipped: total - toCreate.length, sample });
+});
+
+// Bulk import flats (and optionally their owners as resident logins) from CSV.
+// CSV headers (case-insensitive): flatNo, block, ownerName, ownerEmail, ownerPhone
+// Optionally: password (else a temp one is generated & returned).
+adminRouter.post("/flats/import", async (req, res) => {
+  const { csv, rows: bodyRows, createResidents = true } = req.body || {};
+  let rows = [];
+  if (Array.isArray(bodyRows)) rows = bodyRows;
+  else if (csv) rows = parseCsv(csv);
+  else return res.status(400).json({ message: "Provide 'csv' text or a 'rows' array" });
+  if (rows.length === 0) return res.status(400).json({ message: "No data rows found" });
+  if (rows.length > 3000) return res.status(400).json({ message: "Please import under 3000 rows at a time" });
+
+  const societyId = req.user.societyId;
+  const summary = { flatsCreated: 0, flatsSkipped: 0, residentsCreated: 0, credentials: [], errors: [] };
+
+  const existingFlats = new Set(
+    (await prisma.flat.findMany({ where: { societyId }, select: { flatNo: true } })).map((f) => f.flatNo)
+  );
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i] || {};
+    const flatNo = (r.flatno || r.flat || r["flatnumber"] || "").trim();
+    const block = (r.block || r.wing || "").trim();
+    const ownerName = (r.ownername || r.owner || r.name || "").trim();
+    const ownerEmail = (r.owneremail || r.email || "").trim().toLowerCase();
+    const ownerPhone = (r.ownerphone || r.phone || r.mobile || "").trim();
+    const line = i + 2; // account for header row
+
+    if (!flatNo) {
+      summary.errors.push(`Row ${line}: missing flat number — skipped`);
+      continue;
+    }
+
+    // Flat.
+    if (existingFlats.has(flatNo)) {
+      summary.flatsSkipped++;
+    } else {
+      await prisma.flat.create({ data: { flatNo, block: block || null, ownerName: ownerName || null, societyId } });
+      existingFlats.add(flatNo);
+      summary.flatsCreated++;
+    }
+    const flat = await prisma.flat.findFirst({ where: { flatNo, societyId } });
+
+    // Optional resident login for the owner.
+    if (createResidents && ownerEmail) {
+      const dup = await prisma.user.findUnique({ where: { email: ownerEmail } });
+      if (dup) {
+        summary.errors.push(`Row ${line}: ${ownerEmail} already has an account — resident not created`);
+      } else {
+        const pwd = (r.password || "").trim() || tempPassword();
+        const policyError = validatePassword(pwd);
+        if (policyError) {
+          summary.errors.push(`Row ${line}: ${ownerEmail} password rejected (${policyError})`);
+        } else {
+          await prisma.user.create({
+            data: {
+              name: ownerName || ownerEmail.split("@")[0],
+              email: ownerEmail,
+              phone: ownerPhone || null,
+              role: "resident",
+              societyId,
+              flatId: flat?.id || null,
+              passwordHash: bcrypt.hashSync(pwd, 10),
+            },
+          });
+          summary.residentsCreated++;
+          summary.credentials.push({ email: ownerEmail, tempPassword: r.password ? undefined : pwd, flatNo });
+        }
+      }
+    }
+  }
+  res.json(summary);
+});
+
+/* ----------------------- Vendor venue marketplace ------------------------ */
+// Premium perk: outside vendors book a society premise; H2O keeps a platform fee.
+async function loadSocietyForPlan(req) {
+  return prisma.society.findUnique({ where: { id: sid(req) } });
+}
+function computeFees(amount, pct) {
+  const amt = Math.max(0, Number(amount) || 0);
+  const p = pct === undefined || pct === null ? 10 : Math.max(0, Number(pct));
+  const platformFee = Math.round(amt * p) / 100;
+  return { amount: amt, platformFeePct: p, platformFee, societyNet: Math.round((amt - platformFee) * 100) / 100 };
+}
+
+// List vendor bookings. If society isn't premium, returns premium:false (+upsell).
+adminRouter.get("/venue-bookings", async (req, res) => {
+  const society = await loadSocietyForPlan(req);
+  if (!isPremium(society)) {
+    return res.json({ premium: false, bookings: [], summary: null });
+  }
+  const bookings = await prisma.venueBooking.findMany({ where: { societyId: sid(req) }, orderBy: { date: "desc" } });
+  const paid = bookings.filter((b) => ["paid", "completed"].includes(b.status));
+  const summary = {
+    total: bookings.length,
+    societyEarnings: paid.reduce((s, b) => s + b.societyNet, 0),
+    platformFees: paid.reduce((s, b) => s + b.platformFee, 0),
+  };
+  res.json({ premium: true, bookings: bookings.map(serializeVenueBooking), summary });
+});
+
+adminRouter.post("/venue-bookings", async (req, res) => {
+  const society = await loadSocietyForPlan(req);
+  if (!isPremium(society)) {
+    return res.status(402).json({ premium: false, message: "The vendor marketplace is a premium feature. Ask H2O to enable premium for your society." });
+  }
+  const { venueName, vendorName, vendorPhone, vendorEmail, purpose, date, slot, amount, platformFeePct, notes } = req.body || {};
+  if (!venueName || !vendorName || !date) {
+    return res.status(400).json({ message: "venueName, vendorName and date are required" });
+  }
+  const fees = computeFees(amount, platformFeePct);
+  const booking = await prisma.venueBooking.create({
+    data: {
+      societyId: req.user.societyId,
+      venueName: String(venueName).trim(),
+      vendorName: String(vendorName).trim(),
+      vendorPhone: vendorPhone || null,
+      vendorEmail: vendorEmail ? String(vendorEmail).trim().toLowerCase() : null,
+      purpose: purpose || null,
+      date: String(date).trim(),
+      slot: slot || "full_day",
+      ...fees,
+      notes: notes || null,
+      status: "requested",
+      createdBy: req.user.id,
+    },
+  });
+  res.status(201).json({ booking: serializeVenueBooking(booking) });
+});
+
+adminRouter.patch("/venue-bookings/:id", async (req, res) => {
+  const society = await loadSocietyForPlan(req);
+  if (!isPremium(society)) return res.status(402).json({ premium: false, message: "Premium feature" });
+  const existing = await prisma.venueBooking.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
+  if (!existing) return res.status(404).json({ message: "Booking not found" });
+
+  const { status, amount, platformFeePct, paymentRef, notes } = req.body || {};
+  const data = {};
+  if (amount !== undefined || platformFeePct !== undefined) {
+    Object.assign(data, computeFees(amount ?? existing.amount, platformFeePct ?? existing.platformFeePct));
+  }
+  if (notes !== undefined) data.notes = notes || null;
+  if (paymentRef !== undefined) data.paymentRef = paymentRef || null;
+  if (status !== undefined) {
+    const allowed = ["requested", "approved", "rejected", "paid", "completed", "cancelled"];
+    if (!allowed.includes(status)) return res.status(400).json({ message: "Invalid status" });
+    data.status = status;
+    if (status === "paid") data.paidAt = new Date();
+  }
+  const booking = await prisma.venueBooking.update({ where: { id: existing.id }, data });
+  res.json({ booking: serializeVenueBooking(booking) });
+});
+
+adminRouter.delete("/venue-bookings/:id", async (req, res) => {
+  const existing = await prisma.venueBooking.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
+  if (!existing) return res.status(404).json({ message: "Booking not found" });
+  await prisma.venueBooking.delete({ where: { id: existing.id } });
+  res.json({ ok: true });
 });

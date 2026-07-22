@@ -21,8 +21,10 @@ import AdminDashboardScreen from "./src/screens/admin/AdminDashboardScreen";
 import ManageUsersScreen from "./src/screens/admin/ManageUsersScreen";
 import CreateAccountScreen from "./src/screens/admin/CreateAccountScreen";
 import ManageFlatsScreen from "./src/screens/admin/ManageFlatsScreen";
+import OnboardingScreen from "./src/screens/admin/OnboardingScreen";
 import BankAccountScreen from "./src/screens/admin/BankAccountScreen";
 import ReportsScreen from "./src/screens/admin/ReportsScreen";
+import VenueMarketplaceScreen from "./src/screens/admin/VenueMarketplaceScreen";
 import SuperAdminDashboardScreen from "./src/screens/superadmin/SuperAdminDashboardScreen";
 import SocietiesScreen from "./src/screens/superadmin/SocietiesScreen";
 
@@ -81,6 +83,7 @@ function MembersStackScreen() {
       <MembersStack.Screen name="ManageUsers" component={ManageUsersScreen} />
       <MembersStack.Screen name="CreateAccount" component={CreateAccountScreen} />
       <MembersStack.Screen name="ManageFlats" component={ManageFlatsScreen} />
+      <MembersStack.Screen name="Onboarding" component={OnboardingScreen} />
       <MembersStack.Screen name="BankAccount" component={BankAccountScreen} />
     </MembersStack.Navigator>
   );
@@ -93,6 +96,7 @@ function FinanceStackScreen() {
       <FinanceStack.Screen name="Collections" component={MaintenanceScreen} />
       <FinanceStack.Screen name="Amenities" component={AmenitiesScreen} />
       <FinanceStack.Screen name="Reports" component={ReportsScreen} />
+      <FinanceStack.Screen name="VenueMarketplace" component={VenueMarketplaceScreen} />
     </FinanceStack.Navigator>
   );
 }

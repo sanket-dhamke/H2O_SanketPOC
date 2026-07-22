@@ -26,6 +26,12 @@ model Society {
   city          String?
   address       String?
   active        Boolean          @default(true)
+  // Subscription plan: "free" | "premium". Premium is a yearly paid plan set by
+  // the H2O superadmin; unlocks perks like the vendor venue marketplace & voice AI.
+  plan          String           @default("free")
+  planExpiresAt DateTime?
+  planAmount    Float?           // agreed yearly subscription amount (INR)
+  planNote      String?
   createdAt     DateTime         @default(now())
   flats         Flat[]
   users         User[]
@@ -35,6 +41,36 @@ model Society {
   posts         Post[]
   amenities     Amenity[]
   bookings      Booking[]
+  venueBookings VenueBooking[]
+}
+
+// A commercial booking of a society premise by an OUTSIDE vendor (not a resident):
+// e.g. a decorator or event company books the community hall/ground for a day.
+// The vendor pays the society; H2O takes a platform fee (default 10%).
+model VenueBooking {
+  id             String    @id @default(uuid())
+  society        Society   @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId      String
+  venueName      String
+  vendorName     String
+  vendorPhone    String?
+  vendorEmail    String?
+  purpose        String?
+  date           String // "2026-07-25"
+  slot           String    @default("full_day") // full_day | half_day | custom label
+  amount         Float     @default(0)
+  platformFeePct Float     @default(10)
+  platformFee    Float     @default(0)
+  societyNet     Float     @default(0)
+  // requested | approved | rejected | paid | completed | cancelled
+  status         String    @default("requested")
+  paymentRef     String?
+  paidAt         DateTime?
+  notes          String?
+  createdBy      String?
+  createdAt      DateTime  @default(now())
+
+  @@index([societyId])
 }
 
 model Flat {

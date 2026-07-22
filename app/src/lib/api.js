@@ -121,6 +121,19 @@ export const api = {
   adminListFlats: () => request("/api/admin/flats"),
   adminCreateFlat: (payload) =>
     request("/api/admin/flats", { method: "POST", body: payload }),
+  adminGenerateFlats: (payload) =>
+    request("/api/admin/flats/generate", { method: "POST", body: payload }),
+  adminImportFlats: (payload) =>
+    request("/api/admin/flats/import", { method: "POST", body: payload }),
+
+  // Admin: vendor venue marketplace (premium)
+  adminVenueBookings: () => request("/api/admin/venue-bookings"),
+  adminCreateVenueBooking: (payload) =>
+    request("/api/admin/venue-bookings", { method: "POST", body: payload }),
+  adminUpdateVenueBooking: (id, payload) =>
+    request(`/api/admin/venue-bookings/${id}`, { method: "PATCH", body: payload }),
+  adminDeleteVenueBooking: (id) =>
+    request(`/api/admin/venue-bookings/${id}`, { method: "DELETE" }),
 
   // Admin: society bank account (Razorpay Route linked account)
   adminGetBankAccount: () => request("/api/admin/bank-account"),

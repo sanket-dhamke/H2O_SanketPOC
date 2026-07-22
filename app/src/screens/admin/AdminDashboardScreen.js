@@ -104,6 +104,10 @@ export default function AdminDashboardScreen() {
         <Ionicons name="document-text-outline" size={18} color="#0B6E8F" />
         <Text style={styles.collectText}>Reports & backup (wing-wise, PDF)</Text>
       </TouchableOpacity>
+      <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("VenueMarketplace")}>
+        <Ionicons name="storefront-outline" size={18} color="#0B6E8F" />
+        <Text style={styles.collectText}>Vendor marketplace (premium)</Text>
+      </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>Flat-wise status</Text>
       {(data?.perFlat || []).map((f) => (

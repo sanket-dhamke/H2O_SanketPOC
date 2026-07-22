@@ -4,6 +4,7 @@ import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
 import { publicUser } from "../serializers.js";
 import { validatePassword } from "../passwordPolicy.js";
+import { isPremium } from "../plan.js";
 
 // Platform-owner ("superadmin") routes. The superadmin belongs to no society and
 // can see a cross-society summary and manage (create / activate) societies and
@@ -13,7 +14,7 @@ export const superadminRouter = Router();
 superadminRouter.use(authRequired, roleRequired("superadmin"));
 
 // Builds per-society financial + membership aggregates from already-fetched rows.
-function summarize(societies, users, bills, expenses) {
+function summarize(societies, users, bills, expenses, venueBookings) {
   const byId = new Map(
     societies.map((s) => [
       s.id,
@@ -24,6 +25,11 @@ function summarize(societies, users, bills, expenses) {
         address: s.address || null,
         active: s.active,
         createdAt: s.createdAt,
+        // Subscription plan info.
+        plan: s.plan || "free",
+        premium: isPremium(s),
+        planExpiresAt: s.planExpiresAt || null,
+        planAmount: s.planAmount ?? null,
         flats: s._count?.flats ?? 0,
         residents: 0,
         guards: 0,
@@ -33,9 +39,19 @@ function summarize(societies, users, bills, expenses) {
         pending: 0,
         expenses: 0,
         balance: 0,
+        // H2O platform earnings from this society's vendor bookings.
+        platformFees: 0,
+        vendorBookings: 0,
       },
     ])
   );
+
+  for (const v of venueBookings || []) {
+    const row = byId.get(v.societyId);
+    if (!row) continue;
+    row.vendorBookings++;
+    if (["paid", "completed"].includes(v.status)) row.platformFees += v.platformFee;
+  }
 
   for (const u of users) {
     const row = byId.get(u.societyId);
@@ -64,7 +80,7 @@ function summarize(societies, users, bills, expenses) {
 
 // Cross-society snapshot used by both the overview totals and the societies list.
 async function loadSummaries() {
-  const [societies, users, bills, expenses] = await Promise.all([
+  const [societies, users, bills, expenses, venueBookings] = await Promise.all([
     prisma.society.findMany({
       include: { _count: { select: { flats: true } } },
       orderBy: { createdAt: "asc" },
@@ -75,8 +91,9 @@ async function loadSummaries() {
     }),
     prisma.bill.findMany({ include: { flat: { select: { societyId: true } } } }),
     prisma.expense.findMany({ select: { societyId: true, amount: true } }),
+    prisma.venueBooking.findMany({ select: { societyId: true, status: true, platformFee: true } }),
   ]);
-  return summarize(societies, users, bills, expenses);
+  return summarize(societies, users, bills, expenses, venueBookings);
 }
 
 // GET /api/superadmin/overview — platform-wide totals for the owner dashboard.
@@ -91,15 +108,28 @@ superadminRouter.get("/overview", async (_req, res) => {
       t.collected += s.collected;
       t.pending += s.pending;
       t.expenses += s.expenses;
+      t.platformFees += s.platformFees;
       return t;
     },
-    { flats: 0, residents: 0, guards: 0, admins: 0, collected: 0, pending: 0, expenses: 0 }
+    { flats: 0, residents: 0, guards: 0, admins: 0, collected: 0, pending: 0, expenses: 0, platformFees: 0 }
   );
+
+  // H2O's own revenue: yearly subscriptions from premium societies + platform
+  // fees earned from vendor venue bookings.
+  const premiumSocieties = rows.filter((s) => s.premium);
+  const subscriptionRevenue = premiumSocieties.reduce((s, r) => s + (r.planAmount || 0), 0);
+
   res.json({
     societies: rows.length,
     activeSocieties: rows.filter((s) => s.active).length,
+    premiumSocieties: premiumSocieties.length,
     ...totals,
     balance: totals.collected - totals.expenses,
+    revenue: {
+      subscriptions: subscriptionRevenue,
+      platformFees: totals.platformFees,
+      total: subscriptionRevenue + totals.platformFees,
+    },
     // Top societies by outstanding dues, handy for the owner to act on.
     topPending: [...rows].sort((a, b) => b.pending - a.pending).slice(0, 5),
   });
@@ -152,9 +182,9 @@ superadminRouter.post("/societies", async (req, res) => {
   res.status(201).json({ society, admin: admin ? publicUser(admin) : null });
 });
 
-// PATCH /api/superadmin/societies/:id — edit details or activate/deactivate.
+// PATCH /api/superadmin/societies/:id — edit details, activate, or set plan.
 superadminRouter.patch("/societies/:id", async (req, res) => {
-  const { name, city, address, active } = req.body || {};
+  const { name, city, address, active, plan, planExpiresAt, planAmount, planNote } = req.body || {};
   const society = await prisma.society.findUnique({ where: { id: req.params.id } });
   if (!society) return res.status(404).json({ message: "Society not found" });
 
@@ -163,6 +193,20 @@ superadminRouter.patch("/societies/:id", async (req, res) => {
   if (city !== undefined) data.city = city ? String(city).trim() : null;
   if (address !== undefined) data.address = address ? String(address).trim() : null;
   if (active !== undefined) data.active = Boolean(active);
+  if (plan !== undefined) {
+    if (!["free", "premium"].includes(plan)) return res.status(400).json({ message: "plan must be 'free' or 'premium'" });
+    data.plan = plan;
+    // Default a 1-year term when upgrading to premium without an explicit date.
+    if (plan === "premium" && planExpiresAt === undefined && !society.planExpiresAt) {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() + 1);
+      data.planExpiresAt = d;
+    }
+    if (plan === "free") data.planExpiresAt = null;
+  }
+  if (planExpiresAt !== undefined) data.planExpiresAt = planExpiresAt ? new Date(planExpiresAt) : null;
+  if (planAmount !== undefined) data.planAmount = planAmount === null || planAmount === "" ? null : Number(planAmount);
+  if (planNote !== undefined) data.planNote = planNote || null;
 
   const updated = await prisma.society.update({ where: { id: society.id }, data });
   res.json({ society: updated });

@@ -10,6 +10,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import ScreenHeader from "../../components/ScreenHeader";
 
@@ -63,7 +64,22 @@ export default function ManageFlatsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader icon="business" title="Flats" subtitle="Add & view society flats" onBack={() => navigation.goBack()} />
+      <ScreenHeader
+        icon="business"
+        title="Flats"
+        subtitle="Add & view society flats"
+        onBack={() => navigation.goBack()}
+        right={
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Onboarding")}
+            style={styles.bulkBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="construct-outline" size={18} color="#fff" />
+            <Text style={styles.bulkText}>Bulk setup</Text>
+          </TouchableOpacity>
+        }
+      />
       <View style={styles.form}>
         <Text style={styles.formTitle}>Add a flat</Text>
         <View style={styles.formRow}>
@@ -99,6 +115,8 @@ export default function ManageFlatsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
+  bulkBtn: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(255,255,255,0.22)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 },
+  bulkText: { color: "#fff", fontWeight: "700", fontSize: 12 },
   form: { backgroundColor: "#fff", padding: 16, borderBottomWidth: 1, borderBottomColor: "#E6EDF0" },
   formTitle: { fontSize: 16, fontWeight: "800", color: "#1B2B33", marginBottom: 10 },
   formRow: { flexDirection: "row", gap: 10 },

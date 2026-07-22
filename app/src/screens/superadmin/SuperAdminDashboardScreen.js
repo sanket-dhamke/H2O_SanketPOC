@@ -80,6 +80,30 @@ export default function SuperAdminDashboardScreen() {
           <Metric icon="briefcase" label="Admins" value={data?.admins ?? 0} color="#C2571A" />
         </View>
 
+        <Text style={styles.sectionTitle}>H2O revenue</Text>
+        <View style={styles.revenueCard}>
+          <View style={styles.revenueTop}>
+            <View>
+              <Text style={styles.revenueLabel}>Total H2O revenue</Text>
+              <Text style={styles.revenueValue}>{money(data?.revenue?.total)}</Text>
+            </View>
+            <View style={styles.premiumPill}>
+              <Ionicons name="star" size={13} color="#8A5A00" />
+              <Text style={styles.premiumPillText}>{data?.premiumSocieties ?? 0} premium</Text>
+            </View>
+          </View>
+          <View style={styles.revenueSplit}>
+            <View style={styles.revenueSplitBox}>
+              <Text style={styles.revenueSplitLabel}>Subscriptions</Text>
+              <Text style={styles.revenueSplitVal}>{money(data?.revenue?.subscriptions)}</Text>
+            </View>
+            <View style={styles.revenueSplitBox}>
+              <Text style={styles.revenueSplitLabel}>Vendor fees (10%)</Text>
+              <Text style={styles.revenueSplitVal}>{money(data?.revenue?.platformFees)}</Text>
+            </View>
+          </View>
+        </View>
+
         <Text style={styles.sectionTitle}>Platform finances</Text>
         <View style={styles.finRow}>
           <Fin label="Collected" value={money(data?.collected)} color="#2E9E52" />
@@ -155,6 +179,16 @@ const styles = StyleSheet.create({
   metricValue: { fontSize: 24, fontWeight: "800", color: "#1B2B33", marginTop: 10 },
   metricLabel: { color: "#6B7B85", fontSize: 12, marginTop: 2 },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: "#1B2B33", marginTop: 26, marginBottom: 10 },
+  revenueCard: { backgroundColor: "#fff", borderRadius: 16, padding: 18, borderLeftWidth: 4, borderLeftColor: "#E0A83E" },
+  revenueTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  revenueLabel: { color: "#6B7B85", fontSize: 13 },
+  revenueValue: { color: "#1B2B33", fontSize: 28, fontWeight: "800", marginTop: 2 },
+  premiumPill: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#FDF0D0", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
+  premiumPillText: { color: "#8A5A00", fontWeight: "700", fontSize: 12 },
+  revenueSplit: { flexDirection: "row", gap: 12, marginTop: 14 },
+  revenueSplitBox: { flex: 1, backgroundColor: "#F6F9FA", borderRadius: 10, padding: 12 },
+  revenueSplitLabel: { color: "#6B7B85", fontSize: 11 },
+  revenueSplitVal: { color: "#1B2B33", fontSize: 16, fontWeight: "800", marginTop: 3 },
   finRow: { flexDirection: "row", gap: 12 },
   fin: { flex: 1, backgroundColor: "#fff", borderRadius: 14, padding: 16, borderTopWidth: 4 },
   finValue: { fontSize: 20, fontWeight: "800", color: "#1B2B33" },

@@ -23,6 +23,7 @@ export default function SocietiesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [createModal, setCreateModal] = useState(false);
   const [adminFor, setAdminFor] = useState(null); // society object when adding an admin
+  const [planFor, setPlanFor] = useState(null); // society object when editing plan
   const [resetModal, setResetModal] = useState(false);
 
   const load = useCallback(async () => {
@@ -88,10 +89,17 @@ export default function SocietiesScreen() {
                 <Text style={styles.name}>{s.name}</Text>
                 <Text style={styles.city}>{s.city || "—"}</Text>
               </View>
-              <View style={[styles.badge, s.active ? styles.badgeOn : styles.badgeOff]}>
-                <Text style={[styles.badgeText, s.active ? { color: "#1E7A3D" } : { color: "#9A3412" }]}>
-                  {s.active ? "Active" : "Inactive"}
-                </Text>
+              <View style={{ alignItems: "flex-end", gap: 6 }}>
+                <View style={[styles.badge, s.active ? styles.badgeOn : styles.badgeOff]}>
+                  <Text style={[styles.badgeText, s.active ? { color: "#1E7A3D" } : { color: "#9A3412" }]}>
+                    {s.active ? "Active" : "Inactive"}
+                  </Text>
+                </View>
+                <View style={[styles.badge, s.premium ? styles.badgePremium : styles.badgeFree]}>
+                  <Text style={[styles.badgeText, s.premium ? { color: "#8A5A00" } : { color: "#5A6B75" }]}>
+                    {s.premium ? "★ Premium" : "Free"}
+                  </Text>
+                </View>
               </View>
             </View>
 
@@ -122,10 +130,22 @@ export default function SocietiesScreen() {
               </Text>
             )}
 
+            {(s.premium || s.planAmount) && (
+              <Text style={styles.planLine}>
+                Plan: {s.premium ? "Premium" : s.plan}
+                {s.planAmount ? ` · ${money(s.planAmount)}/yr` : ""}
+                {s.planExpiresAt ? ` · until ${new Date(s.planExpiresAt).toLocaleDateString("en-IN")}` : ""}
+              </Text>
+            )}
+
             <View style={styles.actions}>
               <TouchableOpacity style={styles.actionGhost} onPress={() => setAdminFor(s)}>
                 <Ionicons name="person-add-outline" size={16} color="#0B6E8F" />
                 <Text style={styles.actionGhostText}>Add admin</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionGhost} onPress={() => setPlanFor(s)}>
+                <Ionicons name="star-outline" size={16} color="#8A5A00" />
+                <Text style={[styles.actionGhostText, { color: "#8A5A00" }]}>Plan</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionGhost, !s.active && styles.actionOn]}
@@ -147,6 +167,7 @@ export default function SocietiesScreen() {
 
       <CreateSocietyModal visible={createModal} onClose={() => setCreateModal(false)} onDone={load} />
       <AddAdminModal society={adminFor} onClose={() => setAdminFor(null)} onDone={load} />
+      <EditPlanModal society={planFor} onClose={() => setPlanFor(null)} onDone={load} />
       <ResetPasswordModal visible={resetModal} onClose={() => setResetModal(false)} />
     </View>
   );
@@ -388,6 +409,71 @@ function AddAdminModal({ society, onClose, onDone }) {
   );
 }
 
+// Set a society's subscription plan (free / premium yearly).
+function EditPlanModal({ society, onClose, onDone }) {
+  const [premium, setPremium] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [expires, setExpires] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  // Prefill whenever a new society is selected.
+  React.useEffect(() => {
+    if (!society) return;
+    setPremium(society.premium || society.plan === "premium");
+    setAmount(society.planAmount ? String(society.planAmount) : "");
+    setExpires(society.planExpiresAt ? new Date(society.planExpiresAt).toISOString().slice(0, 10) : "");
+    setNote("");
+  }, [society]);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await api.superUpdateSociety(society.id, {
+        plan: premium ? "premium" : "free",
+        planAmount: amount === "" ? null : Number(amount),
+        planExpiresAt: premium ? (expires || undefined) : null,
+        planNote: note || undefined,
+      });
+      onClose();
+      onDone();
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <FormModal
+      visible={!!society}
+      onClose={onClose}
+      title={society ? `Plan · ${society.name}` : "Plan"}
+      icon="star-outline"
+      busy={busy}
+      onSubmit={submit}
+    >
+      <TouchableOpacity style={styles.planToggle} onPress={() => setPremium((p) => !p)}>
+        <View>
+          <Text style={styles.planToggleTitle}>Premium plan</Text>
+          <Text style={styles.planToggleSub}>Unlocks vendor marketplace, voice AI & more</Text>
+        </View>
+        <Ionicons name={premium ? "toggle" : "toggle-outline"} size={40} color={premium ? "#2E9E52" : "#B7C1C8"} />
+      </TouchableOpacity>
+      <Label>Yearly amount (₹)</Label>
+      <TextInput style={styles.input} value={amount} onChangeText={setAmount} placeholder="e.g. 12000" keyboardType="number-pad" />
+      {premium && (
+        <>
+          <Label>Expires on (YYYY-MM-DD)</Label>
+          <TextInput style={styles.input} value={expires} onChangeText={setExpires} placeholder="Defaults to 1 year from now" autoCapitalize="none" />
+        </>
+      )}
+      <Label>Note (optional)</Label>
+      <TextInput style={styles.input} value={note} onChangeText={setNote} placeholder="Payment ref / remarks" />
+    </FormModal>
+  );
+}
+
 function FormModal({ visible, onClose, title, icon, children, busy, onSubmit }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -429,7 +515,13 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   badgeOn: { backgroundColor: "#DFF3E6" },
   badgeOff: { backgroundColor: "#FBE4D5" },
+  badgePremium: { backgroundColor: "#FDF0D0" },
+  badgeFree: { backgroundColor: "#EEF2F4" },
   badgeText: { fontSize: 12, fontWeight: "700" },
+  planLine: { color: "#8A5A00", fontSize: 12, marginTop: 10, fontWeight: "600" },
+  planToggle: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#F6F9FA", borderRadius: 12, padding: 14, marginTop: 6 },
+  planToggleTitle: { fontWeight: "800", color: "#1B2B33", fontSize: 15 },
+  planToggleSub: { color: "#6B7B85", fontSize: 12, marginTop: 2, maxWidth: 200 },
   statsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
   chip: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#EAF4F7", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
   chipText: { color: "#0B6E8F", fontSize: 12, fontWeight: "600" },
