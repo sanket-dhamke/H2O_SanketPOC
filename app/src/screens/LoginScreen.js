@@ -27,10 +27,18 @@ function slugFromUrl(url) {
   return null;
 }
 
-// Login is shared across tenants. The user picks their org type so we can show
-// the right backdrop + wording. Wide art on web (landscape), portrait on phones.
+// One shared, multi-tenant login. By default it shows a NEUTRAL brand (no
+// society/preschool wording). It only switches to a tenant-specific look when
+// opened via that tenant's branded link/QR, or from the org type remembered
+// after the last successful login. Wide art on web, portrait on phones.
 const isWeb = Platform.OS === "web";
 const BACKDROPS = {
+  neutral: {
+    image: isWeb ? require("../../assets/society-bg-wide.png") : require("../../assets/society-bg.png"),
+    tagline: "Smart living, simplified",
+    emailPlaceholder: "you@email.com",
+    hint: "Accounts are created by your admin.\nContact them if you can't sign in.",
+  },
   society: {
     image: isWeb ? require("../../assets/society-bg-wide.png") : require("../../assets/society-bg.png"),
     tagline: "Your society, simplified",
@@ -54,7 +62,7 @@ export default function LoginScreen() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [serverUrl, setServerUrl] = useState("");
   const [forgotOpen, setForgotOpen] = useState(false);
-  const [orgMode, setOrgMode] = useState("society"); // "society" | "preschool"
+  const [orgMode, setOrgMode] = useState("neutral"); // "neutral" | "society" | "preschool"
   const [tenantName, setTenantName] = useState(null);
   const passwordRef = useRef(null);
   const theme = BACKDROPS[orgMode];
@@ -129,20 +137,6 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.card}>
-        <View style={styles.segment}>
-          <TouchableOpacity
-            style={[styles.segBtn, orgMode === "society" && styles.segBtnActive]}
-            onPress={() => setOrgMode("society")}
-          >
-            <Text style={[styles.segText, orgMode === "society" && styles.segTextActive]}>🏢 Society</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.segBtn, orgMode === "preschool" && styles.segBtnActive]}
-            onPress={() => setOrgMode("preschool")}
-          >
-            <Text style={[styles.segText, orgMode === "preschool" && styles.segTextActive]}>🏫 Preschool</Text>
-          </TouchableOpacity>
-        </View>
         {tenantName ? (
           <Text style={styles.tenantName}>Signing in to {tenantName}</Text>
         ) : null}
@@ -250,12 +244,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 8,
   },
-  segment: { flexDirection: "row", backgroundColor: "#EEF3F5", borderRadius: 10, padding: 4, gap: 4 },
-  segBtn: { flex: 1, paddingVertical: 9, borderRadius: 8, alignItems: "center" },
-  segBtnActive: { backgroundColor: "#0B6E8F" },
-  segText: { fontSize: 13, fontWeight: "700", color: "#5B6B74" },
-  segTextActive: { color: "#fff" },
-  tenantName: { textAlign: "center", color: "#0B6E8F", fontWeight: "700", fontSize: 14, marginTop: 12 },
+  tenantName: { textAlign: "center", color: "#0B6E8F", fontWeight: "700", fontSize: 14, marginBottom: 4 },
   label: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 6, marginTop: 12 },
   input: {
     borderWidth: 1,
