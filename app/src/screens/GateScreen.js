@@ -14,17 +14,24 @@ import * as ImagePicker from "expo-image-picker";
 import { Audio } from "expo-av";
 import * as FileSystem from "expo-file-system/legacy";
 import { api } from "../lib/api";
+import { useAuth } from "../lib/auth";
+import { labelsFor, isPreschool } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
 
 const PURPOSES = ["Guest", "Delivery", "Cab", "Service", "Other"];
+const PRESCHOOL_PURPOSES = ["Pickup", "Drop", "Guest", "Delivery", "Service", "Other"];
 
 export default function GateScreen({ navigation }) {
+  const { user } = useAuth();
+  const L = labelsFor(user);
+  const preschool = isPreschool(user);
+  const purposes = preschool ? PRESCHOOL_PURPOSES : PURPOSES;
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [vehicleNo, setVehicleNo] = useState("");
   const [flats, setFlats] = useState([]);
   const [flatId, setFlatId] = useState(null);
-  const [purpose, setPurpose] = useState("Guest");
+  const [purpose, setPurpose] = useState(preschool ? "Pickup" : "Guest");
   const [photo, setPhoto] = useState(null); // { uri, base64 }
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(null);
@@ -47,7 +54,7 @@ export default function GateScreen({ navigation }) {
     if (fields.name) setName(fields.name);
     if (fields.phone) setPhone(fields.phone);
     if (fields.vehicleNo) setVehicleNo(fields.vehicleNo);
-    if (fields.purpose && PURPOSES.includes(fields.purpose)) setPurpose(fields.purpose);
+    if (fields.purpose && purposes.includes(fields.purpose)) setPurpose(fields.purpose);
     if (fields.flatNo) {
       const match = flatsRef.current.find(
         (f) => f.flatNo.toLowerCase() === String(fields.flatNo).toLowerCase()
@@ -120,13 +127,13 @@ export default function GateScreen({ navigation }) {
     setPhone("");
     setVehicleNo("");
     setFlatId(null);
-    setPurpose("Guest");
+    setPurpose(preschool ? "Pickup" : "Guest");
     setPhoto(null);
   };
 
   const submit = async () => {
     if (!name.trim() || !flatId) {
-      Alert.alert("Missing info", "Visitor name and flat are required.");
+      Alert.alert("Missing info", `Visitor name and ${L.unit.toLowerCase()} are required.`);
       return;
     }
     setBusy(true);
@@ -140,9 +147,15 @@ export default function GateScreen({ navigation }) {
         photoBase64: photo?.base64 || null,
       });
       const flat = flats.find((f) => f.id === flatId);
-      Alert.alert("Sent", `Residents of ${flat?.flatNo || "the flat"} have been notified.`);
       reset();
-      navigation.navigate("Visitors");
+      if (preschool) {
+        // Entry is logged directly (no approval) — CLO is notified. Stay here
+        // so the guard can quickly log the next visitor.
+        Alert.alert("Entry logged", `${flat?.flatNo || "Entry"} logged. The CLO has been notified.`);
+      } else {
+        Alert.alert("Sent", `Residents of ${flat?.flatNo || "the flat"} have been notified.`);
+        navigation.navigate("Visitors");
+      }
     } catch (e) {
       Alert.alert("Failed", e.message);
     } finally {
@@ -188,7 +201,7 @@ export default function GateScreen({ navigation }) {
       <Text style={styles.label}>Vehicle number</Text>
       <TextInput style={styles.input} value={vehicleNo} onChangeText={setVehicleNo} autoCapitalize="characters" placeholder="Optional (e.g. MH12AB1234)" />
 
-      <Text style={styles.label}>Flat *</Text>
+      <Text style={styles.label}>{L.unit} *</Text>
       <View style={styles.chips}>
         {flats.map((f) => (
           <TouchableOpacity
@@ -199,12 +212,12 @@ export default function GateScreen({ navigation }) {
             <Text style={[styles.chipText, flatId === f.id && styles.chipTextActive]}>{f.flatNo}</Text>
           </TouchableOpacity>
         ))}
-        {flats.length === 0 && <Text style={styles.hint}>Loading flats...</Text>}
+        {flats.length === 0 && <Text style={styles.hint}>Loading {L.units.toLowerCase()}...</Text>}
       </View>
 
       <Text style={styles.label}>Purpose</Text>
       <View style={styles.chips}>
-        {PURPOSES.map((p) => (
+        {purposes.map((p) => (
           <TouchableOpacity
             key={p}
             style={[styles.chip, purpose === p && styles.chipActive]}
@@ -216,7 +229,9 @@ export default function GateScreen({ navigation }) {
       </View>
 
       <TouchableOpacity style={[styles.button, busy && { opacity: 0.6 }]} onPress={submit} disabled={busy}>
-        <Text style={styles.buttonText}>{busy ? "Notifying..." : "Notify resident"}</Text>
+        <Text style={styles.buttonText}>
+          {busy ? (preschool ? "Logging..." : "Notifying...") : preschool ? "Log entry & notify CLO" : "Notify resident"}
+        </Text>
       </TouchableOpacity>
       </ScrollView>
     </View>

@@ -16,6 +16,12 @@ visitorsRouter.post("/visitors", authRequired, roleRequired("guard", "admin"), a
   }
 
   const societyId = req.user.societyId || "__none__";
+  const society = await prisma.society.findUnique({
+    where: { id: societyId },
+    select: { orgType: true },
+  });
+  const isPreschool = society?.orgType === "preschool";
+
   const flat = flatId
     ? await prisma.flat.findFirst({ where: { id: flatId, societyId } })
     : await prisma.flat.findFirst({ where: { flatNo, societyId } });
@@ -26,7 +32,9 @@ visitorsRouter.post("/visitors", authRequired, roleRequired("guard", "admin"), a
   const residents = await prisma.user.findMany({
     where: { flatId: flat.id, role: "resident", active: true },
   });
-  if (residents.length === 0) {
+  // Societies require a resident to approve. Preschools log the entry directly
+  // (parents have no account) and just notify the CLO/principal (admins).
+  if (!isPreschool && residents.length === 0) {
     return res.status(404).json({ message: `No resident found for flat ${flat.flatNo}` });
   }
 
@@ -44,24 +52,45 @@ visitorsRouter.post("/visitors", authRequired, roleRequired("guard", "admin"), a
       purpose: purpose || "Visitor",
       photoUrl,
       guardId: req.user.id,
-      status: "pending",
+      // Preschool: auto-approved (logged, no approval step). Society: pending.
+      status: isPreschool ? "approved" : "pending",
+      ...(isPreschool ? { decidedAt: new Date(), decidedBy: req.user.id } : {}),
     },
     include: { flat: true },
   });
 
-  // Notify every resident of the flat that has a registered device.
-  await Promise.all(
-    residents
-      .filter((r) => r.expoPushToken)
-      .map((r) =>
-        sendPush(
-          r.expoPushToken,
-          "Visitor at the gate",
-          `${name} (${visitor.purpose}) is waiting. Tap to approve, reject or leave at gate.`,
-          { type: "visitor", visitorId: visitor.id }
+  if (isPreschool) {
+    // Notify the CLO/principal (society admins) — informational only.
+    const admins = await prisma.user.findMany({
+      where: { societyId, role: "admin", active: true },
+    });
+    await Promise.all(
+      admins
+        .filter((a) => a.expoPushToken)
+        .map((a) =>
+          sendPush(
+            a.expoPushToken,
+            "Visitor logged at the gate",
+            `${name} (${visitor.purpose}) entered for ${flat.flatNo}.`,
+            { type: "visitor", visitorId: visitor.id }
+          )
         )
-      )
-  );
+    );
+  } else {
+    // Notify every resident of the flat that has a registered device.
+    await Promise.all(
+      residents
+        .filter((r) => r.expoPushToken)
+        .map((r) =>
+          sendPush(
+            r.expoPushToken,
+            "Visitor at the gate",
+            `${name} (${visitor.purpose}) is waiting. Tap to approve, reject or leave at gate.`,
+            { type: "visitor", visitorId: visitor.id }
+          )
+        )
+    );
+  }
 
   res.status(201).json({ visitor: serializeVisitor(visitor) });
 });
