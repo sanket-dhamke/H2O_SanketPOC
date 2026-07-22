@@ -10,10 +10,22 @@ import {
   Platform,
   ImageBackground,
   ScrollView,
+  Linking,
 } from "react-native";
 import { useAuth } from "../lib/auth";
-import { getBaseUrl, setBaseUrl } from "../lib/api";
+import { getBaseUrl, setBaseUrl, getOrgMode, api } from "../lib/api";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
+
+// Extracts a tenant slug from a branded link / deep link, supporting both
+// ?t=<slug> query form and /t/<slug> path form.
+function slugFromUrl(url) {
+  if (!url) return null;
+  const q = url.match(/[?&]t=([^&#]+)/);
+  if (q) return decodeURIComponent(q[1]);
+  const p = url.match(/\/t\/([^/?#]+)/);
+  if (p) return decodeURIComponent(p[1]);
+  return null;
+}
 
 // Login is shared across tenants. The user picks their org type so we can show
 // the right backdrop + wording. Wide art on web (landscape), portrait on phones.
@@ -43,11 +55,44 @@ export default function LoginScreen() {
   const [serverUrl, setServerUrl] = useState("");
   const [forgotOpen, setForgotOpen] = useState(false);
   const [orgMode, setOrgMode] = useState("society"); // "society" | "preschool"
+  const [tenantName, setTenantName] = useState(null);
   const passwordRef = useRef(null);
   const theme = BACKDROPS[orgMode];
 
   useEffect(() => {
     getBaseUrl().then(setServerUrl);
+  }, []);
+
+  // Auto-brand the login: 1) from a branded link/QR (?t=slug or /t/slug), else
+  // 2) from the tenant type remembered after the last successful login.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let launchUrl = null;
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        launchUrl = window.location?.href || null;
+      } else {
+        try {
+          launchUrl = await Linking.getInitialURL();
+        } catch {}
+      }
+      const slug = slugFromUrl(launchUrl);
+      if (slug) {
+        try {
+          const b = await api.tenantBranding(slug);
+          if (!cancelled) {
+            setOrgMode(b.orgType === "preschool" ? "preschool" : "society");
+            setTenantName(b.name);
+          }
+          return;
+        } catch {}
+      }
+      const remembered = await getOrgMode();
+      if (!cancelled && remembered) setOrgMode(remembered);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const onSubmit = async () => {
@@ -98,6 +143,9 @@ export default function LoginScreen() {
             <Text style={[styles.segText, orgMode === "preschool" && styles.segTextActive]}>🏫 Preschool</Text>
           </TouchableOpacity>
         </View>
+        {tenantName ? (
+          <Text style={styles.tenantName}>Signing in to {tenantName}</Text>
+        ) : null}
         <Text style={styles.label}>Email</Text>
         <TextInput
           style={styles.input}
@@ -207,6 +255,7 @@ const styles = StyleSheet.create({
   segBtnActive: { backgroundColor: "#0B6E8F" },
   segText: { fontSize: 13, fontWeight: "700", color: "#5B6B74" },
   segTextActive: { color: "#fff" },
+  tenantName: { textAlign: "center", color: "#0B6E8F", fontWeight: "700", fontSize: 14, marginTop: 12 },
   label: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 6, marginTop: 12 },
   input: {
     borderWidth: 1,

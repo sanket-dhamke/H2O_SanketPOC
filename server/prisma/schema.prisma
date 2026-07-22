@@ -26,6 +26,9 @@ model Society {
   city          String?
   address       String?
   active        Boolean          @default(true)
+  // URL-friendly unique handle (e.g. "little-millennium"). Used for per-tenant
+  // branded login links / QR codes: <app>/?t=<slug> or h2o://?t=<slug>.
+  slug          String?          @unique
   // Tenant type: "society" (default, unchanged behavior) or "preschool"
   // (school-flavored labels + entry/exit & staff attendance features).
   orgType       String           @default("society")

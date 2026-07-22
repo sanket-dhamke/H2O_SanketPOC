@@ -2,6 +2,7 @@
   "expo": {
     "name": "H2O",
     "slug": "h2o",
+    "scheme": "h2o",
     "owner": "sanket2891",
     "version": "1.0.0",
     "orientation": "portrait",

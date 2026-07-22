@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { api, setToken, getToken } from "./api";
+import { api, setToken, getToken, setOrgMode } from "./api";
 
 const AuthContext = createContext(null);
 
@@ -26,6 +26,8 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     const { token, user } = await api.login(email, password);
     await setToken(token);
+    // Remember tenant type so next launch shows the right branded login.
+    if (user?.societyOrgType) await setOrgMode(user.societyOrgType);
     setUser(user);
     return user;
   };

@@ -9,12 +9,27 @@ import {
   Alert,
   Modal,
   TextInput,
+  Image,
+  Platform,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import ScreenHeader from "../../components/ScreenHeader";
+
+// Builds the branded-login links for a tenant. `web` opens the browser app
+// already themed; `app` is a deep link that themes the installed mobile app.
+function tenantLinks(slug) {
+  const webOrigin =
+    Platform.OS === "web" && typeof window !== "undefined"
+      ? window.location.origin
+      : "https://app.h2o.com"; // replace with your hosted web URL
+  return {
+    web: `${webOrigin}/?t=${slug}`,
+    app: `h2o://?t=${slug}`,
+  };
+}
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
@@ -24,6 +39,7 @@ export default function SocietiesScreen() {
   const [createModal, setCreateModal] = useState(false);
   const [adminFor, setAdminFor] = useState(null); // society object when adding an admin
   const [planFor, setPlanFor] = useState(null); // society object when editing plan
+  const [shareFor, setShareFor] = useState(null); // society object when sharing login link
   const [resetModal, setResetModal] = useState(false);
 
   const load = useCallback(async () => {
@@ -168,6 +184,10 @@ export default function SocietiesScreen() {
                 <Ionicons name="star-outline" size={16} color="#8A5A00" />
                 <Text style={[styles.actionGhostText, { color: "#8A5A00" }]}>Plan</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={styles.actionGhost} onPress={() => setShareFor(s)}>
+                <Ionicons name="qr-code-outline" size={16} color="#0B6E8F" />
+                <Text style={styles.actionGhostText}>Login link</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionGhost, !s.active && styles.actionOn]}
                 onPress={() => toggleActive(s)}
@@ -189,8 +209,84 @@ export default function SocietiesScreen() {
       <CreateSocietyModal visible={createModal} onClose={() => setCreateModal(false)} onDone={load} />
       <AddAdminModal society={adminFor} onClose={() => setAdminFor(null)} onDone={load} />
       <EditPlanModal society={planFor} onClose={() => setPlanFor(null)} onDone={load} />
+      <ShareLinkModal society={shareFor} onClose={() => setShareFor(null)} />
       <ResetPasswordModal visible={resetModal} onClose={() => setResetModal(false)} />
     </View>
+  );
+}
+
+// Shows a tenant's branded-login link + QR so the superadmin can hand it to a
+// society/preschool. Opening the link auto-brands the login for that tenant.
+function ShareLinkModal({ society, onClose }) {
+  const visible = !!society;
+  const slug = society?.slug;
+  const links = slug ? tenantLinks(slug) : null;
+  const isPre = society?.orgType === "preschool";
+  const qrData = links ? encodeURIComponent(links.web) : "";
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${qrData}`;
+
+  const copy = async (text) => {
+    try {
+      if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+        Alert.alert("Copied", "Link copied to clipboard.");
+      } else {
+        Alert.alert("Login link", text);
+      }
+    } catch {
+      Alert.alert("Login link", text);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <View style={styles.modalCard}>
+          <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
+            <View style={styles.modalHeaderIcon}>
+              <Ionicons name="qr-code-outline" size={20} color="#fff" />
+            </View>
+            <Text style={styles.modalTitle}>{isPre ? "Preschool" : "Society"} login link</Text>
+          </LinearGradient>
+          <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
+            <Text style={styles.shareIntro}>
+              Share this with {society?.name}. Opening it brands the login for them automatically
+              {isPre ? " (preschool look & wording)." : "."}
+            </Text>
+
+            {slug ? (
+              <>
+                <View style={styles.qrWrap}>
+                  <Image source={{ uri: qrUrl }} style={styles.qr} resizeMode="contain" />
+                </View>
+
+                <Label>Web link (browser)</Label>
+                <TouchableOpacity onPress={() => copy(links.web)} style={styles.linkBox}>
+                  <Text style={styles.linkText} selectable>{links.web}</Text>
+                  <Ionicons name="copy-outline" size={18} color="#0B6E8F" />
+                </TouchableOpacity>
+
+                <Label>App deep link (installed mobile app)</Label>
+                <TouchableOpacity onPress={() => copy(links.app)} style={styles.linkBox}>
+                  <Text style={styles.linkText} selectable>{links.app}</Text>
+                  <Ionicons name="copy-outline" size={18} color="#0B6E8F" />
+                </TouchableOpacity>
+
+                <Text style={styles.shareHint}>
+                  Note: replace the web domain in code with your hosted app URL. The QR encodes the web link.
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.shareHint}>This tenant has no slug yet. Restart the server to backfill, then reopen.</Text>
+            )}
+
+            <TouchableOpacity style={[styles.modalBtn, { marginTop: 20 }]} onPress={onClose}>
+              <Text style={styles.modalBtnText}>Done</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -610,4 +706,10 @@ const styles = StyleSheet.create({
   userRowActive: { borderColor: "#0B6E8F", backgroundColor: "#F1F8FB" },
   userName: { fontWeight: "800", color: "#1B2B33" },
   userMeta: { color: "#6B7B85", fontSize: 12, marginTop: 2 },
+  shareIntro: { color: "#425059", fontSize: 14, lineHeight: 20 },
+  qrWrap: { alignItems: "center", marginTop: 16, marginBottom: 4 },
+  qr: { width: 200, height: 200, borderRadius: 12, backgroundColor: "#fff" },
+  linkBox: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: "#F8FAFB" },
+  linkText: { flex: 1, color: "#0B6E8F", fontWeight: "600", fontSize: 13 },
+  shareHint: { color: "#8895A0", fontSize: 12, marginTop: 12, lineHeight: 17 },
 });

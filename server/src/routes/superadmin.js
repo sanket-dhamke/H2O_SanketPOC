@@ -7,6 +7,7 @@ import { validatePassword } from "../passwordPolicy.js";
 import { isPremium } from "../plan.js";
 import { emailPremiumInvoice } from "../invoice.js";
 import { sendEmail, emailConfigured } from "../email.js";
+import { ensureUniqueSlug } from "../slug.js";
 
 // Platform-owner ("superadmin") routes. The superadmin belongs to no society and
 // can see a cross-society summary and manage (create / activate) societies and
@@ -28,6 +29,7 @@ function summarize(societies, users, bills, expenses, venueBookings) {
         active: s.active,
         createdAt: s.createdAt,
         orgType: s.orgType || "society",
+        slug: s.slug || null,
         // Subscription plan info.
         plan: s.plan || "free",
         premium: isPremium(s),
@@ -170,12 +172,14 @@ superadminRouter.post("/societies", async (req, res) => {
     adminData = { name: adminName, email: normalizedEmail, passwordHash: bcrypt.hashSync(adminPassword, 10) };
   }
 
+  const slug = await ensureUniqueSlug(name);
   const society = await prisma.society.create({
     data: {
       name: String(name).trim(),
       city: city ? String(city).trim() : null,
       address: address ? String(address).trim() : null,
       orgType: orgType || "society",
+      slug,
     },
   });
 

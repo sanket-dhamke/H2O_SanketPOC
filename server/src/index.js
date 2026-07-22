@@ -14,9 +14,11 @@ import { superadminRouter } from "./routes/superadmin.js";
 import { communityRouter } from "./routes/community.js";
 import { amenitiesRouter } from "./routes/amenities.js";
 import { staffRouter } from "./routes/staff.js";
+import { tenantRouter } from "./routes/tenant.js";
 import { aiRouter } from "./routes/ai.js";
 import cron from "node-cron";
 import { runMonthlyBackups } from "./backup.js";
+import { backfillSlugs } from "./slug.js";
 
 const app = express();
 app.use(cors());
@@ -65,6 +67,7 @@ app.use("/api/superadmin", superadminRouter);
 app.use("/api", communityRouter);
 app.use("/api", amenitiesRouter);
 app.use("/api", staffRouter);
+app.use("/api", tenantRouter);
 app.use("/api/ai", aiRouter);
 
 // Secure endpoint to trigger the monthly backup from an EXTERNAL scheduler
@@ -107,4 +110,8 @@ const PORT = process.env.PORT || 4000;
 // Bind explicitly to IPv4 all-interfaces so phones on the LAN can connect.
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`H2O server running on http://0.0.0.0:${PORT}`);
+  // Ensure every existing tenant has a branded-login slug (idempotent).
+  backfillSlugs()
+    .then((n) => n > 0 && console.log(`Backfilled slugs for ${n} societ(y/ies).`))
+    .catch((e) => console.error("Slug backfill failed:", e.message));
 });

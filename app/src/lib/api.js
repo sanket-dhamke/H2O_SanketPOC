@@ -27,6 +27,17 @@ export const DEFAULT_API_URL =
 
 const TOKEN_KEY = "h2o.token";
 const API_URL_KEY = "h2o.apiUrl";
+const ORG_MODE_KEY = "h2o.orgMode";
+
+// Remembers the last org type ("society" | "preschool") so a returning user
+// sees the right branded login without any link or toggle.
+export async function getOrgMode() {
+  const v = await AsyncStorage.getItem(ORG_MODE_KEY);
+  return v === "preschool" ? "preschool" : v === "society" ? "society" : null;
+}
+export async function setOrgMode(mode) {
+  if (mode === "society" || mode === "preschool") await AsyncStorage.setItem(ORG_MODE_KEY, mode);
+}
 
 export async function getToken() {
   return AsyncStorage.getItem(TOKEN_KEY);
@@ -82,6 +93,8 @@ const qs = (params) => {
 };
 
 export const api = {
+  // Public: resolve a tenant slug to its branding (name + orgType) for the login screen.
+  tenantBranding: (slug) => request(`/api/tenant/${encodeURIComponent(slug)}`),
   login: (email, password) =>
     request("/api/auth/login", { method: "POST", body: { email, password } }),
   forgotPassword: (email) =>
