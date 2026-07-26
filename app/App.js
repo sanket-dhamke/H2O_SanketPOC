@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import * as Notifications from "expo-notifications";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AuthProvider, useAuth } from "./src/lib/auth";
 import { registerForPushNotifications } from "./src/lib/push";
@@ -56,32 +57,40 @@ const TAB_ICONS = {
   Societies: "business",
 };
 
-const tabScreenOptions = ({ route }) => ({
-  ...screenHeader,
-  headerShown: false,
-  tabBarActiveTintColor: "#0B6E8F",
-  tabBarInactiveTintColor: "#93A2AB",
-  tabBarLabelStyle: { fontSize: 10, fontWeight: "700", marginTop: -2 },
-  tabBarItemStyle: { paddingHorizontal: 2 },
-  tabBarAllowFontScaling: false,
-  tabBarStyle: {
-    backgroundColor: "#fff",
-    borderTopWidth: 0,
-    height: 68,
-    paddingTop: 8,
-    paddingBottom: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: -3 },
-    elevation: 12,
-  },
-  tabBarIcon: ({ color, size, focused }) => {
-    const base = TAB_ICONS[route.name] || "ellipse";
-    const name = focused ? base : `${base}-outline`;
-    return <Ionicons name={name} size={size ?? 22} color={color} />;
-  },
-});
+// Builds the tab-navigator options, adding the device's bottom safe-area inset
+// to the tab bar so it never sits behind the phone's system navigation bar
+// (gesture pill / 3-button controls). Must be used inside a component (hook).
+function useTabScreenOptions() {
+  const insets = useSafeAreaInsets();
+  const bottomInset = insets.bottom || 0;
+  return ({ route }) => ({
+    ...screenHeader,
+    headerShown: false,
+    tabBarActiveTintColor: "#0B6E8F",
+    tabBarInactiveTintColor: "#93A2AB",
+    tabBarLabelStyle: { fontSize: 10, fontWeight: "700", marginTop: -2 },
+    tabBarItemStyle: { paddingHorizontal: 2, paddingTop: 4 },
+    tabBarAllowFontScaling: false,
+    tabBarStyle: {
+      backgroundColor: "#fff",
+      borderTopWidth: 0,
+      // Base bar height + whatever the OS reserves for its nav bar.
+      height: 62 + bottomInset,
+      paddingTop: 8,
+      paddingBottom: 8 + bottomInset,
+      shadowColor: "#000",
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: -3 },
+      elevation: 12,
+    },
+    tabBarIcon: ({ color, size, focused }) => {
+      const base = TAB_ICONS[route.name] || "ellipse";
+      const name = focused ? base : `${base}-outline`;
+      return <Ionicons name={name} size={size ?? 22} color={color} />;
+    },
+  });
+}
 
 function MembersStackScreen() {
   return (
@@ -123,6 +132,7 @@ function AdminTabs() {
   const { user } = useAuth();
   const preschool = isPreschool(user);
   const L = labelsFor(user);
+  const tabScreenOptions = useTabScreenOptions();
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
@@ -139,6 +149,7 @@ function AdminTabs() {
 function ResidentTabs() {
   const { user } = useAuth();
   const L = labelsFor(user);
+  const tabScreenOptions = useTabScreenOptions();
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
@@ -152,6 +163,7 @@ function ResidentTabs() {
 }
 
 function SuperAdminTabs() {
+  const tabScreenOptions = useTabScreenOptions();
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Overview" component={SuperAdminDashboardScreen} />
@@ -164,6 +176,7 @@ function GuardTabs() {
   const { user } = useAuth();
   const preschool = isPreschool(user);
   const L = labelsFor(user);
+  const tabScreenOptions = useTabScreenOptions();
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
@@ -221,9 +234,11 @@ function AppInner() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppInner />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <AppInner />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 
