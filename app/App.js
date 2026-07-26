@@ -18,6 +18,7 @@ import AssistantScreen from "./src/screens/AssistantScreen";
 import CommunityScreen from "./src/screens/CommunityScreen";
 import AmenitiesScreen from "./src/screens/AmenitiesScreen";
 import StaffAttendanceScreen from "./src/screens/StaffAttendanceScreen";
+import RentAgreementsScreen from "./src/screens/RentAgreementsScreen";
 import { isPreschool, labelsFor } from "./src/lib/org";
 import AdminDashboardScreen from "./src/screens/admin/AdminDashboardScreen";
 import ManageUsersScreen from "./src/screens/admin/ManageUsersScreen";
@@ -35,6 +36,7 @@ const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 const MembersStack = createNativeStackNavigator();
 const FinanceStack = createNativeStackNavigator();
+const MaintenanceStack = createNativeStackNavigator();
 
 const screenHeader = { headerStyle: { backgroundColor: "#0B6E8F" }, headerTintColor: "#fff" };
 
@@ -87,9 +89,20 @@ function MembersStackScreen() {
       <MembersStack.Screen name="ManageUsers" component={ManageUsersScreen} />
       <MembersStack.Screen name="CreateAccount" component={CreateAccountScreen} />
       <MembersStack.Screen name="ManageFlats" component={ManageFlatsScreen} />
+      <MembersStack.Screen name="RentAgreements" component={RentAgreementsScreen} />
       <MembersStack.Screen name="Onboarding" component={OnboardingScreen} />
       <MembersStack.Screen name="BankAccount" component={BankAccountScreen} />
     </MembersStack.Navigator>
+  );
+}
+
+// Residents reach the rent-agreement screen from their Maintenance tab.
+function MaintenanceStackScreen() {
+  return (
+    <MaintenanceStack.Navigator screenOptions={{ headerShown: false }}>
+      <MaintenanceStack.Screen name="MaintenanceHome" component={MaintenanceScreen} />
+      <MaintenanceStack.Screen name="RentAgreements" component={RentAgreementsScreen} />
+    </MaintenanceStack.Navigator>
   );
 }
 
@@ -129,7 +142,7 @@ function ResidentTabs() {
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-      <Tab.Screen name="Maintenance" component={MaintenanceScreen} options={{ tabBarLabel: L.feesShort }} />
+      <Tab.Screen name="Maintenance" component={MaintenanceStackScreen} options={{ tabBarLabel: L.feesShort }} />
       <Tab.Screen name="Community" component={CommunityScreen} />
       <Tab.Screen name="Amenities" component={AmenitiesScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ tabBarLabel: L.visitors }} />

@@ -42,3 +42,29 @@ export async function uploadVisitorPhoto(base64, id) {
 export function placeholderPhoto(seed) {
   return `https://i.pravatar.cc/150?u=${encodeURIComponent(seed)}`;
 }
+
+// Uploads a document (rent agreement, etc.) sent as a base64 data URL. Supports
+// PDFs and images. Returns a public URL, or null if storage isn't configured.
+export async function uploadDocument(base64, id, folder = "documents") {
+  if (!storageEnabled || !base64) return null;
+  try {
+    const match = /^data:([\w/+.-]+);base64,(.+)$/.exec(base64);
+    const contentType = match ? match[1] : "application/pdf";
+    const raw = match ? match[2] : base64;
+    const extMap = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+    const ext = extMap[contentType] || (contentType.split("/")[1] || "bin");
+    const buffer = Buffer.from(raw, "base64");
+    const path = `${folder}/${id}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, buffer, { contentType, upsert: true });
+    if (error) throw error;
+
+    const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+    return data?.publicUrl || null;
+  } catch (err) {
+    console.error("Document upload failed:", err.message);
+    return null;
+  }
+}

@@ -227,6 +227,20 @@ export const api = {
     request("/api/admin/fees/run-reminders", { method: "POST" }),
   adminWhatsappStatus: () => request("/api/admin/whatsapp-status"),
 
+  // Rent agreements (society rented flats): submit, list, verify, expiry sweep
+  rentAgreements: (params) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return request(`/api/rent-agreements${qs}`);
+  },
+  createRentAgreement: (payload) =>
+    request("/api/rent-agreements", { method: "POST", body: payload }),
+  verifyRentAgreement: (id, payload) =>
+    request(`/api/rent-agreements/${id}/verify`, { method: "POST", body: payload || {} }),
+  deleteRentAgreement: (id) =>
+    request(`/api/rent-agreements/${id}`, { method: "DELETE" }),
+  runRentExpiry: () =>
+    request("/api/rent-agreements/run-expiry-check", { method: "POST" }),
+
   // Community: announcements (admin -> all) + posts board (residents)
   announcements: () => request("/api/announcements"),
   createAnnouncement: (payload) =>

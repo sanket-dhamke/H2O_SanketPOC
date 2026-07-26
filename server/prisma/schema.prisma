@@ -96,6 +96,13 @@ model Flat {
   flatNo    String
   block     String?
   ownerName String?
+  // Occupancy: "owner" (default) or "rented". Rented flats can have a different
+  // monthly maintenance and can hold a rent agreement that the admin verifies.
+  occupancy String @default("owner")
+  // Optional override for the monthly maintenance charged to a RENTED flat.
+  // When set and occupancy = "rented", bill generation uses this instead of the
+  // society-wide amount. Null = use the standard amount.
+  rentMaintenanceAmount Float?
   // Preschool: the child's guardian/parent contact used for fee reminders even
   // when no parent login exists yet. Ignored for societies.
   guardianName  String?
@@ -104,6 +111,7 @@ model Flat {
   residents User[]
   bills     Bill[]
   visitors  Visitor[]
+  agreements RentAgreement[]
   createdAt DateTime  @default(now())
 
   // Flat numbers are unique within a society (two societies may both have A-101).
@@ -186,6 +194,45 @@ model Payment {
   createdAt      DateTime @default(now())
 
   @@index([billId])
+}
+
+// A rent/lease agreement for a RENTED flat. A resident (tenant/owner) submits it
+// from the app with the lease dates and an optional uploaded document; the admin
+// verifies it. As the end date approaches, early reminders and an on-expiry notice
+// are sent to the admin, owner and tenant. Only relevant for flats marked rented.
+model RentAgreement {
+  id          String   @id @default(uuid())
+  flat        Flat     @relation(fields: [flatId], references: [id], onDelete: Cascade)
+  flatId      String
+  // Denormalized for cheap society-scoped queries and cron sweeps.
+  societyId   String
+  tenantName  String
+  tenantPhone String?
+  tenantEmail String?
+  ownerName   String?
+  ownerPhone  String?
+  startDate   String // "YYYY-MM-DD"
+  endDate     String // "YYYY-MM-DD"
+  rentAmount  Float?
+  // Uploaded agreement document (public URL from storage) + original file name.
+  documentUrl  String?
+  documentName String?
+  // "pending" (awaiting admin) | "verified" | "rejected" | "expired"
+  status          String   @default("pending")
+  verifiedBy      String?
+  verifiedAt      DateTime?
+  rejectionReason String?
+  // Expiry-reminder bookkeeping so each stage fires once:
+  // null -> "T-30" -> "T-15" -> "T-7" -> "expired".
+  lastNotifiedStage String?
+  lastNotifiedAt    DateTime?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([flatId])
+  @@index([societyId])
+  @@index([status])
 }
 
 model Visitor {

@@ -150,6 +150,15 @@ export default function MaintenanceScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        ListHeaderComponent={
+          !isAdmin ? (
+            <TouchableOpacity style={styles.rentLink} onPress={() => navigation.navigate("RentAgreements")}>
+              <Ionicons name="document-text-outline" size={18} color="#0B6E8F" />
+              <Text style={styles.rentLinkText}>Rent agreement — submit & track (rented flats)</Text>
+              <Ionicons name="chevron-forward" size={18} color="#0B6E8F" />
+            </TouchableOpacity>
+          ) : null
+        }
         renderItem={({ item }) => (
           <View style={styles.bill}>
             <View style={{ flex: 1 }}>
@@ -337,6 +346,8 @@ function ReceiptRow({ label, value }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
+  rentLink: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#EAF4F8", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, marginBottom: 14 },
+  rentLinkText: { flex: 1, color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
   headerStat: { alignItems: "flex-end" },
   headerStatLabel: { color: "#CDE9F2", fontSize: 11, fontWeight: "600" },
   headerStatValue: { color: "#fff", fontSize: 24, fontWeight: "800", marginTop: 2 },

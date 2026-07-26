@@ -122,20 +122,30 @@ adminRouter.delete("/users/:id", async (req, res) => {
 adminRouter.get("/flats", async (req, res) => {
   const flats = await prisma.flat.findMany({
     where: { societyId: sid(req) },
-    include: { _count: { select: { residents: true } } },
+    include: {
+      _count: { select: { residents: true } },
+      agreements: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
     orderBy: { flatNo: "asc" },
   });
   res.json({
-    flats: flats.map((f) => ({
-      id: f.id,
-      flatNo: f.flatNo,
-      block: f.block,
-      ownerName: f.ownerName,
-      guardianName: f.guardianName || null,
-      guardianPhone: f.guardianPhone || null,
-      guardianEmail: f.guardianEmail || null,
-      residentCount: f._count.residents,
-    })),
+    flats: flats.map((f) => {
+      const latest = f.agreements?.[0] || null;
+      return {
+        id: f.id,
+        flatNo: f.flatNo,
+        block: f.block,
+        ownerName: f.ownerName,
+        occupancy: f.occupancy || "owner",
+        rentMaintenanceAmount: f.rentMaintenanceAmount ?? null,
+        agreementStatus: latest?.status || null,
+        agreementEndDate: latest?.endDate || null,
+        guardianName: f.guardianName || null,
+        guardianPhone: f.guardianPhone || null,
+        guardianEmail: f.guardianEmail || null,
+        residentCount: f._count.residents,
+      };
+    }),
   });
 });
 
@@ -162,11 +172,16 @@ adminRouter.post("/flats", async (req, res) => {
 adminRouter.patch("/flats/:id", async (req, res) => {
   const flat = await prisma.flat.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
   if (!flat) return res.status(404).json({ message: "Not found" });
-  const { flatNo, block, ownerName, guardianName, guardianPhone, guardianEmail } = req.body || {};
+  const { flatNo, block, ownerName, occupancy, rentMaintenanceAmount, guardianName, guardianPhone, guardianEmail } = req.body || {};
   const data = {};
   if (flatNo !== undefined) data.flatNo = String(flatNo).trim();
   if (block !== undefined) data.block = block ? String(block).trim() : null;
   if (ownerName !== undefined) data.ownerName = ownerName ? String(ownerName).trim() : null;
+  if (occupancy !== undefined) data.occupancy = occupancy === "rented" ? "rented" : "owner";
+  if (rentMaintenanceAmount !== undefined) {
+    data.rentMaintenanceAmount =
+      rentMaintenanceAmount === null || rentMaintenanceAmount === "" ? null : Number(rentMaintenanceAmount);
+  }
   if (guardianName !== undefined) data.guardianName = guardianName ? String(guardianName).trim() : null;
   if (guardianPhone !== undefined) data.guardianPhone = guardianPhone ? String(guardianPhone).trim() : null;
   if (guardianEmail !== undefined) data.guardianEmail = guardianEmail ? String(guardianEmail).trim().toLowerCase() : null;
@@ -270,11 +285,16 @@ adminRouter.post("/bills", async (req, res) => {
   for (const flat of flats) {
     const existing = await prisma.bill.findFirst({ where: { flatId: flat.id, period } });
     if (existing) continue;
+    // Rented flats with an override are billed their own maintenance amount.
+    const flatAmount =
+      flat.occupancy === "rented" && flat.rentMaintenanceAmount != null
+        ? flat.rentMaintenanceAmount
+        : Number(amount);
     await prisma.bill.create({
       data: {
         flatId: flat.id,
         period,
-        amount: Number(amount),
+        amount: flatAmount,
         dueDate: dueDate || `${period}-10`,
         status: "pending",
       },

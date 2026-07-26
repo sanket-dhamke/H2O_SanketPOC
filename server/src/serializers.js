@@ -181,3 +181,37 @@ export function serializeBooking(b) {
     createdAt: b.createdAt,
   };
 }
+
+// Days until a "YYYY-MM-DD" date (negative once past). Null for bad/empty input.
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const end = new Date(`${dateStr}T00:00:00`);
+  if (isNaN(end.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((end - today) / 86400000);
+}
+
+export function serializeRentAgreement(a) {
+  return {
+    id: a.id,
+    flatId: a.flatId,
+    flatNo: a.flat?.flatNo || null,
+    block: a.flat?.block || null,
+    tenantName: a.tenantName,
+    tenantPhone: a.tenantPhone || null,
+    tenantEmail: a.tenantEmail || null,
+    ownerName: a.ownerName || null,
+    ownerPhone: a.ownerPhone || null,
+    startDate: a.startDate,
+    endDate: a.endDate,
+    daysToExpiry: daysUntil(a.endDate),
+    rentAmount: a.rentAmount ?? null,
+    documentUrl: a.documentUrl || null,
+    documentName: a.documentName || null,
+    status: a.status,
+    verifiedAt: a.verifiedAt,
+    rejectionReason: a.rejectionReason || null,
+    createdAt: a.createdAt,
+  };
+}

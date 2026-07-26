@@ -15,12 +15,14 @@ import { communityRouter } from "./routes/community.js";
 import { amenitiesRouter } from "./routes/amenities.js";
 import { staffRouter } from "./routes/staff.js";
 import { tenantRouter } from "./routes/tenant.js";
+import { rentRouter } from "./routes/rent.js";
 import { aiRouter } from "./routes/ai.js";
 import cron from "node-cron";
 import { runMonthlyBackups } from "./backup.js";
 import { backfillSlugs } from "./slug.js";
 import { recordPayment } from "./billing.js";
 import { runFeeReminders } from "./feeReminders.js";
+import { runRentExpiryChecks } from "./rentReminders.js";
 
 const app = express();
 app.use(cors());
@@ -74,6 +76,7 @@ app.use("/api", communityRouter);
 app.use("/api", amenitiesRouter);
 app.use("/api", staffRouter);
 app.use("/api", tenantRouter);
+app.use("/api", rentRouter);
 app.use("/api/ai", aiRouter);
 
 // Secure endpoint to trigger the monthly backup from an EXTERNAL scheduler
@@ -102,6 +105,21 @@ app.post("/api/cron/fee-reminders", async (req, res) => {
   }
   try {
     const result = await runFeeReminders();
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Secure endpoint to trigger the rent-agreement expiry sweep externally.
+app.post("/api/cron/rent-expiry", async (req, res) => {
+  const secret = process.env.CRON_SECRET || "";
+  const provided = req.headers["x-cron-secret"] || req.query.secret;
+  if (!secret || provided !== secret) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  try {
+    const result = await runRentExpiryChecks();
     res.json({ ok: true, ...result });
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -137,6 +155,20 @@ if (process.env.FEE_REMINDER_CRON_ENABLED !== "false") {
       if (r.sent || r.attempted) console.log(`[fees] reminders: sent ${r.sent}/${r.attempted}`);
     } catch (e) {
       console.error("[fees] reminder run failed:", e.message);
+    }
+  });
+}
+
+// Daily rent-agreement expiry sweep (default 9:15am): early reminders (~30/15/7
+// days) and on-expiry notices to admin, owner and tenant. Disable with
+// RENT_EXPIRY_CRON_ENABLED=false. Also exposed via /api/cron/rent-expiry.
+if (process.env.RENT_EXPIRY_CRON_ENABLED !== "false") {
+  cron.schedule(process.env.RENT_EXPIRY_CRON || "15 9 * * *", async () => {
+    try {
+      const r = await runRentExpiryChecks();
+      if (r.notified) console.log(`[rent] expiry notices sent: ${r.notified}/${r.checked}`);
+    } catch (e) {
+      console.error("[rent] expiry run failed:", e.message);
     }
   });
 }
