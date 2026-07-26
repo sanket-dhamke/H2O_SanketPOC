@@ -70,6 +70,9 @@ export default function LoginScreen() {
 
   useEffect(() => {
     getBaseUrl().then(setServerUrl);
+    // Wake a possibly-sleeping (cold-start) backend in the background so it's
+    // ready by the time the user finishes typing — hides the free-tier spin-up.
+    api.warmUp().catch(() => {});
   }, []);
 
   // Auto-brand the login ONLY from a branded link/QR (?t=slug or /t/slug).

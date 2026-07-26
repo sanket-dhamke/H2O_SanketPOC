@@ -96,6 +96,8 @@ const qs = (params) => {
 };
 
 export const api = {
+  // Lightweight ping used to wake a sleeping (cold-start) backend before login.
+  warmUp: () => request("/api/health"),
   // Public: resolve a tenant slug to its branding (name + orgType) for the login screen.
   tenantBranding: (slug) => request(`/api/tenant/${encodeURIComponent(slug)}`),
   login: (email, password) =>
