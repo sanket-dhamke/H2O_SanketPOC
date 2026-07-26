@@ -11,7 +11,7 @@ import {
   Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { Audio } from "expo-av";
+import { useAudioRecorder, AudioModule, RecordingPresets, setAudioModeAsync } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -34,7 +34,8 @@ export default function GateScreen({ navigation }) {
   const [purpose, setPurpose] = useState(preschool ? "Pickup" : "Guest");
   const [photo, setPhoto] = useState(null); // { uri, base64 }
   const [busy, setBusy] = useState(false);
-  const [recording, setRecording] = useState(null);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [isRecording, setIsRecording] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
 
   const flatsRef = useRef([]);
@@ -65,28 +66,27 @@ export default function GateScreen({ navigation }) {
 
   const startRecording = async () => {
     try {
-      const perm = await Audio.requestPermissionsAsync();
+      const perm = await AudioModule.requestRecordingPermissionsAsync();
       if (!perm.granted) {
         Alert.alert("Microphone needed", "Please allow microphone access to dictate details.");
         return;
       }
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      setRecording(recording);
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
+      setIsRecording(true);
     } catch (e) {
       Alert.alert("Recording failed", e.message);
     }
   };
 
   const stopRecording = async () => {
-    if (!recording) return;
+    if (!isRecording) return;
     setVoiceBusy(true);
     try {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      setRecording(null);
+      await audioRecorder.stop();
+      const uri = audioRecorder.uri;
+      setIsRecording(false);
       const base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
@@ -168,14 +168,14 @@ export default function GateScreen({ navigation }) {
       <ScreenHeader icon="person-add" title="New visitor" subtitle="Log an entry at the gate" />
       <ScrollView contentContainerStyle={{ padding: 20 }}>
       <TouchableOpacity
-        style={[styles.voiceBtn, recording && styles.voiceBtnActive, voiceBusy && { opacity: 0.6 }]}
-        onPress={recording ? stopRecording : startRecording}
+        style={[styles.voiceBtn, isRecording && styles.voiceBtnActive, voiceBusy && { opacity: 0.6 }]}
+        onPress={isRecording ? stopRecording : startRecording}
         disabled={voiceBusy}
       >
         <Text style={styles.voiceBtnText}>
           {voiceBusy
             ? "Transcribing..."
-            : recording
+            : isRecording
               ? "◼  Stop & fill form"
               : "🎤  Dictate details (AI)"}
         </Text>

@@ -41,7 +41,7 @@
         }
       ],
       [
-        "expo-av",
+        "expo-audio",
         {
           "microphonePermission": "H2O uses the microphone so the gate guard can dictate visitor details."
         }
