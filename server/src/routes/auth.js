@@ -162,11 +162,27 @@ authRouter.patch("/me/preferences", authRequired, async (req, res) => {
 // Flat list for pickers (guards choose a flat when logging a visitor).
 // Scoped to the caller's society.
 authRouter.get("/flats", authRequired, async (req, res) => {
+  const societyId = req.user.societyId || "__none__";
   const flats = await prisma.flat.findMany({
-    where: { societyId: req.user.societyId || "__none__" },
+    where: { societyId },
     orderBy: { flatNo: "asc" },
   });
-  res.json({ flats: flats.map((f) => ({ id: f.id, flatNo: f.flatNo, block: f.block })) });
+  // Count active residents per flat so the guard picker can flag flats that
+  // have no resident account yet (those can't receive a visitor to approve).
+  const groups = await prisma.user.groupBy({
+    by: ["flatId"],
+    where: { societyId, role: "resident", active: true, flatId: { not: null } },
+    _count: { _all: true },
+  });
+  const countByFlat = new Map(groups.map((g) => [g.flatId, g._count._all]));
+  res.json({
+    flats: flats.map((f) => ({
+      id: f.id,
+      flatNo: f.flatNo,
+      block: f.block,
+      residentCount: countByFlat.get(f.id) || 0,
+    })),
+  });
 });
 
 // Non-sensitive society payee info so residents can see where maintenance goes.

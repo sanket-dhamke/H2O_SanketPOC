@@ -203,17 +203,42 @@ export default function GateScreen({ navigation }) {
 
       <Text style={styles.label}>{L.unit} *</Text>
       <View style={styles.chips}>
-        {flats.map((f) => (
-          <TouchableOpacity
-            key={f.id}
-            style={[styles.chip, flatId === f.id && styles.chipActive]}
-            onPress={() => setFlatId(f.id)}
-          >
-            <Text style={[styles.chipText, flatId === f.id && styles.chipTextActive]}>{f.flatNo}</Text>
-          </TouchableOpacity>
-        ))}
+        {flats.map((f) => {
+          // In societies a flat with no resident account can't receive a visitor
+          // to approve, so block it here (clear reason) instead of failing on submit.
+          const noResident = !preschool && (f.residentCount ?? 1) === 0;
+          return (
+            <TouchableOpacity
+              key={f.id}
+              style={[styles.chip, flatId === f.id && styles.chipActive, noResident && styles.chipDisabled]}
+              onPress={() =>
+                noResident
+                  ? Alert.alert(
+                      "No resident yet",
+                      `${f.flatNo} has no resident account yet, so nobody can approve the visitor. Ask the admin to add a resident for ${f.flatNo}.`
+                    )
+                  : setFlatId(f.id)
+              }
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  flatId === f.id && styles.chipTextActive,
+                  noResident && styles.chipTextDisabled,
+                ]}
+              >
+                {f.flatNo}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
         {flats.length === 0 && <Text style={styles.hint}>Loading {L.units.toLowerCase()}...</Text>}
       </View>
+      {!preschool && flats.some((f) => (f.residentCount ?? 1) === 0) && (
+        <Text style={styles.hint}>
+          Greyed {L.units.toLowerCase()} have no resident account yet — ask the admin to add one.
+        </Text>
+      )}
 
       <Text style={styles.label}>Purpose</Text>
       <View style={styles.chips}>
@@ -280,8 +305,10 @@ const styles = StyleSheet.create({
     borderColor: "#D6DEE3",
   },
   chipActive: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },
+  chipDisabled: { backgroundColor: "#EEF1F3", borderColor: "#E1E6E9", opacity: 0.6 },
   chipText: { color: "#334", fontWeight: "600" },
   chipTextActive: { color: "#fff" },
+  chipTextDisabled: { color: "#A6B0B7" },
   button: {
     backgroundColor: "#0B6E8F",
     borderRadius: 10,

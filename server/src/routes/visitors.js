@@ -39,8 +39,16 @@ visitorsRouter.post("/visitors", authRequired, roleRequired("guard", "admin"), a
   }
 
   const visitorId = randomUUID();
-  const photoUrl =
-    (await uploadVisitorPhoto(photoBase64, visitorId)) || placeholderPhoto(visitorId);
+  // Prefer cloud storage. If it isn't configured, keep the guard's real photo by
+  // storing the base64 data URL inline (so residents see the actual visitor, not
+  // a random placeholder avatar). Fall back to a placeholder only when no photo.
+  let photoUrl = await uploadVisitorPhoto(photoBase64, visitorId);
+  if (!photoUrl) {
+    photoUrl =
+      photoBase64 && /^data:image\//.test(photoBase64)
+        ? photoBase64
+        : placeholderPhoto(visitorId);
+  }
 
   const visitor = await prisma.visitor.create({
     data: {
