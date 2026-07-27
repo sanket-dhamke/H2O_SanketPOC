@@ -16,6 +16,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
+import { payBooking } from "../lib/pay";
 import { useAuth } from "../lib/auth";
 import { labelsFor } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
@@ -259,7 +260,8 @@ function BookingRow({ booking, onChanged }) {
   const pay = async () => {
     setBusy(true);
     try {
-      await api.payBooking(booking.id);
+      const result = await payBooking(booking);
+      if (result.cancelled) return;
       Alert.alert("Payment successful", `Your ${booking.amenityName} slot is confirmed.`);
       onChanged();
     } catch (e) {

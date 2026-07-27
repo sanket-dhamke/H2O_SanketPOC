@@ -261,6 +261,9 @@ export const api = {
     request("/api/bookings", { method: "POST", body: payload }),
   cancelBooking: (id) => request(`/api/bookings/${id}/cancel`, { method: "POST" }),
   payBooking: (id) => request(`/api/bookings/${id}/pay`, { method: "POST" }),
+  createBookingOrder: (id) => request(`/api/bookings/${id}/create-order`, { method: "POST" }),
+  verifyBookingPayment: (id, payload) =>
+    request(`/api/bookings/${id}/verify`, { method: "POST", body: payload }),
   // Admin amenity management
   adminListAmenities: () => request("/api/admin/amenities"),
   adminCreateAmenity: (payload) =>

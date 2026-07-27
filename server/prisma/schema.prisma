@@ -390,6 +390,7 @@ model Booking {
   status     String      @default("requested")
   amount     Float       @default(0)
   notes      String?
+  orderId    String?
   paymentRef String?
   paidAt     DateTime?
   decidedBy  String?

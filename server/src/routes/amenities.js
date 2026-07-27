@@ -1,8 +1,10 @@
 import { Router } from "express";
+import { createHmac } from "crypto";
 import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
 import { serializeAmenity, serializeBooking } from "../serializers.js";
 import { sendPush } from "../push.js";
+import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorpay.js";
 
 // Amenity / clubhouse booking engine (per society).
 // Flow: admin enables an amenity + slots (price) -> resident requests a slot on a
@@ -107,28 +109,134 @@ amenitiesRouter.post("/bookings/:id/cancel", authRequired, async (req, res) => {
   res.json({ booking: serializeBooking(updated) });
 });
 
-// Resident pays an approved booking (mock payment; mirrors maintenance test mode).
-amenitiesRouter.post("/bookings/:id/pay", authRequired, async (req, res) => {
+// Fetch a booking the current user is allowed to pay, or send an error response.
+async function getPayableBooking(req, res) {
   const booking = await prisma.booking.findFirst({
     where: { id: req.params.id, societyId: sid(req) },
     include: { amenity: true, slot: true },
+  });
+  if (!booking) {
+    res.status(404).json({ message: "Booking not found" });
+    return null;
+  }
+  if (req.user.role !== "admin" && booking.residentId !== req.user.id) {
+    res.status(403).json({ message: "Not your booking" });
+    return null;
+  }
+  if (booking.status === "paid") {
+    res.status(400).json({ message: "Booking already paid" });
+    return null;
+  }
+  if (booking.status !== "approved") {
+    res.status(400).json({ message: "Only approved bookings can be paid" });
+    return null;
+  }
+  return booking;
+}
+
+function markBookingPaid(bookingId, paymentRef) {
+  return prisma.booking.update({
+    where: { id: bookingId },
+    data: { status: "paid", paidAt: new Date(), paymentRef },
+    include: { amenity: true, slot: true, resident: { include: { flat: true } } },
+  });
+}
+
+// Fallback "mock" payment (used only when Razorpay keys are not configured).
+amenitiesRouter.post("/bookings/:id/pay", authRequired, async (req, res) => {
+  const booking = await getPayableBooking(req, res);
+  if (!booking) return;
+  const updated = await markBookingPaid(
+    booking.id,
+    "BOOK-" + booking.id.slice(0, 8).toUpperCase()
+  );
+  res.json({ booking: serializeBooking(updated) });
+});
+
+// Step 1: create a Razorpay order for the booking; the app opens checkout with it.
+amenitiesRouter.post("/bookings/:id/create-order", authRequired, async (req, res) => {
+  const booking = await getPayableBooking(req, res);
+  if (!booking) return;
+  if (!razorpayEnabled) return res.json({ enabled: false });
+
+  const amountPaise = Math.round((booking.amount || 0) * 100);
+  if (amountPaise <= 0) {
+    return res.status(400).json({ message: "This booking has no payable amount" });
+  }
+
+  const payer = await prisma.user.findUnique({
+    where: { id: booking.residentId },
+    select: { name: true, email: true },
+  });
+
+  // Route the amount to the society's Razorpay Route linked account when set.
+  const society = await prisma.societyAccount.findFirst({
+    where: { societyId: booking.societyId },
+    orderBy: { createdAt: "asc" },
+  });
+  const notes = {
+    bookingId: booking.id,
+    amenity: booking.amenity?.name || "",
+    slot: booking.slot?.label || "",
+    date: booking.date,
+  };
+  const transfers =
+    society?.active && society?.razorpayAccountId
+      ? [{ account: society.razorpayAccountId, amount: amountPaise, currency: "INR", notes, on_hold: false }]
+      : undefined;
+
+  try {
+    const order = await razorpay.orders.create({
+      amount: amountPaise,
+      currency: "INR",
+      receipt: booking.id,
+      notes,
+      ...(transfers ? { transfers } : {}),
+    });
+    await prisma.booking.update({ where: { id: booking.id }, data: { orderId: order.id } });
+    res.json({
+      enabled: true,
+      keyId: RZP_KEY_ID,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      name: "H2O Society",
+      description: `${booking.amenity?.name || "Amenity"} · ${booking.slot?.label || ""} · ${booking.date}`,
+      prefill: { name: payer?.name || "", email: payer?.email || "" },
+    });
+  } catch (err) {
+    const rzpMsg = err?.error?.description || err?.message;
+    console.error("Razorpay booking order failed:", err?.error || err.message);
+    const routeIssue = transfers && /route|transfer|linked account/i.test(rzpMsg || "");
+    res.status(502).json({
+      message: routeIssue
+        ? "Payment routing failed. Ensure Razorpay Route is enabled and the linked account id is valid."
+        : "Could not create payment order",
+    });
+  }
+});
+
+// Step 2: verify the payment signature returned by checkout, then mark paid.
+amenitiesRouter.post("/bookings/:id/verify", authRequired, async (req, res) => {
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    return res.status(400).json({ message: "Missing payment verification fields" });
+  }
+  const booking = await prisma.booking.findFirst({
+    where: { id: req.params.id, societyId: sid(req) },
   });
   if (!booking) return res.status(404).json({ message: "Booking not found" });
   if (req.user.role !== "admin" && booking.residentId !== req.user.id) {
     return res.status(403).json({ message: "Not your booking" });
   }
-  if (booking.status !== "approved") {
-    return res.status(400).json({ message: "Only approved bookings can be paid" });
+  const expected = createHmac("sha256", RZP_KEY_SECRET)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest("hex");
+  if (expected !== razorpay_signature) {
+    return res.status(400).json({ message: "Payment verification failed" });
   }
-  const updated = await prisma.booking.update({
-    where: { id: booking.id },
-    data: {
-      status: "paid",
-      paidAt: new Date(),
-      paymentRef: "BOOK-" + booking.id.slice(0, 8).toUpperCase(),
-    },
-    include: { amenity: true, slot: true, resident: { include: { flat: true } } },
-  });
+  if (booking.status === "paid") return res.status(400).json({ message: "Booking already paid" });
+  const updated = await markBookingPaid(booking.id, razorpay_payment_id);
   res.json({ booking: serializeBooking(updated) });
 });
 
