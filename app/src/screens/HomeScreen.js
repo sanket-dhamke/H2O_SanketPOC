@@ -23,6 +23,11 @@ const HERO = {
   guard: require("../../assets/home-guard.png"),
 };
 
+// Preschool tenants share a warm classroom-themed backdrop instead of the
+// society building photos, so a preschool with no custom branding still looks
+// on-brand for its org type.
+const PRESCHOOL_HERO = require("../../assets/preschool-bg.png");
+
 export default function HomeScreen({ navigation }) {
   const { user, logout } = useAuth();
   const insets = useSafeAreaInsets();
@@ -59,7 +64,8 @@ export default function HomeScreen({ navigation }) {
   // background. Fall back to the default themed photo if it's unset or the URL
   // fails to load (e.g. not a direct image link).
   const customBg = !!user.societyLogoUrl && !bgError;
-  const heroSource = customBg ? { uri: user.societyLogoUrl } : HERO[user.role];
+  const defaultHero = isPreschool(user) ? PRESCHOOL_HERO : HERO[user.role];
+  const heroSource = customBg ? { uri: user.societyLogoUrl } : defaultHero;
 
   return (
     <ScrollView
