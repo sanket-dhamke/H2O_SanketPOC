@@ -8,10 +8,10 @@ import {
   RefreshControl,
   Alert,
   Modal,
-  TextInput,
   Switch,
   ActivityIndicator,
 } from "react-native";
+import TextInput from "../components/AppTextInput";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";

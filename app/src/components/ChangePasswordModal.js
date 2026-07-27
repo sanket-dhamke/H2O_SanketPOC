@@ -4,11 +4,11 @@ import {
   Text,
   StyleSheet,
   Modal,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   Alert,
 } from "react-native";
+import TextInput from "./AppTextInput";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";

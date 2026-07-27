@@ -8,8 +8,8 @@ import {
   RefreshControl,
   Alert,
   Modal,
-  TextInput,
 } from "react-native";
+import TextInput from "../../components/AppTextInput";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,6 +19,15 @@ import { labelsFor, isPreschool } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
+
+// Flats that still owe but have no app login or email on file to reach.
+function unreachableNote(res, L) {
+  if (!res.unreachable?.length) return "";
+  return (
+    `\n\n${res.unreachable.length} ${L.unit.toLowerCase()}(s) have dues but no app/email on file: ` +
+    `${res.unreachable.join(", ")}. Add a resident email or ask them to log into the app.`
+  );
+}
 
 export default function AdminDashboardScreen() {
   const navigation = useNavigation();
@@ -56,7 +65,23 @@ export default function AdminDashboardScreen() {
     setBusy(true);
     try {
       const res = await api.adminRemindUnpaid();
-      Alert.alert("Reminders sent", `Notified ${res.notified} ${L.payer.toLowerCase()}(s) with dues.`);
+      const payer = L.payer.toLowerCase();
+      if (!res.notified) {
+        const base = res.unreachable?.length
+          ? `No ${payer} could be reached.`
+          : `No ${payer}s to remind — everyone is up to date.`;
+        Alert.alert("Reminders", base + unreachableNote(res, L));
+      } else {
+        const parts = [];
+        if (res.pushed) parts.push(`${res.pushed} via app`);
+        if (res.emailed) parts.push(`${res.emailed} via email`);
+        Alert.alert(
+          "Reminders sent",
+          `Notified ${res.notified} ${payer}(s) with dues` +
+            (parts.length ? ` (${parts.join(", ")}).` : ".") +
+            unreachableNote(res, L)
+        );
+      }
     } catch (e) {
       Alert.alert("Error", e.message);
     } finally {

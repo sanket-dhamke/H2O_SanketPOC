@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   FlatList,
   TouchableOpacity,
@@ -10,6 +9,7 @@ import {
   RefreshControl,
   Modal,
 } from "react-native";
+import TextInput from "../../components/AppTextInput";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";

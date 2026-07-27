@@ -2,13 +2,13 @@ import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   FlatList,
   TouchableOpacity,
   Alert,
   RefreshControl,
 } from "react-native";
+import TextInput from "../components/AppTextInput";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";

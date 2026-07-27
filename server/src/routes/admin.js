@@ -6,6 +6,7 @@ import { authRequired, roleRequired } from "../auth.js";
 import { publicUser, serializeBill, serializeVenueBooking, serializeVisitor, serializeStaffAttendance } from "../serializers.js";
 import { validatePassword } from "../passwordPolicy.js";
 import { sendPush } from "../push.js";
+import { sendEmail } from "../email.js";
 import { buildSocietyBackup, emailSocietyBackup, buildWingReport, listBlocks } from "../backup.js";
 import { parseCsv } from "../csv.js";
 import { isPremium } from "../plan.js";
@@ -454,27 +455,69 @@ adminRouter.get("/fees", async (req, res) => {
   res.json({ students, summary: { totalFees, totalCollected, totalBalance, count: students.length } });
 });
 
-// Push a reminder to every resident who still has a pending bill.
+// Remind every resident of a flat that still owes maintenance. Covers bills that
+// are "pending" OR "partial" (any outstanding balance), sends a push when the
+// resident has the app, and falls back to email when they don't. Reports a
+// breakdown plus the flats that couldn't be reached (no app/email on file).
 adminRouter.post("/reminders", async (req, res) => {
-  const pendingBills = await prisma.bill.findMany({
-    where: { status: "pending", flat: { societyId: sid(req) } },
+  const openBills = await prisma.bill.findMany({
+    where: { flat: { societyId: sid(req) }, status: { in: ["pending", "partial"] } },
     include: { flat: { include: { residents: true } } },
   });
-  const notified = new Set();
-  for (const bill of pendingBills) {
-    for (const resident of bill.flat.residents) {
-      if (resident.role !== "resident" || !resident.expoPushToken) continue;
-      if (notified.has(resident.id)) continue;
-      notified.add(resident.id);
-      await sendPush(
-        resident.expoPushToken,
-        "Maintenance payment reminder",
-        `Flat ${bill.flat.flatNo} has pending society maintenance. Please pay at the earliest.`,
-        { type: "reminder" }
-      );
-    }
+
+  // A flat may have several open bills — sum the outstanding balance per flat.
+  const dueByFlat = new Map(); // flatId -> { flat, balance }
+  for (const bill of openBills) {
+    const bal = billBalance(bill);
+    if (bal <= 0) continue;
+    const entry = dueByFlat.get(bill.flatId) || { flat: bill.flat, balance: 0 };
+    entry.balance += bal;
+    dueByFlat.set(bill.flatId, entry);
   }
-  res.json({ ok: true, notified: notified.size });
+
+  let pushed = 0;
+  let emailed = 0;
+  const unreachable = []; // flats with dues but no reachable resident
+  const handled = new Set();
+
+  for (const { flat, balance } of dueByFlat.values()) {
+    const rupee = `\u20B9${Number(balance).toLocaleString("en-IN")}`;
+    let deliveredForFlat = 0;
+    for (const resident of flat.residents) {
+      if (resident.role !== "resident") continue;
+      if (handled.has(resident.id)) continue;
+      handled.add(resident.id);
+
+      let delivered = false;
+      if (resident.expoPushToken) {
+        await sendPush(
+          resident.expoPushToken,
+          "Maintenance payment reminder",
+          `Flat ${flat.flatNo} has ${rupee} pending society maintenance. Please pay at the earliest.`,
+          { type: "reminder" }
+        );
+        pushed++;
+        delivered = true;
+      } else if (resident.email) {
+        const r = await sendEmail({
+          to: resident.email,
+          subject: "Maintenance payment reminder",
+          text:
+            `Dear ${resident.name || "Resident"},\n\n` +
+            `Flat ${flat.flatNo} has ${rupee} pending society maintenance. ` +
+            `Please pay at your earliest convenience.\n\nThank you.`,
+        });
+        if (r.delivered) {
+          emailed++;
+          delivered = true;
+        }
+      }
+      if (delivered) deliveredForFlat++;
+    }
+    if (deliveredForFlat === 0) unreachable.push(flat.flatNo);
+  }
+
+  res.json({ ok: true, notified: pushed + emailed, pushed, emailed, unreachable });
 });
 
 /* ------------------------------ Expenses --------------------------------- */

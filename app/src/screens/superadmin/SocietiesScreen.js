@@ -8,10 +8,11 @@ import {
   RefreshControl,
   Alert,
   Modal,
-  TextInput,
   Image,
+  ImageBackground,
   Platform,
 } from "react-native";
+import TextInput from "../../components/AppTextInput";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -365,7 +366,7 @@ function BrandingModal({ society, onClose, onDone }) {
     setBusy(true);
     try {
       await api.superUpdateSociety(society.id, { name: name.trim(), logoUrl: logoUrl.trim() });
-      Alert.alert("Branding saved", "Members will see the new name/logo the next time they open the app.");
+      Alert.alert("Branding saved", "Members will see the new name/background the next time they open the app.");
       onClose();
       onDone();
     } catch (e) {
@@ -379,23 +380,25 @@ function BrandingModal({ society, onClose, onDone }) {
     <FormModal visible={!!society} onClose={onClose} title="Branding" icon="color-palette-outline" busy={busy} onSubmit={submit}>
       <Label>Display name *</Label>
       <TextInput style={styles.input} value={name} onChangeText={setName} placeholder={isPre ? "Little Millennium Preschool" : "Green Valley Residency"} />
-      <Label>Logo URL (optional)</Label>
-      <TextInput style={styles.input} value={logoUrl} onChangeText={setLogoUrl} placeholder="https://.../logo.png" autoCapitalize="none" keyboardType="url" />
-      <View style={styles.brandPreview}>
-        {logoUrl.trim() ? (
-          <Image source={{ uri: logoUrl.trim() }} style={styles.brandPreviewLogo} resizeMode="cover" />
-        ) : (
-          <View style={[styles.brandPreviewLogo, styles.brandPreviewFallback]}>
-            <Text style={styles.brandPreviewInitial}>{(name.trim() || "?").charAt(0).toUpperCase()}</Text>
-          </View>
-        )}
-        <View style={{ flex: 1 }}>
-          <Text style={styles.brandPreviewName} numberOfLines={1}>{name.trim() || "Display name"}</Text>
-          <Text style={styles.brandPreviewSub}>Preview of the Home header</Text>
+      <Label>Dashboard background image (optional)</Label>
+      <TextInput style={styles.input} value={logoUrl} onChangeText={setLogoUrl} placeholder="https://.../cover.jpg" autoCapitalize="none" keyboardType="url" />
+      <Text style={styles.previewCaption}>Preview of the Home header after login</Text>
+      {logoUrl.trim() ? (
+        <ImageBackground source={{ uri: logoUrl.trim() }} style={styles.brandBgPreview} imageStyle={{ borderRadius: 12 }}>
+          <View style={styles.brandBgOverlay} />
+          <Text style={styles.brandBgName} numberOfLines={1}>{name.trim() || "Display name"}</Text>
+          <Text style={styles.brandBgSub}>Hi, Admin</Text>
+        </ImageBackground>
+      ) : (
+        <View style={[styles.brandBgPreview, styles.brandBgFallback]}>
+          <Text style={styles.brandBgName} numberOfLines={1}>{name.trim() || "Display name"}</Text>
+          <Text style={styles.brandBgSub}>Default themed background</Text>
         </View>
-      </View>
+      )}
       <Text style={styles.shareHint}>
-        Paste a public image URL (PNG/JPG). Leave blank to show the first letter of the name as a badge.
+        Paste a direct public image URL (ends in .png/.jpg/.webp). This becomes the dashboard header
+        background members see after login. A Google "share" link won't work — use a direct image link
+        (e.g. Imgur, Cloudinary, your website). Leave blank to keep the default themed background.
       </Text>
     </FormModal>
   );
@@ -897,6 +900,12 @@ const styles = StyleSheet.create({
   brandPreviewInitial: { color: "#fff", fontWeight: "800", fontSize: 18 },
   brandPreviewName: { color: "#fff", fontWeight: "800", fontSize: 16 },
   brandPreviewSub: { color: "#CDE7F0", fontSize: 11, marginTop: 2 },
+  previewCaption: { color: "#8895A0", fontSize: 12, marginTop: 12, marginBottom: 6 },
+  brandBgPreview: { height: 110, borderRadius: 12, overflow: "hidden", justifyContent: "flex-end", padding: 14, backgroundColor: "#0B6E8F" },
+  brandBgFallback: { alignItems: "flex-start", backgroundColor: "#0B6E8F" },
+  brandBgOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(4,30,40,0.38)" },
+  brandBgName: { color: "#fff", fontWeight: "800", fontSize: 18 },
+  brandBgSub: { color: "#E7F3F7", fontSize: 12, marginTop: 2 },
   searchRow: {
     flexDirection: "row",
     alignItems: "center",

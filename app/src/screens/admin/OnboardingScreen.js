@@ -2,12 +2,12 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   Alert,
 } from "react-native";
+import TextInput from "../../components/AppTextInput";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import ScreenHeader from "../../components/ScreenHeader";

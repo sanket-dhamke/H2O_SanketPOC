@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
@@ -12,6 +11,7 @@ import {
   ScrollView,
   Linking,
 } from "react-native";
+import TextInput from "../components/AppTextInput";
 import { useAuth } from "../lib/auth";
 import { getBaseUrl, setBaseUrl, clearOrgMode, api } from "../lib/api";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
@@ -277,6 +277,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: "#1B2B33",
+    // Android bug: a secureTextEntry field ignores `color` for the masked dots
+    // unless a fontFamily is also set — force the built-in sans-serif so the
+    // typed password renders dark (visible) instead of white.
+    ...Platform.select({ android: { fontFamily: "sans-serif" }, default: {} }),
   },
   showBtn: { paddingHorizontal: 14, paddingVertical: 12 },
   showBtnText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },

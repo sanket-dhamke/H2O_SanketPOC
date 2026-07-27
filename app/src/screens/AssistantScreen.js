@@ -2,7 +2,6 @@ import React, { useRef, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
+import TextInput from "../components/AppTextInput";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import ScreenHeader from "../components/ScreenHeader";

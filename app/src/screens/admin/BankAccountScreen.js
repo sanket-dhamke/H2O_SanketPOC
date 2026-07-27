@@ -2,13 +2,13 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   Alert,
   ActivityIndicator,
 } from "react-native";
+import TextInput from "../../components/AppTextInput";
 import { api } from "../../lib/api";
 import ScreenHeader from "../../components/ScreenHeader";
 

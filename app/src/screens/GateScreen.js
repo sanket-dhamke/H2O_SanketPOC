@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   TouchableOpacity,
   Alert,
@@ -10,6 +9,7 @@ import {
   Image,
   Platform,
 } from "react-native";
+import TextInput from "../components/AppTextInput";
 import * as ImagePicker from "expo-image-picker";
 import { useAudioRecorder, AudioModule, RecordingPresets, setAudioModeAsync } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";

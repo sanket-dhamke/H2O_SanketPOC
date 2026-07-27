@@ -29,6 +29,7 @@ export default function HomeScreen({ navigation }) {
   const [totalDue, setTotalDue] = useState(0);
   const [pendingVisitors, setPendingVisitors] = useState(0);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [bgError, setBgError] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -54,6 +55,12 @@ export default function HomeScreen({ navigation }) {
   const roleLabel = { resident: L.payer, admin: L.roleAdmin, guard: "Gate desk" }[user.role];
   const actions = getActions(user.role, L, isPreschool(user));
 
+  // A tenant's branded image (set by the H2O owner) becomes the dashboard header
+  // background. Fall back to the default themed photo if it's unset or the URL
+  // fails to load (e.g. not a direct image link).
+  const customBg = !!user.societyLogoUrl && !bgError;
+  const heroSource = customBg ? { uri: user.societyLogoUrl } : HERO[user.role];
+
   return (
     <ScrollView
       style={styles.container}
@@ -61,7 +68,8 @@ export default function HomeScreen({ navigation }) {
       showsVerticalScrollIndicator={false}
     >
       <ImageBackground
-        source={HERO[user.role]}
+        source={heroSource}
+        onError={() => setBgError(true)}
         style={[styles.hero, { height: 210 + insets.top }]}
         imageStyle={styles.heroImg}
       >
@@ -70,18 +78,12 @@ export default function HomeScreen({ navigation }) {
           <View style={{ flex: 1 }}>
             {user.societyName ? (
               <View style={styles.brandRow}>
-                {user.societyLogoUrl ? (
-                  <Image source={{ uri: user.societyLogoUrl }} style={styles.brandLogo} resizeMode="cover" />
-                ) : (
-                  <View style={[styles.brandLogo, styles.brandLogoFallback]}>
-                    <Text style={styles.brandLogoInitial}>{user.societyName.trim().charAt(0).toUpperCase()}</Text>
-                  </View>
-                )}
+                <Image source={require("../../assets/icon.png")} style={styles.brandLogo} resizeMode="cover" />
                 <Text style={styles.brandName} numberOfLines={1}>{user.societyName}</Text>
               </View>
             ) : null}
             <Text style={styles.welcome}>Welcome back</Text>
-            <Text style={styles.hi}>Hi, {user.name.split(" ")[0]}</Text>
+            <Text style={styles.hi} numberOfLines={2}>Hi, {user.name}</Text>
             <View style={styles.badge}>
               <Ionicons name="location-outline" size={12} color="#fff" />
               <Text style={styles.badgeText}>
@@ -211,7 +213,7 @@ const styles = StyleSheet.create({
 
   hero: { height: 210, justifyContent: "flex-start" },
   heroImg: { resizeMode: "cover" },
-  heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(6, 40, 52, 0.45)" },
+  heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(6, 40, 52, 0.55)" },
   heroContent: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -239,15 +241,22 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,
   },
-  welcome: { color: "#DCEDF3", fontSize: 13, fontWeight: "600" },
+  welcome: {
+    color: "#EAF4F8",
+    fontSize: 13,
+    fontWeight: "600",
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
   hi: {
     color: "#fff",
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: "800",
     marginTop: 2,
-    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowColor: "rgba(0,0,0,0.65)",
     textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
+    textShadowRadius: 10,
   },
   badge: {
     flexDirection: "row",

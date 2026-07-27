@@ -2,7 +2,6 @@ import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -12,6 +11,7 @@ import {
   Share,
   Linking,
 } from "react-native";
+import TextInput from "../../components/AppTextInput";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";

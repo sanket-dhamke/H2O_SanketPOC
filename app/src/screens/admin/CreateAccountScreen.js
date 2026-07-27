@@ -2,12 +2,12 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   Alert,
 } from "react-native";
+import TextInput from "../../components/AppTextInput";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { labelsFor, isPreschool } from "../../lib/org";
