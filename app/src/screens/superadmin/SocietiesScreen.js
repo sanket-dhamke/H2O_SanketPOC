@@ -855,8 +855,11 @@ const styles = StyleSheet.create({
   finLabel: { color: "#6B7B85", fontSize: 11 },
   finVal: { fontSize: 15, fontWeight: "800", color: "#1B2B33", marginTop: 2 },
   admins: { color: "#6B7B85", fontSize: 12, marginTop: 12 },
-  actions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
-  actionGhost: { flexGrow: 1, flexBasis: "31%", minWidth: 96, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, backgroundColor: "#EEF4F6", borderRadius: 10, paddingVertical: 11, paddingHorizontal: 6 },
+  actions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 8, marginTop: 14 },
+  // Explicit-width 2-column grid: RN honours `width: "48%"` deterministically,
+  // so buttons are wide enough that labels never wrap or overflow (percentage
+  // flexBasis was collapsing all 5 into one cramped row on some devices).
+  actionGhost: { width: "48%", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "#EEF4F6", borderRadius: 10, paddingVertical: 12, paddingHorizontal: 8 },
   actionOn: { backgroundColor: "#DFF3E6" },
   actionGhostText: { color: "#0B6E8F", fontWeight: "700", fontSize: 12.5 },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 24 },

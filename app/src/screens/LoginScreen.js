@@ -219,6 +219,7 @@ export default function LoginScreen() {
 
             <Text style={styles.hint}>{theme.hint}</Text>
           </View>
+          <Text style={styles.buildTag}>H2O · build 4</Text>
         </ScrollView>
       </KeyboardAvoidingView>
       <ForgotPasswordModal
@@ -278,9 +279,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#1B2B33",
     // Android bug: a secureTextEntry field ignores `color` for the masked dots
-    // unless a fontFamily is also set — force the built-in sans-serif so the
-    // typed password renders dark (visible) instead of white.
-    ...Platform.select({ android: { fontFamily: "sans-serif" }, default: {} }),
+    // unless a NON-DEFAULT fontFamily is set — "monospace" reliably forces the
+    // typed password to render dark (visible) instead of faint/white.
+    ...Platform.select({ android: { fontFamily: "monospace" }, default: {} }),
   },
   showBtn: { paddingHorizontal: 14, paddingVertical: 12 },
   showBtnText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
@@ -295,4 +296,5 @@ const styles = StyleSheet.create({
   forgot: { color: "#0B6E8F", fontWeight: "700", fontSize: 13, textAlign: "center", marginTop: 14 },
   advancedToggle: { color: "#0B6E8F", fontWeight: "600", fontSize: 13, textAlign: "center", marginTop: 16 },
   hint: { color: "#8895A0", fontSize: 12, textAlign: "center", marginTop: 16, lineHeight: 18 },
+  buildTag: { color: "rgba(255,255,255,0.85)", fontSize: 11, textAlign: "center", marginTop: 16, fontWeight: "600", textShadowColor: "rgba(0,0,0,0.4)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
 });
