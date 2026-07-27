@@ -84,3 +84,41 @@ export async function payBooking(booking) {
   });
   return { paid: true };
 }
+
+// A society admin pays H2O's platform subscription. Same real flow; settles to
+// H2O's own Razorpay account. Falls back to the mock when Razorpay is off.
+export async function paySubscription() {
+  const order = await api.createSubscriptionOrder();
+  if (!order.enabled) {
+    const r = await api.paySubscriptionMock();
+    return { paid: true, mock: true, ...r };
+  }
+
+  const options = {
+    key: order.keyId,
+    order_id: order.orderId,
+    amount: order.amount,
+    currency: order.currency,
+    name: order.name,
+    description: order.description,
+    prefill: { name: order.prefill?.name, email: order.prefill?.email },
+    theme: { color: "#0B6E8F" },
+  };
+
+  let result;
+  try {
+    result = await RazorpayCheckout.open(options);
+  } catch (err) {
+    if (err?.code === 0 || /cancel/i.test(err?.description || "")) {
+      return { cancelled: true };
+    }
+    throw new Error(err?.description || "Payment failed");
+  }
+
+  const r = await api.verifySubscriptionPayment({
+    razorpay_order_id: result.razorpay_order_id,
+    razorpay_payment_id: result.razorpay_payment_id,
+    razorpay_signature: result.razorpay_signature,
+  });
+  return { paid: true, ...r };
+}

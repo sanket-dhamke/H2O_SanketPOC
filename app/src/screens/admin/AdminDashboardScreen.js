@@ -121,6 +121,10 @@ export default function AdminDashboardScreen() {
           <Text style={styles.collectText}>Vendor marketplace (premium)</Text>
         </TouchableOpacity>
       )}
+      <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("PayToH2O")}>
+        <Ionicons name="ribbon-outline" size={18} color="#0B6E8F" />
+        <Text style={styles.collectText}>H2O subscription — Pay to H2O</Text>
+      </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>{L.unit}-wise status</Text>
       {(data?.perFlat || []).map((f) => (

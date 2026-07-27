@@ -45,8 +45,10 @@ export default function ProfileModal({ visible, onClose }) {
   const [pwModal, setPwModal] = useState(false);
   const [notifyBusy, setNotifyBusy] = useState(false);
   const [orders, setOrders] = useState(null);
+  const [platform, setPlatform] = useState(null);
 
   const isResident = user?.role === "resident";
+  const isSuper = user?.role === "superadmin";
 
   const loadOrders = useCallback(async () => {
     if (!isResident) return;
@@ -68,6 +70,12 @@ export default function ProfileModal({ visible, onClose }) {
   useEffect(() => {
     if (visible) loadOrders();
   }, [visible, loadOrders]);
+
+  useEffect(() => {
+    if (visible && isSuper) {
+      api.superSettings().then((r) => setPlatform(r.settings || null)).catch(() => {});
+    }
+  }, [visible, isSuper]);
 
   const toggleNotify = async (value) => {
     setNotifyBusy(true);
@@ -132,6 +140,9 @@ export default function ProfileModal({ visible, onClose }) {
             {!!user.societyAddress && <Row icon="map-outline" label="Address" value={user.societyAddress} />}
             <Row icon="mail-outline" label="Email" value={user.email} />
             {!!user.phone && <Row icon="call-outline" label="Phone" value={user.phone} />}
+            {isSuper && !!platform?.contactEmail && (
+              <Row icon="at-outline" label="Platform contact" value={platform.contactEmail} />
+            )}
           </Section>
 
           {/* Preferences */}

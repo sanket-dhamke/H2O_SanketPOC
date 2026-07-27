@@ -7,8 +7,10 @@ import {
   RefreshControl,
   TouchableOpacity,
   Alert,
+  Modal,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -17,15 +19,30 @@ import ProfileModal from "../../components/ProfileModal";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
+// Config for each tappable tile: which per-society field to break down + how to
+// render each value. Counts show as-is; money fields format as rupees.
+const BREAKDOWNS = {
+  flats: { title: "Flats", field: "flats", icon: "business", color: "#0B6E8F", money: false },
+  residents: { title: "Residents", field: "residents", icon: "people", color: "#2E9E52", money: false },
+  guards: { title: "Guards", field: "guards", icon: "shield-checkmark", color: "#7A5AF8", money: false },
+  admins: { title: "Admins", field: "admins", icon: "briefcase", color: "#C2571A", money: false },
+  collected: { title: "Collected", field: "collected", icon: "cash", color: "#2E9E52", money: true },
+  pending: { title: "Pending dues", field: "pending", icon: "alert-circle", color: "#C2571A", money: true },
+};
+
 export default function SuperAdminDashboardScreen() {
   const { logout } = useAuth();
   const [data, setData] = useState(null);
+  const [rows, setRows] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [breakdown, setBreakdown] = useState(null); // key into BREAKDOWNS
 
   const load = useCallback(async () => {
     try {
-      setData(await api.superOverview());
+      const [overview, list] = await Promise.all([api.superOverview(), api.superListSocieties()]);
+      setData(overview);
+      setRows(list.societies || []);
     } catch (e) {
       Alert.alert("Error", e.message);
     }
@@ -58,6 +75,7 @@ export default function SuperAdminDashboardScreen() {
     <View style={styles.container}>
       <ScreenHeader
         icon="planet"
+        logo={require("../../../assets/icon.png")}
         title="H2O Platform"
         subtitle="Owner overview across all societies"
         right={headerBtns}
@@ -74,11 +92,12 @@ export default function SuperAdminDashboardScreen() {
         </View>
 
         <View style={styles.grid}>
-          <Metric icon="business" label="Flats" value={data?.flats ?? 0} color="#0B6E8F" />
-          <Metric icon="people" label="Residents" value={data?.residents ?? 0} color="#2E9E52" />
-          <Metric icon="shield-checkmark" label="Guards" value={data?.guards ?? 0} color="#7A5AF8" />
-          <Metric icon="briefcase" label="Admins" value={data?.admins ?? 0} color="#C2571A" />
+          <Metric icon="business" label="Flats" value={data?.flats ?? 0} color="#0B6E8F" onPress={() => setBreakdown("flats")} />
+          <Metric icon="people" label="Residents" value={data?.residents ?? 0} color="#2E9E52" onPress={() => setBreakdown("residents")} />
+          <Metric icon="shield-checkmark" label="Guards" value={data?.guards ?? 0} color="#7A5AF8" onPress={() => setBreakdown("guards")} />
+          <Metric icon="briefcase" label="Admins" value={data?.admins ?? 0} color="#C2571A" onPress={() => setBreakdown("admins")} />
         </View>
+        <Text style={styles.tapHint}>Tap any card to see the breakdown by society.</Text>
 
         <Text style={styles.sectionTitle}>H2O revenue</Text>
         <View style={styles.revenueCard}>
@@ -106,8 +125,8 @@ export default function SuperAdminDashboardScreen() {
 
         <Text style={styles.sectionTitle}>Platform finances</Text>
         <View style={styles.finRow}>
-          <Fin label="Collected" value={money(data?.collected)} color="#2E9E52" />
-          <Fin label="Pending" value={money(data?.pending)} color="#C2571A" />
+          <Fin label="Collected" value={money(data?.collected)} color="#2E9E52" onPress={() => setBreakdown("collected")} />
+          <Fin label="Pending" value={money(data?.pending)} color="#C2571A" onPress={() => setBreakdown("pending")} />
         </View>
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>Net balance (all societies)</Text>
@@ -135,28 +154,77 @@ export default function SuperAdminDashboardScreen() {
           </>
         )}
       </ScrollView>
+      <BreakdownModal
+        config={breakdown ? BREAKDOWNS[breakdown] : null}
+        rows={rows}
+        onClose={() => setBreakdown(null)}
+      />
     </View>
   );
 }
 
-function Metric({ icon, label, value, color }) {
+function Metric({ icon, label, value, color, onPress }) {
   return (
-    <View style={styles.metric}>
+    <TouchableOpacity style={styles.metric} onPress={onPress} activeOpacity={0.7}>
       <View style={[styles.metricIcon, { backgroundColor: color }]}>
         <Ionicons name={icon} size={18} color="#fff" />
       </View>
       <Text style={styles.metricValue}>{value}</Text>
       <Text style={styles.metricLabel}>{label}</Text>
-    </View>
+      <Ionicons name="chevron-forward" size={14} color="#B7C1C8" style={styles.metricChevron} />
+    </TouchableOpacity>
   );
 }
 
-function Fin({ label, value, color }) {
+function Fin({ label, value, color, onPress }) {
   return (
-    <View style={[styles.fin, { borderTopColor: color }]}>
+    <TouchableOpacity style={[styles.fin, { borderTopColor: color }]} onPress={onPress} activeOpacity={0.7}>
       <Text style={styles.finValue}>{value}</Text>
       <Text style={styles.finLabel}>{label}</Text>
-    </View>
+    </TouchableOpacity>
+  );
+}
+
+// Lists the selected metric per society (sorted high -> low), with a total.
+function BreakdownModal({ config, rows, onClose }) {
+  if (!config) return null;
+  const fmt = (v) => (config.money ? money(v) : String(v ?? 0));
+  const list = [...rows].sort((a, b) => (b[config.field] || 0) - (a[config.field] || 0));
+  const total = rows.reduce((s, r) => s + (Number(r[config.field]) || 0), 0);
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <View style={styles.modalCard}>
+          <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
+            <View style={styles.modalHeaderIcon}>
+              <Ionicons name={config.icon} size={20} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.modalTitle}>{config.title} by society</Text>
+              <Text style={styles.modalSub}>Total: {fmt(total)} across {rows.length} tenant{rows.length === 1 ? "" : "s"}</Text>
+            </View>
+          </LinearGradient>
+          <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={styles.modalBody}>
+            {list.length === 0 && <Text style={styles.bdEmpty}>No societies onboarded yet.</Text>}
+            {list.map((s) => (
+              <View key={s.id} style={styles.bdRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.bdName} numberOfLines={1}>{s.name}</Text>
+                  <Text style={styles.bdCity} numberOfLines={1}>
+                    {s.orgType === "preschool" ? "Preschool" : "Society"}{s.city ? ` · ${s.city}` : ""}
+                  </Text>
+                </View>
+                <Text style={[styles.bdVal, { color: config.color }]}>{fmt(s[config.field])}</Text>
+              </View>
+            ))}
+            <TouchableOpacity style={styles.bdCloseBtn} onPress={onClose}>
+              <Text style={styles.bdCloseText}>Done</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -178,6 +246,8 @@ const styles = StyleSheet.create({
   metricIcon: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   metricValue: { fontSize: 24, fontWeight: "800", color: "#1B2B33", marginTop: 10 },
   metricLabel: { color: "#6B7B85", fontSize: 12, marginTop: 2 },
+  metricChevron: { position: "absolute", right: 12, top: 14 },
+  tapHint: { color: "#8895A0", fontSize: 12, marginTop: 10, marginLeft: 2 },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: "#1B2B33", marginTop: 26, marginBottom: 10 },
   revenueCard: { backgroundColor: "#fff", borderRadius: 16, padding: 18, borderLeftWidth: 4, borderLeftColor: "#E0A83E" },
   revenueTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
@@ -202,4 +272,18 @@ const styles = StyleSheet.create({
   dueCity: { color: "#6B7B85", fontSize: 12, marginTop: 2 },
   dueAmt: { color: "#C2571A", fontWeight: "800" },
   allClear: { color: "#6B7B85", textAlign: "center", marginTop: 8 },
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 24 },
+  modalCard: { backgroundColor: "#fff", borderRadius: 18, overflow: "hidden" },
+  modalHeader: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingVertical: 16 },
+  modalHeaderIcon: { width: 38, height: 38, borderRadius: 11, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
+  modalTitle: { fontSize: 17, fontWeight: "800", color: "#fff" },
+  modalSub: { fontSize: 12, color: "#CDE9F2", marginTop: 2 },
+  modalBody: { padding: 18, paddingTop: 14 },
+  bdEmpty: { color: "#6B7B85", textAlign: "center", paddingVertical: 20 },
+  bdRow: { flexDirection: "row", alignItems: "center", paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#EAEEF0" },
+  bdName: { fontWeight: "700", color: "#1B2B33", fontSize: 14 },
+  bdCity: { color: "#8895A0", fontSize: 12, marginTop: 2 },
+  bdVal: { fontWeight: "800", fontSize: 15 },
+  bdCloseBtn: { backgroundColor: "#0B6E8F", borderRadius: 10, paddingVertical: 13, alignItems: "center", marginTop: 18 },
+  bdCloseText: { color: "#fff", fontWeight: "700" },
 });

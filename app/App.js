@@ -30,6 +30,7 @@ import BankAccountScreen from "./src/screens/admin/BankAccountScreen";
 import ReportsScreen from "./src/screens/admin/ReportsScreen";
 import VenueMarketplaceScreen from "./src/screens/admin/VenueMarketplaceScreen";
 import AdminFeesScreen from "./src/screens/admin/AdminFeesScreen";
+import PayToH2OScreen from "./src/screens/admin/PayToH2OScreen";
 import SuperAdminDashboardScreen from "./src/screens/superadmin/SuperAdminDashboardScreen";
 import SocietiesScreen from "./src/screens/superadmin/SocietiesScreen";
 
@@ -124,6 +125,7 @@ function FinanceStackScreen() {
       <FinanceStack.Screen name="Amenities" component={AmenitiesScreen} />
       <FinanceStack.Screen name="Reports" component={ReportsScreen} />
       <FinanceStack.Screen name="VenueMarketplace" component={VenueMarketplaceScreen} />
+      <FinanceStack.Screen name="PayToH2O" component={PayToH2OScreen} />
     </FinanceStack.Navigator>
   );
 }

@@ -175,10 +175,28 @@ if (process.env.RENT_EXPIRY_CRON_ENABLED !== "false") {
 
 const PORT = process.env.PORT || 4000;
 // Bind explicitly to IPv4 all-interfaces so phones on the LAN can connect.
+// Creates the singleton platform settings row with sensible defaults the first
+// time the server boots (idempotent — never overwrites existing values).
+async function ensurePlatformSetting() {
+  const existing = await prisma.platformSetting.findUnique({ where: { id: "platform" } });
+  if (existing) return false;
+  await prisma.platformSetting.create({
+    data: {
+      id: "platform",
+      contactEmail: "sanket.dhamke@gmail.com",
+      upiId: "sanket.dhamke@okicici",
+    },
+  });
+  return true;
+}
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`H2O server running on http://0.0.0.0:${PORT}`);
   // Ensure every existing tenant has a branded-login slug (idempotent).
   backfillSlugs()
     .then((n) => n > 0 && console.log(`Backfilled slugs for ${n} societ(y/ies).`))
     .catch((e) => console.error("Slug backfill failed:", e.message));
+  ensurePlatformSetting()
+    .then((created) => created && console.log("Created default platform settings."))
+    .catch((e) => console.error("Platform settings init failed:", e.message));
 });

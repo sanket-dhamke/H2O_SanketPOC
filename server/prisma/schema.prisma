@@ -400,3 +400,37 @@ model Booking {
   @@index([societyId])
   @@index([slotId, date])
 }
+
+// Platform-level (H2O owner) settings: the contact email that platform emails
+// use, and H2O's own bank/UPI details shown to society admins for reference.
+// Singleton row with a fixed id ("platform").
+model PlatformSetting {
+  id            String   @id @default("platform")
+  contactEmail  String?
+  bankName      String?
+  accountName   String?
+  accountNumber String?
+  ifsc          String?
+  upiId         String?
+  updatedBy     String?
+  updatedAt     DateTime @updatedAt @default(now())
+}
+
+// A subscription payment made by a society/preschool to H2O (the platform).
+// Settles to H2O's own Razorpay account. societyId is a scalar snapshot so the
+// record survives even if the society is later removed.
+model PlatformPayment {
+  id          String   @id @default(uuid())
+  societyId   String
+  societyName String?
+  amount      Float
+  orderId     String?
+  paymentRef  String?
+  periodLabel String?
+  status      String   @default("paid")
+  createdBy   String?
+  paidAt      DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([societyId])
+}

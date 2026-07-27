@@ -210,6 +210,19 @@ export const api = {
     request(`/api/superadmin/societies/${id}/invoice`, { method: "POST", body: payload || {} }),
   superTestEmail: (to) =>
     request("/api/superadmin/test-email", { method: "POST", body: { to } }),
+  superSettings: () => request("/api/superadmin/settings"),
+  superUpdateSettings: (payload) =>
+    request("/api/superadmin/settings", { method: "PUT", body: payload }),
+  superPlatformPayments: () => request("/api/superadmin/platform-payments"),
+
+  // Admin: H2O subscription ("Pay to H2O")
+  adminSubscription: () => request("/api/admin/subscription"),
+  createSubscriptionOrder: () =>
+    request("/api/admin/subscription/create-order", { method: "POST" }),
+  verifySubscriptionPayment: (payload) =>
+    request("/api/admin/subscription/verify", { method: "POST", body: payload }),
+  paySubscriptionMock: () =>
+    request("/api/admin/subscription/pay", { method: "POST" }),
 
   // Admin: record a cash payment against a bill (optional partial `amount`)
   adminMarkCash: (id, payload) =>

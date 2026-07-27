@@ -154,6 +154,40 @@ superadminRouter.get("/societies", async (_req, res) => {
   res.json({ societies: rows });
 });
 
+/* --------------------- Platform (H2O owner) settings --------------------- */
+// The platform contact email + H2O's own bank/UPI details (shown to society
+// admins on the "Pay to H2O" screen for reference).
+superadminRouter.get("/settings", async (_req, res) => {
+  const s = await prisma.platformSetting.findUnique({ where: { id: "platform" } });
+  res.json({ settings: s || { id: "platform" } });
+});
+
+superadminRouter.put("/settings", async (req, res) => {
+  const { contactEmail, bankName, accountName, accountNumber, ifsc, upiId } = req.body || {};
+  const clean = (v) => (v == null || String(v).trim() === "" ? null : String(v).trim());
+  const data = {
+    contactEmail: clean(contactEmail),
+    bankName: clean(bankName),
+    accountName: clean(accountName),
+    accountNumber: clean(accountNumber),
+    ifsc: clean(ifsc),
+    upiId: clean(upiId),
+    updatedBy: req.user.id,
+  };
+  const settings = await prisma.platformSetting.upsert({
+    where: { id: "platform" },
+    update: data,
+    create: { id: "platform", ...data },
+  });
+  res.json({ settings });
+});
+
+// Recent subscription payments made by societies to H2O.
+superadminRouter.get("/platform-payments", async (_req, res) => {
+  const payments = await prisma.platformPayment.findMany({ orderBy: { paidAt: "desc" }, take: 100 });
+  res.json({ payments });
+});
+
 // POST /api/superadmin/societies — create a society and (optionally) its first admin.
 superadminRouter.post("/societies", async (req, res) => {
   const { name, city, address, adminName, adminEmail, adminPassword, orgType, logoUrl } = req.body || {};

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import { createHmac } from "crypto";
 import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
 import { publicUser, serializeBill, serializeVenueBooking, serializeVisitor, serializeStaffAttendance } from "../serializers.js";
@@ -8,7 +9,7 @@ import { sendPush } from "../push.js";
 import { buildSocietyBackup, emailSocietyBackup, buildWingReport, listBlocks } from "../backup.js";
 import { parseCsv } from "../csv.js";
 import { isPremium } from "../plan.js";
-import { razorpay, razorpayEnabled } from "../razorpay.js";
+import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorpay.js";
 import { recordPayment, effectivePaid, billBalance } from "../billing.js";
 import { sendFeeReminder, whatsappEnabled, WHATSAPP_BUSINESS_NUMBER } from "../whatsapp.js";
 import { runFeeReminders } from "../feeReminders.js";
@@ -872,4 +873,140 @@ adminRouter.post("/venue-bookings/:id/sync", async (req, res) => {
   } catch (err) {
     res.status(502).json({ message: err?.error?.description || err?.message || "Could not check payment status" });
   }
+});
+
+/* ------------------------- H2O subscription (Pay to H2O) ------------------- */
+// A society admin pays H2O's platform subscription. Payment settles to H2O's own
+// Razorpay account (a plain order, no Route transfer). Only admins reach these.
+
+function subscriptionAmount(society) {
+  return Number(society?.planAmount) || 0;
+}
+
+// Extends the society's premium term by a year and records the platform payment.
+async function activateSubscription(society, req, { amount, orderId, paymentRef }) {
+  const now = new Date();
+  const base = society.planExpiresAt && new Date(society.planExpiresAt) > now ? new Date(society.planExpiresAt) : now;
+  const newExpiry = new Date(base);
+  newExpiry.setFullYear(newExpiry.getFullYear() + 1);
+  const periodLabel = `${now.toLocaleDateString("en-IN")} - ${newExpiry.toLocaleDateString("en-IN")}`;
+  await prisma.$transaction([
+    prisma.society.update({ where: { id: society.id }, data: { plan: "premium", planExpiresAt: newExpiry } }),
+    prisma.platformPayment.create({
+      data: {
+        societyId: society.id,
+        societyName: society.name,
+        amount,
+        orderId: orderId || null,
+        paymentRef: paymentRef || null,
+        periodLabel,
+        createdBy: req.user.id,
+      },
+    }),
+  ]);
+  return { newExpiry, periodLabel };
+}
+
+// Current plan status + H2O bank/UPI reference + recent subscription payments.
+adminRouter.get("/subscription", async (req, res) => {
+  const society = await prisma.society.findUnique({ where: { id: sid(req) } });
+  const setting = await prisma.platformSetting.findUnique({ where: { id: "platform" } });
+  const payments = await prisma.platformPayment.findMany({
+    where: { societyId: sid(req) },
+    orderBy: { paidAt: "desc" },
+    take: 12,
+  });
+  res.json({
+    plan: society?.plan || "free",
+    planAmount: society?.planAmount ?? null,
+    planExpiresAt: society?.planExpiresAt || null,
+    premium: isPremium(society),
+    razorpayEnabled,
+    platform: setting
+      ? {
+          contactEmail: setting.contactEmail || null,
+          bankName: setting.bankName || null,
+          accountName: setting.accountName || null,
+          accountNumber: setting.accountNumber || null,
+          ifsc: setting.ifsc || null,
+          upiId: setting.upiId || null,
+        }
+      : null,
+    payments: payments.map((p) => ({
+      id: p.id,
+      amount: p.amount,
+      paidAt: p.paidAt,
+      ref: p.paymentRef,
+      period: p.periodLabel,
+    })),
+  });
+});
+
+// Step 1: create a Razorpay order for the plan amount (settles to H2O).
+adminRouter.post("/subscription/create-order", async (req, res) => {
+  const society = await prisma.society.findUnique({ where: { id: sid(req) } });
+  if (!society) return res.status(404).json({ message: "Society not found" });
+  const amount = subscriptionAmount(society);
+  if (!(amount > 0)) {
+    return res.status(400).json({ message: "No subscription amount is set yet. Ask H2O to set your plan amount." });
+  }
+  if (!razorpayEnabled) return res.json({ enabled: false });
+  try {
+    const order = await razorpay.orders.create({
+      amount: Math.round(amount * 100),
+      currency: "INR",
+      receipt: `sub_${society.id}`.slice(0, 40),
+      notes: { type: "h2o_subscription", societyId: society.id, societyName: society.name },
+    });
+    res.json({
+      enabled: true,
+      keyId: RZP_KEY_ID,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      name: "H2O Platform",
+      description: `H2O subscription - ${society.name}`,
+      prefill: { name: req.user.name || "", email: req.user.email || "" },
+    });
+  } catch (err) {
+    console.error("Razorpay subscription order failed:", err?.error || err.message);
+    res.status(502).json({ message: "Could not create payment order" });
+  }
+});
+
+// Step 2: verify the signature, extend the plan, and record the payment.
+adminRouter.post("/subscription/verify", async (req, res) => {
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    return res.status(400).json({ message: "Missing payment verification fields" });
+  }
+  const society = await prisma.society.findUnique({ where: { id: sid(req) } });
+  if (!society) return res.status(404).json({ message: "Society not found" });
+  const expected = createHmac("sha256", RZP_KEY_SECRET)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest("hex");
+  if (expected !== razorpay_signature) {
+    return res.status(400).json({ message: "Payment verification failed" });
+  }
+  const { newExpiry, periodLabel } = await activateSubscription(society, req, {
+    amount: subscriptionAmount(society),
+    orderId: razorpay_order_id,
+    paymentRef: razorpay_payment_id,
+  });
+  res.json({ ok: true, plan: "premium", planExpiresAt: newExpiry, periodLabel });
+});
+
+// Fallback used only when Razorpay isn't configured (keeps parity with bookings).
+adminRouter.post("/subscription/pay", async (req, res) => {
+  const society = await prisma.society.findUnique({ where: { id: sid(req) } });
+  if (!society) return res.status(404).json({ message: "Society not found" });
+  const amount = subscriptionAmount(society);
+  if (!(amount > 0)) {
+    return res.status(400).json({ message: "No subscription amount is set yet. Ask H2O to set your plan amount." });
+  }
+  const { newExpiry, periodLabel } = await activateSubscription(society, req, {
+    amount,
+    paymentRef: "SUB-" + society.id.slice(0, 8).toUpperCase(),
+  });
+  res.json({ ok: true, plan: "premium", planExpiresAt: newExpiry, periodLabel });
 });

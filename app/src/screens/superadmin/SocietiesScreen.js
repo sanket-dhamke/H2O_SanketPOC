@@ -52,6 +52,7 @@ export default function SocietiesScreen() {
   const [shareFor, setShareFor] = useState(null); // society object when sharing login link
   const [brandFor, setBrandFor] = useState(null); // society object when editing name/logo branding
   const [resetModal, setResetModal] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
@@ -107,7 +108,10 @@ export default function SocietiesScreen() {
     : societies;
 
   const headerBtns = (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      <TouchableOpacity onPress={() => setSettingsOpen(true)} style={styles.addBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <Ionicons name="settings-outline" size={19} color="#fff" />
+      </TouchableOpacity>
       <TouchableOpacity onPress={sendTestEmail} style={styles.addBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Ionicons name="mail-outline" size={20} color="#fff" />
       </TouchableOpacity>
@@ -124,6 +128,7 @@ export default function SocietiesScreen() {
     <View style={styles.container}>
       <ScreenHeader
         icon="business"
+        logo={require("../../../assets/icon.png")}
         title="Societies"
         subtitle={`${societies.length} onboarded`}
         right={headerBtns}
@@ -219,19 +224,19 @@ export default function SocietiesScreen() {
             <View style={styles.actions}>
               <TouchableOpacity style={styles.actionGhost} onPress={() => setAdminFor(s)}>
                 <Ionicons name="person-add-outline" size={16} color="#0B6E8F" />
-                <Text style={styles.actionGhostText}>Add admin</Text>
+                <Text style={styles.actionGhostText} numberOfLines={1}>Add admin</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionGhost} onPress={() => setPlanFor(s)}>
                 <Ionicons name="star-outline" size={16} color="#8A5A00" />
-                <Text style={[styles.actionGhostText, { color: "#8A5A00" }]}>Plan</Text>
+                <Text style={[styles.actionGhostText, { color: "#8A5A00" }]} numberOfLines={1}>Plan</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionGhost} onPress={() => setShareFor(s)}>
                 <Ionicons name="qr-code-outline" size={16} color="#0B6E8F" />
-                <Text style={styles.actionGhostText}>Login link</Text>
+                <Text style={styles.actionGhostText} numberOfLines={1}>Login link</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionGhost} onPress={() => setBrandFor(s)}>
                 <Ionicons name="color-palette-outline" size={16} color="#6D3BD1" />
-                <Text style={[styles.actionGhostText, { color: "#6D3BD1" }]}>Branding</Text>
+                <Text style={[styles.actionGhostText, { color: "#6D3BD1" }]} numberOfLines={1}>Branding</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionGhost, !s.active && styles.actionOn]}
@@ -242,7 +247,7 @@ export default function SocietiesScreen() {
                   size={16}
                   color={s.active ? "#C2571A" : "#1E7A3D"}
                 />
-                <Text style={[styles.actionGhostText, { color: s.active ? "#C2571A" : "#1E7A3D" }]}>
+                <Text style={[styles.actionGhostText, { color: s.active ? "#C2571A" : "#1E7A3D" }]} numberOfLines={1}>
                   {s.active ? "Deactivate" : "Activate"}
                 </Text>
               </TouchableOpacity>
@@ -257,6 +262,7 @@ export default function SocietiesScreen() {
       <ShareLinkModal society={shareFor} onClose={() => setShareFor(null)} />
       <BrandingModal society={brandFor} onClose={() => setBrandFor(null)} onDone={load} />
       <ResetPasswordModal visible={resetModal} onClose={() => setResetModal(false)} />
+      <PlatformSettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </View>
   );
 }
@@ -728,6 +734,62 @@ function EditPlanModal({ society, onClose, onDone }) {
   );
 }
 
+// Owner-editable H2O platform settings: the contact email shown to admins and
+// H2O's own bank/UPI details (reference for "Pay to H2O").
+function PlatformSettingsModal({ visible, onClose }) {
+  const [contactEmail, setContactEmail] = useState("");
+  const [accountName, setAccountName] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [ifsc, setIfsc] = useState("");
+  const [upiId, setUpiId] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  React.useEffect(() => {
+    if (!visible) return;
+    api
+      .superSettings()
+      .then((r) => {
+        const s = r.settings || {};
+        setContactEmail(s.contactEmail || "");
+        setAccountName(s.accountName || "");
+        setBankName(s.bankName || "");
+        setAccountNumber(s.accountNumber || "");
+        setIfsc(s.ifsc || "");
+        setUpiId(s.upiId || "");
+      })
+      .catch(() => {});
+  }, [visible]);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await api.superUpdateSettings({ contactEmail, accountName, bankName, accountNumber, ifsc, upiId });
+      onClose();
+      notify("Saved", "H2O platform settings updated.");
+    } catch (e) {
+      notify("Error", e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <FormModal visible={visible} onClose={onClose} title="H2O settings" icon="settings-outline" busy={busy} onSubmit={submit}>
+      <Label>Platform contact email</Label>
+      <TextInput style={styles.input} value={contactEmail} onChangeText={setContactEmail} placeholder="sanket.dhamke@gmail.com" autoCapitalize="none" keyboardType="email-address" />
+      <Text style={styles.helpText}>Shown on the owner profile and used as the H2O reply-to contact.</Text>
+      <Label>H2O bank / UPI (for "Pay to H2O")</Label>
+      <TextInput style={styles.input} value={accountName} onChangeText={setAccountName} placeholder="Account holder name" />
+      <TextInput style={styles.input} value={bankName} onChangeText={setBankName} placeholder="Bank name" />
+      <TextInput style={styles.input} value={accountNumber} onChangeText={setAccountNumber} placeholder="Account number" keyboardType="number-pad" />
+      <TextInput style={styles.input} value={ifsc} onChangeText={setIfsc} placeholder="IFSC" autoCapitalize="characters" />
+      <TextInput style={styles.input} value={upiId} onChangeText={setUpiId} placeholder="UPI id (e.g. sanket.dhamke@okicici)" autoCapitalize="none" />
+      <Text style={styles.helpText}>These details are shown to society admins for reference. Money settles to the bank account linked in your Razorpay dashboard.</Text>
+    </FormModal>
+  );
+}
+
 function FormModal({ visible, onClose, title, icon, children, busy, onSubmit }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -790,10 +852,10 @@ const styles = StyleSheet.create({
   finLabel: { color: "#6B7B85", fontSize: 11 },
   finVal: { fontSize: 15, fontWeight: "800", color: "#1B2B33", marginTop: 2 },
   admins: { color: "#6B7B85", fontSize: 12, marginTop: 12 },
-  actions: { flexDirection: "row", gap: 10, marginTop: 14 },
-  actionGhost: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "#EEF4F6", borderRadius: 10, paddingVertical: 11 },
+  actions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
+  actionGhost: { flexGrow: 1, flexBasis: "31%", minWidth: 96, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, backgroundColor: "#EEF4F6", borderRadius: 10, paddingVertical: 11, paddingHorizontal: 6 },
   actionOn: { backgroundColor: "#DFF3E6" },
-  actionGhostText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
+  actionGhostText: { color: "#0B6E8F", fontWeight: "700", fontSize: 12.5 },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 24 },
   modalCard: { backgroundColor: "#fff", borderRadius: 18, overflow: "hidden" },
   modalHeader: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingVertical: 16 },
@@ -802,7 +864,8 @@ const styles = StyleSheet.create({
   modalBody: { padding: 20, paddingTop: 16 },
   divider: { marginTop: 18, marginBottom: 2, fontSize: 13, fontWeight: "800", color: "#0B6E8F" },
   label: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 6, marginTop: 12 },
-  input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, backgroundColor: "#F8FAFB" },
+  input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, backgroundColor: "#F8FAFB", color: "#1B2B33", marginBottom: 6 },
+  helpText: { color: "#8895A0", fontSize: 12, marginTop: 4 },
   modalActions: { flexDirection: "row", gap: 12, marginTop: 20 },
   modalBtn: { flex: 1, backgroundColor: "#0B6E8F", borderRadius: 10, paddingVertical: 13, alignItems: "center" },
   modalBtnText: { color: "#fff", fontWeight: "700" },
