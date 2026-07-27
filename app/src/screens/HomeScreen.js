@@ -88,8 +88,10 @@ export default function HomeScreen({ navigation }) {
                 <Text style={styles.brandName} numberOfLines={1}>{user.societyName}</Text>
               </View>
             ) : null}
-            <Text style={styles.welcome}>Welcome back</Text>
-            <Text style={styles.hi} numberOfLines={2}>Hi, {user.name}</Text>
+            <View style={styles.greetBlock}>
+              <Text style={styles.welcome}>Welcome back</Text>
+              <Text style={styles.hi} numberOfLines={2}>Hi, {user.name}</Text>
+            </View>
             <View style={styles.badge}>
               <Ionicons name="location-outline" size={12} color="#fff" />
               <Text style={styles.badgeText}>
@@ -246,6 +248,17 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0,0,0,0.35)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,
+  },
+  // Dark translucent panel behind the greeting so white text stays readable over
+  // ANY background image — including busy, bright preschool artwork.
+  greetBlock: {
+    alignSelf: "flex-start",
+    maxWidth: "94%",
+    backgroundColor: "rgba(5,28,36,0.48)",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginTop: 4,
   },
   welcome: {
     color: "#EAF4F8",
