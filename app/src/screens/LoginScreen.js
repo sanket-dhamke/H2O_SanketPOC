@@ -153,6 +153,7 @@ export default function LoginScreen() {
           autoCapitalize="none"
           keyboardType="email-address"
           placeholder={theme.emailPlaceholder}
+          placeholderTextColor="#8895A0"
           returnKeyType="next"
           onSubmitEditing={() => passwordRef.current?.focus()}
           blurOnSubmit={false}
@@ -166,6 +167,7 @@ export default function LoginScreen() {
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
             placeholder="Enter your password"
+            placeholderTextColor="#8895A0"
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="off"
@@ -258,6 +260,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
+    color: "#1B2B33",
     backgroundColor: "#F8FAFB",
   },
   passwordRow: {
@@ -273,6 +276,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
+    color: "#1B2B33",
   },
   showBtn: { paddingHorizontal: 14, paddingVertical: 12 },
   showBtnText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
