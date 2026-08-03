@@ -7,7 +7,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#0B6E8F",
+    "backgroundColor": "#0C4A8C",
     "icon": "./assets/icon.png",
     "assetBundlePatterns": [
       "**/*"
@@ -18,10 +18,10 @@
     },
     "android": {
       "package": "com.h2o.society",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0B6E8F"
+        "backgroundColor": "#0C4A8C"
       },
       "permissions": [
         "android.permission.NOTIFICATIONS",
@@ -51,10 +51,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#0B6E8F"
+        "image": "./assets/splash.png",
+        "imageWidth": 200,
+        "resizeMode": "contain",
+        "backgroundColor": "#0C4A8C"
         }
       ]
     ],
