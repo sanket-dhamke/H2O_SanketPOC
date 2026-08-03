@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "H2O",
+    "name": "GateMate",
     "slug": "h2o",
     "scheme": "h2o",
     "owner": "sanket2891",
@@ -38,13 +38,13 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "H2O uses the camera so the gate guard can take a photo of the visitor."
+          "cameraPermission": "GateMate uses the camera so the gate guard can take a photo of the visitor."
         }
       ],
       [
         "expo-audio",
         {
-          "microphonePermission": "H2O uses the microphone so the gate guard can dictate visitor details."
+          "microphonePermission": "GateMate uses the microphone so the gate guard can dictate visitor details."
         }
       ],
       "expo-sharing",
