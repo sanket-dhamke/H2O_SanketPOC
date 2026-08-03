@@ -20,6 +20,7 @@ import CommunityScreen from "./src/screens/CommunityScreen";
 import AmenitiesScreen from "./src/screens/AmenitiesScreen";
 import StaffAttendanceScreen from "./src/screens/StaffAttendanceScreen";
 import RentAgreementsScreen from "./src/screens/RentAgreementsScreen";
+import FlatLedgerScreen from "./src/screens/FlatLedgerScreen";
 import { isPreschool, labelsFor } from "./src/lib/org";
 import AdminDashboardScreen from "./src/screens/admin/AdminDashboardScreen";
 import ManageUsersScreen from "./src/screens/admin/ManageUsersScreen";
@@ -39,6 +40,7 @@ const Stack = createNativeStackNavigator();
 const MembersStack = createNativeStackNavigator();
 const FinanceStack = createNativeStackNavigator();
 const MaintenanceStack = createNativeStackNavigator();
+const SocietiesStack = createNativeStackNavigator();
 
 const screenHeader = { headerStyle: { backgroundColor: "#0B6E8F" }, headerTintColor: "#fff" };
 
@@ -126,7 +128,19 @@ function FinanceStackScreen() {
       <FinanceStack.Screen name="Reports" component={ReportsScreen} />
       <FinanceStack.Screen name="VenueMarketplace" component={VenueMarketplaceScreen} />
       <FinanceStack.Screen name="PayToH2O" component={PayToH2OScreen} />
+      <FinanceStack.Screen name="FlatLedger" component={FlatLedgerScreen} />
     </FinanceStack.Navigator>
+  );
+}
+
+// The owner's Societies tab is a stack so it can drill into a society's flats
+// and any flat's full payment audit ledger.
+function SocietiesStackScreen() {
+  return (
+    <SocietiesStack.Navigator screenOptions={{ headerShown: false }}>
+      <SocietiesStack.Screen name="SocietiesHome" component={SocietiesScreen} />
+      <SocietiesStack.Screen name="FlatLedger" component={FlatLedgerScreen} />
+    </SocietiesStack.Navigator>
   );
 }
 
@@ -169,7 +183,7 @@ function SuperAdminTabs() {
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Overview" component={SuperAdminDashboardScreen} />
-      <Tab.Screen name="Societies" component={SocietiesScreen} />
+      <Tab.Screen name="Societies" component={SocietiesStackScreen} />
     </Tab.Navigator>
   );
 }

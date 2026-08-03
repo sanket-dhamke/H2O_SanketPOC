@@ -180,6 +180,8 @@ export const api = {
 
   // Admin: finance
   adminFinance: () => request("/api/admin/finance"),
+  // Admin: full per-flat audit ledger (every bill + every payment, from the start)
+  adminFlatLedger: (flatId) => request(`/api/admin/flats/${flatId}/ledger`),
   adminGenerateBills: (payload) =>
     request("/api/admin/bills", { method: "POST", body: payload }),
   adminRemindUnpaid: () =>
@@ -214,6 +216,9 @@ export const api = {
   superUpdateSettings: (payload) =>
     request("/api/superadmin/settings", { method: "PUT", body: payload }),
   superPlatformPayments: () => request("/api/superadmin/platform-payments"),
+  // Super admin: drill into any society's flats and a flat's full audit ledger
+  superSocietyFlats: (societyId) => request(`/api/superadmin/societies/${societyId}/flats`),
+  superFlatLedger: (flatId) => request(`/api/superadmin/flats/${flatId}/ledger`),
 
   // Admin: H2O subscription ("Pay to H2O")
   adminSubscription: () => request("/api/admin/subscription"),

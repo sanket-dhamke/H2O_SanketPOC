@@ -11,7 +11,7 @@ import { buildSocietyBackup, emailSocietyBackup, buildWingReport, listBlocks } f
 import { parseCsv } from "../csv.js";
 import { isPremium } from "../plan.js";
 import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorpay.js";
-import { recordPayment, effectivePaid, billBalance } from "../billing.js";
+import { recordPayment, effectivePaid, billBalance, buildFlatLedger } from "../billing.js";
 import { sendFeeReminder, whatsappEnabled, WHATSAPP_BUSINESS_NUMBER } from "../whatsapp.js";
 import { runFeeReminders } from "../feeReminders.js";
 
@@ -274,6 +274,19 @@ adminRouter.get("/finance", async (req, res) => {
     perFlat,
     dueList,
   });
+});
+
+// Full audit ledger for one flat in this admin's society: every bill (all
+// periods) + every individual payment, oldest first, with running totals. Used
+// to trace the complete history if a figure ever looks wrong.
+adminRouter.get("/flats/:flatId/ledger", async (req, res) => {
+  const flat = await prisma.flat.findFirst({
+    where: { id: req.params.flatId, societyId: sid(req) },
+    select: { id: true },
+  });
+  if (!flat) return res.status(404).json({ message: "Flat not found in your society" });
+  const ledger = await buildFlatLedger(flat.id);
+  res.json({ ledger });
 });
 
 // Generate a monthly bill for every flat (skips flats that already have it).

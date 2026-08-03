@@ -1,5 +1,6 @@
 import { prisma } from "./prisma.js";
 import { onBillPaid } from "./paymentNotify.js";
+import { serializeBill } from "./serializers.js";
 
 // The amount effectively collected for a bill (handles legacy fully-paid bills
 // that predate partial-payment tracking, where paidAmount may be 0).
@@ -58,4 +59,83 @@ export async function recordPayment(
 
   if (fullyPaid) onBillPaid(bill.id);
   return { bill: updated, paid: pay, fullyPaid };
+}
+
+// Full audit ledger for a single flat: EVERY bill (all periods, oldest first)
+// with EVERY individual payment, plus a flattened chronological payment timeline
+// carrying a running collected total. Lets an admin/superadmin trace the complete
+// history from the beginning if a figure ever looks wrong. Returns null if the
+// flat doesn't exist.
+export async function buildFlatLedger(flatId) {
+  const flat = await prisma.flat.findUnique({
+    where: { id: flatId },
+    include: { society: true, residents: true },
+  });
+  if (!flat) return null;
+
+  const bills = await prisma.bill.findMany({
+    where: { flatId },
+    orderBy: [{ period: "asc" }, { createdAt: "asc" }],
+    include: { payments: { orderBy: { createdAt: "asc" } } },
+  });
+
+  let totalBilled = 0;
+  let totalPaid = 0;
+  let paymentCount = 0;
+  const serBills = bills.map((b) => {
+    totalBilled += b.amount || 0;
+    totalPaid += effectivePaid(b);
+    paymentCount += b.payments?.length || 0;
+    return serializeBill(b);
+  });
+
+  // Flattened chronological payment timeline with a running collected total.
+  const timeline = [];
+  for (const b of bills) {
+    for (const p of b.payments || []) {
+      timeline.push({
+        id: p.id,
+        billId: b.id,
+        period: b.period,
+        amount: p.amount,
+        mode: p.mode,
+        ref: p.ref || null,
+        collectedBy: p.collectedBy || null,
+        collectorPhone: p.collectorPhone || null,
+        createdAt: p.createdAt,
+      });
+    }
+  }
+  timeline.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  let running = 0;
+  for (const p of timeline) {
+    running += p.amount || 0;
+    p.runningCollected = running;
+  }
+
+  const resident = (flat.residents || []).find((u) => u.role === "resident") || null;
+
+  return {
+    flat: {
+      id: flat.id,
+      flatNo: flat.flatNo,
+      block: flat.block || null,
+      societyId: flat.societyId,
+      occupancy: flat.occupancy || null,
+      guardianName: flat.guardianName || resident?.name || flat.ownerName || null,
+      guardianPhone: flat.guardianPhone || resident?.phone || null,
+    },
+    society: flat.society
+      ? { id: flat.society.id, name: flat.society.name, orgType: flat.society.orgType || "society" }
+      : null,
+    summary: {
+      totalBilled,
+      totalPaid,
+      totalBalance: Math.max(0, totalBilled - totalPaid),
+      billCount: bills.length,
+      paymentCount,
+    },
+    bills: serBills,
+    timeline,
+  };
 }

@@ -5,6 +5,7 @@ import { authRequired, roleRequired } from "../auth.js";
 import { publicUser } from "../serializers.js";
 import { validatePassword } from "../passwordPolicy.js";
 import { isPremium } from "../plan.js";
+import { buildFlatLedger, effectivePaid } from "../billing.js";
 import { emailPremiumInvoice } from "../invoice.js";
 import { sendEmail, emailConfigured } from "../email.js";
 import { ensureUniqueSlug } from "../slug.js";
@@ -180,6 +181,42 @@ superadminRouter.put("/settings", async (req, res) => {
     create: { id: "platform", ...data },
   });
   res.json({ settings });
+});
+
+// GET /api/superadmin/societies/:id/flats — flats in a society with paid/pending
+// so the owner can drill into any one for a full audit.
+superadminRouter.get("/societies/:id/flats", async (req, res) => {
+  const society = await prisma.society.findUnique({ where: { id: req.params.id } });
+  if (!society) return res.status(404).json({ message: "Society not found" });
+  const flats = await prisma.flat.findMany({
+    where: { societyId: society.id },
+    orderBy: [{ block: "asc" }, { flatNo: "asc" }],
+    include: { bills: true },
+  });
+  const rows = flats.map((f) => {
+    const billed = f.bills.reduce((s, b) => s + (b.amount || 0), 0);
+    const paid = f.bills.reduce((s, b) => s + effectivePaid(b), 0);
+    return {
+      id: f.id,
+      flatNo: f.flatNo,
+      block: f.block || null,
+      paid,
+      pending: Math.max(0, billed - paid),
+      billCount: f.bills.length,
+    };
+  });
+  res.json({
+    society: { id: society.id, name: society.name, orgType: society.orgType || "society" },
+    flats: rows,
+  });
+});
+
+// GET /api/superadmin/flats/:flatId/ledger — full audit ledger for ANY flat
+// across all societies.
+superadminRouter.get("/flats/:flatId/ledger", async (req, res) => {
+  const ledger = await buildFlatLedger(req.params.flatId);
+  if (!ledger) return res.status(404).json({ message: "Flat not found" });
+  res.json({ ledger });
 });
 
 // Recent subscription payments made by societies to H2O.

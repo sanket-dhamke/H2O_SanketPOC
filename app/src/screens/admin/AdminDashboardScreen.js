@@ -132,6 +132,10 @@ export default function AdminDashboardScreen() {
         <Ionicons name="cash-outline" size={18} color="#0B6E8F" />
         <Text style={styles.collectText}>Record cash / view collections</Text>
       </TouchableOpacity>
+      <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("FlatLedger")}>
+        <Ionicons name="receipt-outline" size={18} color="#0B6E8F" />
+        <Text style={styles.collectText}>Payment audit — full {L.unit.toLowerCase()} history</Text>
+      </TouchableOpacity>
       <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("Amenities")}>
         <Ionicons name="calendar-outline" size={18} color="#0B6E8F" />
         <Text style={styles.collectText}>{L.amenitiesAdminBtn}</Text>
@@ -152,14 +156,21 @@ export default function AdminDashboardScreen() {
       </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>{L.unit}-wise status</Text>
+      <Text style={styles.sectionHint}>Tap a {L.unit.toLowerCase()} to see its full bill & payment history.</Text>
       {(data?.perFlat || []).map((f) => (
-        <View key={f.flatId} style={styles.flatRow}>
+        <TouchableOpacity
+          key={f.flatId}
+          style={styles.flatRow}
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate("FlatLedger", { flat: { id: f.flatId, flatNo: f.flatNo } })}
+        >
           <Text style={styles.flatNo}>{f.flatNo}</Text>
           <Text style={styles.flatPaid}>Paid {money(f.paid)}</Text>
           <Text style={[styles.flatPending, f.pending > 0 && { color: "#C2571A" }]}>
             {f.pending > 0 ? `Due ${money(f.pending)}` : "Clear"}
           </Text>
-        </View>
+          <Ionicons name="chevron-forward" size={16} color="#B7C2C9" style={{ marginLeft: 8 }} />
+        </TouchableOpacity>
       ))}
       {data && data.dueList?.length === 0 && (
         <Text style={styles.allClear}>All {L.units.toLowerCase()} are up to date.</Text>
@@ -312,7 +323,8 @@ const styles = StyleSheet.create({
   collectBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#fff", borderRadius: 10, paddingVertical: 14, marginTop: 12, borderWidth: 1, borderColor: "#CFE0E6" },
   feesBtn: { backgroundColor: "#1E7A3D", borderColor: "#1E7A3D" },
   collectText: { color: "#0B6E8F", fontWeight: "700" },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#1B2B33", marginTop: 26, marginBottom: 10 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#1B2B33", marginTop: 26, marginBottom: 4 },
+  sectionHint: { fontSize: 12, color: "#8895A0", marginBottom: 10 },
   flatRow: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 10, padding: 14, marginBottom: 8 },
   flatNo: { flex: 1, fontWeight: "700", color: "#1B2B33" },
   flatPaid: { color: "#6B7B85", fontSize: 13, marginRight: 12 },

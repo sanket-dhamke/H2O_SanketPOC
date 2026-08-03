@@ -13,7 +13,7 @@ import {
   Platform,
 } from "react-native";
 import TextInput from "../../components/AppTextInput";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
@@ -45,6 +45,7 @@ function tenantLinks(slug) {
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
 export default function SocietiesScreen() {
+  const navigation = useNavigation();
   const [societies, setSocieties] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [createModal, setCreateModal] = useState(false);
@@ -238,6 +239,13 @@ export default function SocietiesScreen() {
               <TouchableOpacity style={styles.actionGhost} onPress={() => setBrandFor(s)}>
                 <Ionicons name="color-palette-outline" size={16} color="#6D3BD1" />
                 <Text style={[styles.actionGhostText, { color: "#6D3BD1" }]} numberOfLines={1}>Branding</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionGhost}
+                onPress={() => navigation.navigate("FlatLedger", { societyId: s.id, societyName: s.name })}
+              >
+                <Ionicons name="receipt-outline" size={16} color="#0B6E8F" />
+                <Text style={styles.actionGhostText} numberOfLines={1}>Payments</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionGhost, !s.active && styles.actionOn]}

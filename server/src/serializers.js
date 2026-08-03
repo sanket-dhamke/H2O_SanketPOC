@@ -105,13 +105,15 @@ export function serializeBill(b) {
     dueDate: b.dueDate,
     status: b.status,
     paidAt: b.paidAt,
+    createdAt: b.createdAt || null,
     paymentRef: b.paymentRef || null,
     paymentMode: b.paymentMode || null,
     collectedBy: b.collectedBy || null,
     collectorPhone: b.collectorPhone || null,
     payments: (b.payments || []).map((p) => ({
       id: p.id, amount: p.amount, mode: p.mode, ref: p.ref || null,
-      collectedBy: p.collectedBy || null, createdAt: p.createdAt,
+      collectedBy: p.collectedBy || null, collectorPhone: p.collectorPhone || null,
+      createdAt: p.createdAt,
     })),
   };
 }
