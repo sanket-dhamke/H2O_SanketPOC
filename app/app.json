@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.h2o.society",
-      "versionCode": 6,
+      "versionCode": 7,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0C4A8C"
@@ -51,10 +51,10 @@
       [
         "expo-splash-screen",
         {
-        "image": "./assets/splash.png",
-        "imageWidth": 200,
-        "resizeMode": "contain",
-        "backgroundColor": "#0C4A8C"
+          "image": "./assets/splash.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0C4A8C"
         }
       ]
     ],
