@@ -152,6 +152,8 @@ export const api = {
   adminListFlats: () => request("/api/admin/flats"),
   adminCreateFlat: (payload) =>
     request("/api/admin/flats", { method: "POST", body: payload }),
+  adminDeleteFlat: (id) =>
+    request(`/api/admin/flats/${id}`, { method: "DELETE" }),
   adminGenerateFlats: (payload) =>
     request("/api/admin/flats/generate", { method: "POST", body: payload }),
   adminImportFlats: (payload) =>

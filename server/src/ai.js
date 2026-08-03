@@ -41,6 +41,7 @@ async function buildContext(user) {
   });
 
   const societyId = dbUser?.societyId || user.societyId || "__none__";
+  const orgType = dbUser?.society?.orgType === "preschool" ? "preschool" : "society";
   // Contact directory: admins (chairman/office) and guards residents can reach.
   const staff = await prisma.user.findMany({
     where: { societyId, role: { in: ["admin", "guard"] }, active: true },
@@ -69,6 +70,7 @@ async function buildContext(user) {
     const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     return {
       role: "resident",
+      orgType,
       currentPeriod,
       society: { name: dbUser?.society?.name || null },
       contacts,
@@ -118,6 +120,7 @@ async function buildContext(user) {
 
   return {
     role: user.role,
+    orgType,
     currentPeriod,
     contacts,
     society: {
@@ -148,10 +151,35 @@ async function buildContext(user) {
   };
 }
 
+// Org-aware vocabulary so the assistant speaks the right language for each
+// tenant. Preschools must never hear "flat", "society" or "maintenance".
+const VOCAB = {
+  society: {
+    org: "society", unit: "flat", units: "flats", payer: "resident",
+    fees: "maintenance", feesTab: "Maintenance", place: "society",
+    amenity: "clubhouse/amenity", amenityTab: "Amenities",
+  },
+  preschool: {
+    org: "preschool", unit: "student", units: "students", payer: "parent/guardian",
+    fees: "fees", feesTab: "Fees", place: "school",
+    amenity: "hall", amenityTab: "Hall booking",
+  },
+};
+
 // Answers a natural-language question over the role-scoped data snapshot.
 export async function assistantAnswer(user, question) {
   const context = await buildContext(user);
   const today = new Date().toISOString();
+  const orgType = context.orgType === "preschool" ? "preschool" : "society";
+  const v = VOCAB[orgType];
+
+  const preschoolRule =
+    orgType === "preschool"
+      ? "This tenant is a PRESCHOOL. NEVER use the words 'flat', 'society' or 'maintenance'. " +
+        "In the JSON, each 'flatNo' is a STUDENT (name/id), 'society' is the SCHOOL, and 'bills'/'dues' are FEES. " +
+        "Always speak in terms of students, classes, the school and fees. "
+      : "";
+
   const completion = await openai.chat.completions.create({
     model: CHAT_MODEL,
     temperature: 0.2,
@@ -159,20 +187,21 @@ export async function assistantAnswer(user, question) {
       {
         role: "system",
         content:
-          "You are H2O, a helpful society-management assistant. Answer ONLY from the provided JSON data. " +
-          "Be concise and specific (dates, names, amounts in INR, formatted like ₹1,200). If the data does not contain the answer, say so. " +
-          "Money fields: society.collectedThisMonth = maintenance collected in the current month (data.currentPeriod, format YYYY-MM); " +
+          `You are H2O, a helpful ${v.org}-management assistant. Answer ONLY from the provided JSON data. ` +
+          preschoolRule +
+          `Be concise and specific (dates, names, amounts in INR, formatted like ₹1,200). If the data does not contain the answer, say so. ` +
+          `Money fields: society.collectedThisMonth = ${v.fees} collected in the current month (data.currentPeriod, format YYYY-MM); ` +
           "society.collectedAllTime = collected across all time; society.pendingAllTime = outstanding dues; " +
           "society.balance = collected minus expenses. collectionByMonth breaks down billed/collected/pending per month. " +
           "When the user says 'this month' use data.currentPeriod; for a named month, match it in collectionByMonth. " +
-          "'contacts' lists the society's admins (office/chairman) and guards with their phone numbers — use it to answer " +
-          "'who is my guard/admin/chairman' and give their name and phone (say the number isn't on file if phone is null). " +
-          "For paying maintenance: a resident can only pay bills that appear in 'bills' with status 'pending', from the 'Maintenance' tab. " +
+          `'contacts' lists the ${v.place}'s admins (office) and guards with their phone numbers — use it to answer ` +
+          "'who is my guard/admin' and give their name and phone (say the number isn't on file if phone is null). " +
+          `For paying ${v.fees}: a ${v.payer} can only pay bills that appear in 'bills' with status 'pending' or 'partial', from the '${v.feesTab}' tab. ` +
           "Paying next month or a full year in advance is NOT supported yet — if asked, explain that only bills already issued can be paid, " +
           "list their pending bills (period, amount, due date), and suggest contacting the admin to raise advance bills. " +
-          "The data may include 'amenities' (bookable facilities like a clubhouse, with slots and prices) and bookings. " +
-          "If the user asks to book a clubhouse/amenity, you cannot book it yourself — tell them the available amenities, " +
-          "slots and prices from the data, and direct them to open the 'Amenities' tab to request a slot (admin approves, then they pay in-app). " +
+          `The data may include 'amenities' (bookable ${v.amenity} with slots and prices) and bookings. ` +
+          `If the user asks to book a ${v.amenity}, you cannot book it yourself — tell them the available options, ` +
+          `slots and prices from the data, and direct them to open the '${v.amenityTab}' tab to request a slot (admin approves, then they pay in-app). ` +
           `Today is ${today}. The user's role is ${user.role}.`,
       },
       { role: "user", content: `DATA:\n${JSON.stringify(context)}\n\nQUESTION: ${question}` },

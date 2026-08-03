@@ -37,23 +37,41 @@ export function waLink(toPhone, text) {
   return `https://wa.me/${to}?text=${encodeURIComponent(text || "")}`;
 }
 
+// Builds the "how to pay" block from the school's saved payment details so
+// guardians can pay directly from the reminder (no parent login needed).
+export function buildPayInfoText(payInfo) {
+  if (!payInfo) return "";
+  const lines = [];
+  if (payInfo.upiId) lines.push(`• UPI / GPay: ${payInfo.upiId}`);
+  if (payInfo.accountNumber) {
+    const bank = [payInfo.bankName, payInfo.accountName].filter(Boolean).join(" · ");
+    lines.push(`• Bank${bank ? ` (${bank})` : ""}: A/C ${payInfo.accountNumber}${payInfo.ifsc ? `, IFSC ${payInfo.ifsc}` : ""}`);
+  }
+  if (payInfo.payLink) lines.push(`• Pay online: ${payInfo.payLink}`);
+  if (!lines.length) return "";
+  return `\n\nPay via any option below:\n${lines.join("\n")}`;
+}
+
 // Plain-text reminder body used for logs, wa.me fallback, and (optionally) as a
-// non-template message inside the 24h customer-service window.
-export function buildReminderText({ orgName, guardian, student, amount, dueDate }) {
+// non-template message inside the 24h customer-service window. When payInfo is
+// provided, the school's payment options (UPI/GPay/bank) are appended so the
+// guardian can pay straight away.
+export function buildReminderText({ orgName, guardian, student, amount, dueDate, payInfo }) {
   const who = guardian ? `Dear ${guardian},` : "Dear Parent,";
   const rupee = `₹${Number(amount || 0).toLocaleString("en-IN")}`;
   return (
     `${who}\n\nThis is a fee reminder from ${orgName || "your school"}.\n` +
-    `Student: ${student || "-"}\nAmount due: ${rupee}\nDue date: ${dueDate || "-"}\n\n` +
-    `Please pay at your earliest convenience. Thank you.`
+    `Student: ${student || "-"}\nAmount due: ${rupee}\nDue date: ${dueDate || "-"}` +
+    buildPayInfoText(payInfo) +
+    `\n\nPlease pay at your earliest convenience. Thank you.`
   );
 }
 
 // Sends a reminder. Returns { sent, dev, id?, error?, link } — `link` is always a
 // wa.me fallback the caller can surface if automated sending is off/failed.
-export async function sendFeeReminder({ toPhone, orgName, guardian, student, amount, dueDate }) {
+export async function sendFeeReminder({ toPhone, orgName, guardian, student, amount, dueDate, payInfo }) {
   const to = normalizePhone(toPhone);
-  const text = buildReminderText({ orgName, guardian, student, amount, dueDate });
+  const text = buildReminderText({ orgName, guardian, student, amount, dueDate, payInfo });
   const link = waLink(to, text);
 
   if (!to) return { sent: false, dev: !whatsappEnabled, error: "No guardian phone on file", link };

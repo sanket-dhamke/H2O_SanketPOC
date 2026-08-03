@@ -19,6 +19,7 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { labelsFor } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
+import DateField from "../../components/DateField";
 
 const money = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
 
@@ -37,6 +38,7 @@ export default function AdminFeesScreen({ navigation }) {
   const [wa, setWa] = useState(null); // { enabled, mode, businessNumber }
   const [refreshing, setRefreshing] = useState(false);
   const [editing, setEditing] = useState(null); // student object
+  const [adding, setAdding] = useState(false); // add-student modal
   const [running, setRunning] = useState(false);
 
   const load = useCallback(async () => {
@@ -65,11 +67,27 @@ export default function AdminFeesScreen({ navigation }) {
     setRunning(true);
     try {
       const r = await api.adminRunFeeReminders();
-      notify(
-        "Reminders processed",
-        `Due today: ${r.attempted}. WhatsApp sent: ${r.sent}.` +
-          (r.sent === 0 && r.attempted > 0 ? "\n\n(WhatsApp API not configured yet — messages were prepared in dev mode. Use 'Remind' on a student to send manually.)" : "")
-      );
+      if (r.attempted === 0) {
+        notify("All clear", `No ${L.units.toLowerCase()} have pending ${L.fees.toLowerCase()} right now.`);
+      } else {
+        const parts = [];
+        if (r.sent) parts.push(`${r.sent} via WhatsApp`);
+        if (r.emailed) parts.push(`${r.emailed} via email`);
+        const noContact = (r.noContact || []).length
+          ? `\n\n${r.noContact.length} ${L.units.toLowerCase()} have dues but no guardian phone/email on file: ${r.noContact.join(", ")}. Add a contact to reach them.`
+          : "";
+        const devNote =
+          r.sent === 0 && r.emailed === 0
+            ? "\n\n(WhatsApp isn't live yet — reminders were prepared as tap-to-send links. Use 'Remind' on a student to open WhatsApp.)"
+            : "";
+        notify(
+          "Reminders processed",
+          `${r.attempted} ${L.units.toLowerCase()} with pending ${L.fees.toLowerCase()}.` +
+            (parts.length ? ` Sent ${parts.join(", ")}.` : "") +
+            devNote +
+            noContact
+        );
+      }
       load();
     } catch (e) {
       notify("Error", e.message);
@@ -92,7 +110,17 @@ export default function AdminFeesScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader icon="cash" title={`${L.fees} — ${L.units}`} subtitle={`${count} ${L.units.toLowerCase()} · fee tracking`} onBack={() => navigation.goBack()} />
+      <ScreenHeader
+        icon="cash"
+        title={`${L.fees} — ${L.units}`}
+        subtitle={`${count} ${L.units.toLowerCase()} · fee tracking`}
+        onBack={() => navigation.goBack()}
+        right={
+          <TouchableOpacity onPress={() => setAdding(true)} style={styles.addBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="add" size={24} color="#fff" />
+          </TouchableOpacity>
+        }
+      />
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -105,13 +133,19 @@ export default function AdminFeesScreen({ navigation }) {
           <Kpi label="Pending" value={money(totalBalance)} tint="#C2571A" />
         </View>
 
-        <TouchableOpacity style={[styles.runBtn, running && { opacity: 0.6 }]} onPress={runReminders} disabled={running}>
-          <Ionicons name="logo-whatsapp" size={18} color="#fff" />
-          <Text style={styles.runText}>{running ? "Processing…" : "Send due reminders now"}</Text>
-        </TouchableOpacity>
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={[styles.runBtn, { flex: 1 }, running && { opacity: 0.6 }]} onPress={runReminders} disabled={running}>
+            <Ionicons name="logo-whatsapp" size={18} color="#fff" />
+            <Text style={styles.runText}>{running ? "Processing…" : "Send due reminders now"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addStudentBtn} onPress={() => setAdding(true)}>
+            <Ionicons name="person-add-outline" size={18} color="#0B6E8F" />
+            <Text style={styles.addStudentText}>Add {L.unit.toLowerCase()}</Text>
+          </TouchableOpacity>
+        </View>
 
         {groups.length === 0 && (
-          <Text style={styles.empty}>No {L.units.toLowerCase()} yet. Add them from {L.members} → {L.units}.</Text>
+          <Text style={styles.empty}>No {L.units.toLowerCase()} yet. Tap “Add {L.unit.toLowerCase()}” to add your first one.</Text>
         )}
 
         {groups.map(([cls, students]) => (
@@ -125,7 +159,90 @@ export default function AdminFeesScreen({ navigation }) {
       </ScrollView>
 
       <FeeEditorModal student={editing} onClose={() => setEditing(null)} onDone={load} L={L} />
+      <AddStudentModal visible={adding} onClose={() => setAdding(false)} onDone={load} L={L} />
     </View>
+  );
+}
+
+// Quick "add a student/unit" form: identity + guardian contact. The class is a
+// free-text field, prefilled from the tenant's suggested class options.
+function AddStudentModal({ visible, onClose, onDone, L }) {
+  const [name, setName] = useState("");
+  const [cls, setCls] = useState("");
+  const [guardianName, setGuardianName] = useState("");
+  const [guardianPhone, setGuardianPhone] = useState("");
+  const [guardianEmail, setGuardianEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const classOptions = L.classOptions || [];
+
+  React.useEffect(() => {
+    if (visible) {
+      setName(""); setCls(""); setGuardianName(""); setGuardianPhone(""); setGuardianEmail("");
+    }
+  }, [visible]);
+
+  const save = async () => {
+    if (!name.trim()) return notify("Missing", `Enter the ${L.unit.toLowerCase()} name.`);
+    setBusy(true);
+    try {
+      await api.adminCreateFlat({
+        flatNo: name.trim(),
+        block: cls.trim() || null,
+        guardianName: guardianName.trim() || null,
+        guardianPhone: guardianPhone.trim() || null,
+        guardianEmail: guardianEmail.trim() || null,
+      });
+      notify("Added", `${name.trim()} added. Set their ${L.fees.toLowerCase()} from the card.`);
+      onClose();
+      onDone();
+    } catch (e) {
+      notify("Error", e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <View style={styles.modalCard}>
+          <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
+            <View style={styles.modalHeaderIcon}><Ionicons name="person-add-outline" size={20} color="#fff" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.modalTitle}>Add {L.unit.toLowerCase()}</Text>
+              <Text style={styles.modalSub}>Name, class & guardian contact</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="close" size={22} color="#fff" />
+            </TouchableOpacity>
+          </LinearGradient>
+          <ScrollView contentContainerStyle={{ padding: 18 }} keyboardShouldPersistTaps="handled">
+            <Label>{L.unit} name</Label>
+            <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Aarav Sharma" />
+            <Label>{L.wing} — optional</Label>
+            {classOptions.length > 0 && (
+              <View style={styles.chipRow}>
+                {classOptions.map((c) => (
+                  <TouchableOpacity key={c} style={[styles.classChip, cls === c && styles.classChipActive]} onPress={() => setCls(c)}>
+                    <Text style={[styles.classChipText, cls === c && { color: "#fff" }]}>{c}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            <TextInput style={styles.input} value={cls} onChangeText={setCls} placeholder={`e.g. ${classOptions[0] || "Class A"}`} />
+            <Label>Guardian name — optional</Label>
+            <TextInput style={styles.input} value={guardianName} onChangeText={setGuardianName} placeholder="Parent / guardian" />
+            <Label>Guardian phone (for WhatsApp reminders)</Label>
+            <TextInput style={styles.input} value={guardianPhone} onChangeText={setGuardianPhone} keyboardType="phone-pad" placeholder="10-digit mobile" />
+            <Label>Guardian email — optional</Label>
+            <TextInput style={styles.input} value={guardianEmail} onChangeText={setGuardianEmail} autoCapitalize="none" keyboardType="email-address" placeholder="parent@email.com" />
+            <TouchableOpacity style={[styles.saveBtn, busy && { opacity: 0.6 }]} onPress={save} disabled={busy}>
+              <Text style={styles.saveText}>{busy ? "Saving…" : `Add ${L.unit.toLowerCase()}`}</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -216,6 +333,13 @@ function FeeEditorModal({ student, onClose, onDone, L }) {
   const [payAmount, setPayAmount] = useState("");
   const [collectedBy, setCollectedBy] = useState("");
   const [busy, setBusy] = useState(false);
+  // Editable student identity + guardian.
+  const [name, setName] = useState("");
+  const [cls, setCls] = useState("");
+  const [gName, setGName] = useState("");
+  const [gPhone, setGPhone] = useState("");
+  const [gEmail, setGEmail] = useState("");
+  const classOptions = L.classOptions || [];
 
   // Sync form when opening for a new student.
   React.useEffect(() => {
@@ -225,20 +349,67 @@ function FeeEditorModal({ student, onClose, onDone, L }) {
       setRemindOn(bill?.remindOn || "");
       setPayAmount("");
       setCollectedBy("");
+      setName(student.name || "");
+      setCls(student.class && student.class !== "Unassigned" ? student.class : "");
+      setGName(student.guardianName || "");
+      setGPhone(student.guardianPhone || "");
+      setGEmail(student.guardianEmail || "");
     }
   }, [student]);
 
+  const saveDetails = async () => {
+    if (!name.trim()) return notify("Missing", `Enter the ${L.unit.toLowerCase()} name.`);
+    setBusy(true);
+    try {
+      await api.adminUpdateFlat(student.flatId, {
+        flatNo: name.trim(),
+        block: cls.trim() || null,
+        guardianName: gName.trim() || null,
+        guardianPhone: gPhone.trim() || null,
+        guardianEmail: gEmail.trim() || null,
+      });
+      notify("Saved", `${L.unit} details updated.`);
+      onClose();
+      onDone();
+    } catch (e) {
+      notify("Error", e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    const doDelete = async () => {
+      setBusy(true);
+      try {
+        await api.adminDeleteFlat(student.flatId);
+        notify("Deleted", `${student.name} was removed.`);
+        onClose();
+        onDone();
+      } catch (e) {
+        notify("Couldn't delete", e.message);
+      } finally {
+        setBusy(false);
+      }
+    };
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      if (window.confirm(`Delete ${student.name}? This removes their fee history too.`)) doDelete();
+    } else {
+      Alert.alert("Delete", `Delete ${student.name}? This removes their fee history too.`, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: doDelete },
+      ]);
+    }
+  };
+
   const saveFee = async () => {
     if (!amount || Number(amount) <= 0) return notify("Missing", "Enter the total fee amount.");
-    if (remindOn && !/^\d{4}-\d{2}-\d{2}$/.test(remindOn.trim())) {
-      return notify("Invalid date", "Reminder date must be YYYY-MM-DD, e.g. 2026-08-05.");
-    }
     setBusy(true);
     try {
       const payload = {
         amount: Number(amount),
         nextDueAmount: nextDue === "" ? null : Number(nextDue),
-        remindOn: remindOn.trim() || null,
+        remindOn: remindOn || null,
       };
       if (bill) await api.adminUpdateBill(bill.id, payload);
       else await api.adminSetFee({ flatId: student.flatId, ...payload });
@@ -285,15 +456,46 @@ function FeeEditorModal({ student, onClose, onDone, L }) {
           </LinearGradient>
 
           <ScrollView contentContainerStyle={{ padding: 18 }} keyboardShouldPersistTaps="handled">
-            <Text style={styles.section}>Fee details</Text>
-            <Label>Total fee (₹)</Label>
+            <Text style={styles.section}>{L.unit} details</Text>
+            <Label>{L.unit} name</Label>
+            <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Name" />
+            <Label>{L.wing} — optional</Label>
+            {classOptions.length > 0 && (
+              <View style={styles.chipRow}>
+                {classOptions.map((c) => (
+                  <TouchableOpacity key={c} style={[styles.classChip, cls === c && styles.classChipActive]} onPress={() => setCls(c)}>
+                    <Text style={[styles.classChipText, cls === c && { color: "#fff" }]}>{c}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            <TextInput style={styles.input} value={cls} onChangeText={setCls} placeholder={`e.g. ${classOptions[0] || "Class A"}`} />
+            <Label>Guardian name — optional</Label>
+            <TextInput style={styles.input} value={gName} onChangeText={setGName} placeholder="Parent / guardian" />
+            <Label>Guardian phone (WhatsApp reminders)</Label>
+            <TextInput style={styles.input} value={gPhone} onChangeText={setGPhone} keyboardType="phone-pad" placeholder="10-digit mobile" />
+            <Label>Guardian email — optional</Label>
+            <TextInput style={styles.input} value={gEmail} onChangeText={setGEmail} autoCapitalize="none" keyboardType="email-address" placeholder="parent@email.com" />
+            <View style={styles.detailActions}>
+              <TouchableOpacity style={[styles.saveBtn, { flex: 1, marginTop: 0 }, busy && { opacity: 0.6 }]} onPress={saveDetails} disabled={busy}>
+                <Text style={styles.saveText}>Save details</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.deleteBtn, busy && { opacity: 0.6 }]} onPress={remove} disabled={busy}>
+                <Ionicons name="trash-outline" size={18} color="#B4381F" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.divider} />
+
+            <Text style={styles.section}>{L.fees} details</Text>
+            <Label>Total {L.fees.toLowerCase()} (₹)</Label>
             <TextInput style={styles.input} value={amount} onChangeText={setAmount} keyboardType="number-pad" placeholder="e.g. 40000" />
             <Label>Next installment (₹) — optional</Label>
             <TextInput style={styles.input} value={nextDue} onChangeText={setNextDue} keyboardType="number-pad" placeholder="e.g. 15000 (quarterly)" />
             <Text style={styles.hint}>Leave blank to remind for the full balance.</Text>
-            <Label>Reminder date (YYYY-MM-DD) — optional</Label>
-            <TextInput style={styles.input} value={remindOn} onChangeText={setRemindOn} autoCapitalize="none" placeholder="2026-08-05" />
-            <Text style={styles.hint}>A WhatsApp reminder is auto-sent to the guardian on this date.</Text>
+            <Label>Reminder date — optional</Label>
+            <DateField value={remindOn} onChange={setRemindOn} placeholder="Pick a reminder date" minToday />
+            <Text style={styles.hint}>A WhatsApp/email reminder (with your school's payment details) is auto-sent to the guardian on this date.</Text>
             <TouchableOpacity style={[styles.saveBtn, busy && { opacity: 0.6 }]} onPress={saveFee} disabled={busy}>
               <Text style={styles.saveText}>{busy ? "Saving…" : bill ? "Update fee" : "Set fee"}</Text>
             </TouchableOpacity>
@@ -359,6 +561,17 @@ function Label({ children }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
+  addBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
+  actionRow: { flexDirection: "row", gap: 10, marginTop: 14, alignItems: "stretch" },
+  addStudentBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "#fff", borderRadius: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: "#CFE0E6" },
+  addStudentText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
+  classChip: { borderWidth: 1, borderColor: "#CFE0E6", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
+  classChipActive: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },
+  classChipText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
+  detailActions: { flexDirection: "row", gap: 10, marginTop: 16, alignItems: "center" },
+  deleteBtn: { width: 50, height: 48, borderRadius: 10, backgroundColor: "#FDEAE6", alignItems: "center", justifyContent: "center" },
+  divider: { height: 1, backgroundColor: "#E6EDF0", marginVertical: 18 },
   waBadge: { flexDirection: "row", alignItems: "center", gap: 7, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12 },
   waDot: { width: 8, height: 8, borderRadius: 4 },
   waLabel: { fontWeight: "800", fontSize: 12.5 },

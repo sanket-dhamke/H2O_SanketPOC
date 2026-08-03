@@ -191,6 +191,24 @@ adminRouter.patch("/flats/:id", async (req, res) => {
   res.json({ flat: updated });
 });
 
+// Delete a student/flat (and its fee/visitor history via cascade). Blocked if
+// app accounts (e.g. a parent/resident login) are still linked to it — remove
+// those accounts first so we never orphan a login.
+adminRouter.delete("/flats/:id", async (req, res) => {
+  const flat = await prisma.flat.findFirst({
+    where: { id: req.params.id, societyId: sid(req) },
+    include: { _count: { select: { residents: true } } },
+  });
+  if (!flat) return res.status(404).json({ message: "Not found" });
+  if (flat._count.residents > 0) {
+    return res.status(409).json({
+      message: "This has linked app accounts. Remove those accounts first, then delete.",
+    });
+  }
+  await prisma.flat.delete({ where: { id: flat.id } });
+  res.json({ ok: true });
+});
+
 /* --------------------------- Bank account -------------------------------- */
 // The society bank account maintenance is collected into. razorpayAccountId is
 // a Razorpay Route "Linked Account" id (acc_XXXX) created/KYC'd in the Razorpay
@@ -420,9 +438,11 @@ adminRouter.post("/bills/:id/remind", async (req, res) => {
   res.json({ ok: true, ...result });
 });
 
-// Run the whole society's due reminders now (manual trigger of the daily sweep).
+// Run reminders now (manual). Unlike the daily cron, this reminds EVERY student
+// with an outstanding balance right away (not only those with a remindOn date),
+// so "Send due reminders now" always reaches pending fees.
 adminRouter.post("/fees/run-reminders", async (req, res) => {
-  const result = await runFeeReminders({ societyId: sid(req) });
+  const result = await runFeeReminders({ societyId: sid(req), includeAllUnpaid: true });
   res.json({ ok: true, ...result });
 });
 

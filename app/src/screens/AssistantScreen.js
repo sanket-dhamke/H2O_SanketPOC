@@ -12,18 +12,31 @@ import {
 import TextInput from "../components/AppTextInput";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
+import { isPreschool } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
 
-const SUGGESTIONS = {
-  resident: ["Who visited my flat in the last week?", "How much maintenance do I owe?", "Show my recent deliveries"],
-  guard: ["Who is currently pending approval?", "List today's visitors", "Any vehicles logged today?"],
-  admin: ["What is the society balance?", "Which flats have dues?", "How much did we collect this month?"],
-};
+// Org-aware starter questions so preschools never see "flat/society/maintenance".
+function suggestionsFor(role, preschool) {
+  if (preschool) {
+    return {
+      resident: ["Who visited in the last week?", "How much fees do I owe?", "Show recent entries"],
+      guard: ["Who is pending approval?", "List today's visitors", "Any vehicles logged today?"],
+      admin: ["What are the total pending fees?", "Which students have dues?", "How much did we collect this month?"],
+    }[role] || [];
+  }
+  return {
+    resident: ["Who visited my flat in the last week?", "How much maintenance do I owe?", "Show my recent deliveries"],
+    guard: ["Who is currently pending approval?", "List today's visitors", "Any vehicles logged today?"],
+    admin: ["What is the society balance?", "Which flats have dues?", "How much did we collect this month?"],
+  }[role] || [];
+}
 
 export default function AssistantScreen() {
   const { user } = useAuth();
+  const preschool = isPreschool(user);
+  const place = preschool ? "school" : "society";
   const [messages, setMessages] = useState([
-    { role: "assistant", text: `Hi ${user.name.split(" ")[0]}! Ask me anything about your society.` },
+    { role: "assistant", text: `Hi ${user.name.split(" ")[0]}! Ask me anything about your ${place}.` },
   ]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -46,7 +59,7 @@ export default function AssistantScreen() {
     }
   };
 
-  const suggestions = SUGGESTIONS[user.role] || [];
+  const suggestions = suggestionsFor(user.role, preschool);
 
   return (
     <KeyboardAvoidingView
@@ -54,7 +67,7 @@ export default function AssistantScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={90}
     >
-      <ScreenHeader icon="sparkles" title="Assistant" subtitle="Ask anything about your society" />
+      <ScreenHeader icon="sparkles" title="Assistant" subtitle={`Ask anything about your ${place}`} />
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
