@@ -4,7 +4,7 @@ import { prisma } from "./prisma.js";
 import { placeholderPhoto } from "./storage.js";
 
 // Seeds the platform:
-//   - 1 superadmin (H2O owner) that can see every society
+//   - 1 superadmin (GateMate owner) that can see every society
 //   - 2 demo societies, each with its own admins/guards/residents, flats, bills,
 //     visitors and expenses, so the super-admin summary shows real numbers.
 // Password for every account: Password123
@@ -31,7 +31,7 @@ async function main() {
   // ---- Platform owner (no society) --------------------------------------
   await prisma.user.create({
     data: {
-      name: "H2O Owner",
+      name: "GateMate Owner",
       email: "owner@h2o.com",
       role: "superadmin",
       passwordHash: hash,
@@ -263,7 +263,7 @@ async function main() {
   });
 
   console.log("Seed complete. All demo logins use password: " + PASSWORD);
-  console.log("  SUPER ADMIN (H2O owner): owner@h2o.com");
+  console.log("  SUPER ADMIN (GateMate owner): owner@h2o.com");
   console.log("  Society 1 - Green Valley Residency (Pune):");
   console.log("     admin@h2o.com / admin2@h2o.com, guard@h2o.com / guard2@h2o.com");
   console.log("     resident@h2o.com (A-101), resident2@h2o.com (A-102), resident3@h2o.com (B-201)");

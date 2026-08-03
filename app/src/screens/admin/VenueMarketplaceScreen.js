@@ -81,7 +81,7 @@ export default function VenueMarketplaceScreen() {
       }
       await load();
       const routedNote = r.routed
-        ? `\n\n90% (${money(b.societyNet)}) will settle to the society; H2O keeps the ${b.platformFeePct}% fee.`
+        ? `\n\n90% (${money(b.societyNet)}) will settle to the society; GateMate keeps the ${b.platformFeePct}% fee.`
         : "\n\n(Society bank account not linked to Razorpay Route yet — full amount settles to the platform account; settle the society's share manually.)";
       Alert.alert("Payment link ready", `Share this with ${b.vendorName}:\n${r.url}${routedNote}`, [
         { text: "Close" },
@@ -155,11 +155,11 @@ export default function VenueMarketplaceScreen() {
             <Text style={styles.upsellText}>
               The vendor venue marketplace lets outside vendors (decorators, event
               companies, etc.) book your community hall or grounds and pay the society —
-              with H2O keeping a small platform fee (10%).
+              with GateMate keeping a small platform fee (10%).
             </Text>
             <Text style={styles.upsellText}>
-              This is part of the <Text style={{ fontWeight: "800" }}>H2O Premium</Text> plan.
-              Ask the H2O team to enable premium for your society.
+              This is part of the <Text style={{ fontWeight: "800" }}>GateMate Premium</Text> plan.
+              Ask the GateMate team to enable premium for your society.
             </Text>
           </View>
         </ScrollView>
@@ -181,7 +181,7 @@ export default function VenueMarketplaceScreen() {
               <Text style={[styles.sumVal, { color: "#2E9E52" }]}>{money(summary.societyEarnings)}</Text>
             </View>
             <View style={styles.sumBox}>
-              <Text style={styles.sumLabel}>H2O fees</Text>
+              <Text style={styles.sumLabel}>GateMate fees</Text>
               <Text style={styles.sumVal}>{money(summary.platformFees)}</Text>
             </View>
             <View style={styles.sumBox}>
@@ -211,7 +211,7 @@ export default function VenueMarketplaceScreen() {
 
             <View style={styles.feeRow}>
               <Fee label="Amount" value={money(b.amount)} />
-              <Fee label={`H2O fee (${b.platformFeePct}%)`} value={money(b.platformFee)} />
+              <Fee label={`GateMate fee (${b.platformFeePct}%)`} value={money(b.platformFee)} />
               <Fee label="Society gets" value={money(b.societyNet)} strong />
             </View>
 
@@ -350,14 +350,14 @@ function AddBookingModal({ visible, onClose, onDone }) {
                 <TextInput style={styles.input} value={f.amount} onChangeText={set("amount")} placeholder="20000" keyboardType="number-pad" />
               </View>
               <View style={{ width: 110 }}>
-                <Label>H2O fee %</Label>
+                <Label>GateMate fee %</Label>
                 <TextInput style={styles.input} value={f.platformFeePct} onChangeText={set("platformFeePct")} keyboardType="number-pad" />
               </View>
             </View>
 
             {amount > 0 && (
               <Text style={styles.split}>
-                Society gets {money(amount - fee)} · H2O fee {money(fee)}
+                Society gets {money(amount - fee)} · GateMate fee {money(fee)}
               </Text>
             )}
 

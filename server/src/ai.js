@@ -187,7 +187,7 @@ export async function assistantAnswer(user, question) {
       {
         role: "system",
         content:
-          `You are H2O, a helpful ${v.org}-management assistant. Answer ONLY from the provided JSON data. ` +
+          `You are GateMate, a helpful ${v.org}-management assistant. Answer ONLY from the provided JSON data. ` +
           preschoolRule +
           `Be concise and specific (dates, names, amounts in INR, formatted like ₹1,200). If the data does not contain the answer, say so. ` +
           `Money fields: society.collectedThisMonth = ${v.fees} collected in the current month (data.currentPeriod, format YYYY-MM); ` +

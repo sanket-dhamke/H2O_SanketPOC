@@ -57,7 +57,7 @@ export default function PayToH2OScreen({ navigation }) {
 
   const pay = async () => {
     if (!(Number(data?.planAmount) > 0)) {
-      notify("No amount set", "H2O hasn't set your subscription amount yet. Please contact H2O support.");
+      notify("No amount set", "GateMate hasn't set your subscription amount yet. Please contact GateMate support.");
       return;
     }
     setBusy(true);
@@ -65,7 +65,7 @@ export default function PayToH2OScreen({ navigation }) {
       const result = await paySubscription();
       if (result?.cancelled) return;
       await load();
-      notify("Payment successful", "Your H2O subscription is now active. Thank you!");
+      notify("Payment successful", "Your GateMate subscription is now active. Thank you!");
     } catch (e) {
       notify("Payment failed", e.message);
     } finally {
@@ -76,7 +76,7 @@ export default function PayToH2OScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.container}>
-        <ScreenHeader icon="ribbon" title="Pay to H2O" subtitle="Platform subscription" onBack={() => navigation.goBack()} />
+        <ScreenHeader icon="ribbon" title="Pay to GateMate" subtitle="Platform subscription" onBack={() => navigation.goBack()} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#0B6E8F" />
         </View>
@@ -91,7 +91,7 @@ export default function PayToH2OScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader icon="ribbon" title="Pay to H2O" subtitle="Platform subscription" onBack={() => navigation.goBack()} />
+      <ScreenHeader icon="ribbon" title="Pay to GateMate" subtitle="Platform subscription" onBack={() => navigation.goBack()} />
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -106,7 +106,7 @@ export default function PayToH2OScreen({ navigation }) {
           </View>
           <Text style={styles.statusLine}>
             {premium
-              ? `Your H2O subscription is active until ${fmtDate(data?.planExpiresAt)}.`
+              ? `Your GateMate subscription is active until ${fmtDate(data?.planExpiresAt)}.`
               : "Upgrade to unlock premium features (vendor marketplace, voice AI & more)."}
           </Text>
           <View style={styles.amountRow}>
@@ -124,12 +124,12 @@ export default function PayToH2OScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           {amount <= 0 && (
-            <Text style={styles.hint}>H2O hasn't set your plan amount yet. Contact H2O support to get started.</Text>
+            <Text style={styles.hint}>GateMate hasn't set your plan amount yet. Contact GateMate support to get started.</Text>
           )}
         </View>
 
-        {/* H2O reference details */}
-        <Text style={styles.sectionTitle}>H2O account (for reference)</Text>
+        {/* GateMate reference details */}
+        <Text style={styles.sectionTitle}>GateMate account (for reference)</Text>
         <View style={styles.refCard}>
           {p.contactEmail && <RefRow icon="mail-outline" label="Contact" value={p.contactEmail} />}
           {hasBank ? (
@@ -141,7 +141,7 @@ export default function PayToH2OScreen({ navigation }) {
               {p.upiId && <RefRow icon="at-outline" label="UPI" value={p.upiId} />}
             </>
           ) : (
-            <Text style={styles.hint}>H2O bank details aren't published yet.</Text>
+            <Text style={styles.hint}>GateMate bank details aren't published yet.</Text>
           )}
           <Text style={styles.refNote}>
             Payment is collected securely in-app. These details are shown for reference only.

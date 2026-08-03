@@ -125,7 +125,7 @@ maintenanceRouter.post("/maintenance/:id/create-order", authRequired, async (req
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      name: "H2O Society",
+      name: "GateMate Society",
       description: `Maintenance ${bill.period} (Flat ${bill.flat?.flatNo})`,
       prefill: { name: payer?.name || "", email: payer?.email || "" },
     });

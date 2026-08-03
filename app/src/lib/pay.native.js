@@ -85,8 +85,8 @@ export async function payBooking(booking) {
   return { paid: true };
 }
 
-// A society admin pays H2O's platform subscription. Same real flow; settles to
-// H2O's own Razorpay account. Falls back to the mock when Razorpay is off.
+// A society admin pays GateMate's platform subscription. Same real flow; settles to
+// GateMate's own Razorpay account. Falls back to the mock when Razorpay is off.
 export async function paySubscription() {
   const order = await api.createSubscriptionOrder();
   if (!order.enabled) {

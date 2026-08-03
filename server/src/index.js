@@ -64,7 +64,7 @@ app.post("/api/razorpay/webhook", express.raw({ type: "*/*" }), async (req, res)
 app.use(express.json({ limit: "12mb" }));
 
 app.get("/api/health", (_req, res) =>
-  res.json({ ok: true, name: "H2O", razorpay: razorpayEnabled, storage: storageEnabled, ai: aiEnabled })
+  res.json({ ok: true, name: "GateMate", razorpay: razorpayEnabled, storage: storageEnabled, ai: aiEnabled })
 );
 
 app.use("/api", authRouter);
@@ -191,7 +191,7 @@ async function ensurePlatformSetting() {
 }
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`H2O server running on http://0.0.0.0:${PORT}`);
+  console.log(`GateMate server running on http://0.0.0.0:${PORT}`);
   // Ensure every existing tenant has a branded-login slug (idempotent).
   backfillSlugs()
     .then((n) => n > 0 && console.log(`Backfilled slugs for ${n} societ(y/ies).`))

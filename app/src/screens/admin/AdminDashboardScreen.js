@@ -152,7 +152,7 @@ export default function AdminDashboardScreen() {
       )}
       <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("PayToH2O")}>
         <Ionicons name="ribbon-outline" size={18} color="#0B6E8F" />
-        <Text style={styles.collectText}>H2O subscription — Pay to H2O</Text>
+        <Text style={styles.collectText}>GateMate subscription — Pay to GateMate</Text>
       </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>{L.unit}-wise status</Text>

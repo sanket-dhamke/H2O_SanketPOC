@@ -25,7 +25,7 @@ const ROLE_LABEL = {
   resident: "Resident",
   guard: "Gate desk / Guard",
   admin: "Society admin",
-  superadmin: "H2O Platform owner",
+  superadmin: "GateMate Platform owner",
 };
 const ID_LABEL = { resident: "Resident ID", guard: "Staff ID", admin: "Admin ID", superadmin: "Owner ID" };
 
@@ -91,7 +91,7 @@ export default function ProfileModal({ visible, onClose }) {
 
   const open = (url) => Linking.openURL(url).catch(() => Alert.alert("Unavailable", `Couldn't open ${url}`));
   const sendFeedback = () => {
-    const subject = encodeURIComponent(`H2O feedback — ${user?.name} (${memberId(user)})`);
+    const subject = encodeURIComponent(`GateMate feedback — ${user?.name} (${memberId(user)})`);
     const body = encodeURIComponent(
       `\n\n—\nFrom: ${user?.name}\nRole: ${ROLE_LABEL[user?.role]}\n` +
         (user?.societyName ? `Society: ${user.societyName}\n` : "") +
@@ -167,7 +167,7 @@ export default function ProfileModal({ visible, onClose }) {
               />
             </View>
             {Platform.OS === "web" && (
-              <Text style={styles.note}>This preference applies to the H2O mobile app.</Text>
+              <Text style={styles.note}>This preference applies to the GateMate mobile app.</Text>
             )}
           </Section>
 
@@ -207,7 +207,7 @@ export default function ProfileModal({ visible, onClose }) {
           </Section>
 
           <Text style={styles.version}>
-            H2O v{Constants.expoConfig?.version || "1.0.0"} · {ROLE_LABEL[user.role]}
+            GateMate v{Constants.expoConfig?.version || "1.0.0"} · {ROLE_LABEL[user.role]}
           </Text>
         </ScrollView>
 

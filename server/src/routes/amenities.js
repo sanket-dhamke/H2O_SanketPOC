@@ -200,7 +200,7 @@ amenitiesRouter.post("/bookings/:id/create-order", authRequired, async (req, res
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      name: "H2O Society",
+      name: "GateMate Society",
       description: `${booking.amenity?.name || "Amenity"} · ${booking.slot?.label || ""} · ${booking.date}`,
       prefill: { name: payer?.name || "", email: payer?.email || "" },
     });

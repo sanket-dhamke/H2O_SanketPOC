@@ -198,7 +198,7 @@ export const api = {
   adminBackup: () => request("/api/admin/backup"),
   adminEmailBackup: () => request("/api/admin/backup/email", { method: "POST" }),
 
-  // Super admin (H2O platform owner): cross-society overview + management
+  // Super admin (GateMate platform owner): cross-society overview + management
   superOverview: () => request("/api/superadmin/overview"),
   superListSocieties: () => request("/api/superadmin/societies"),
   superCreateSociety: (payload) =>
@@ -222,7 +222,7 @@ export const api = {
   superSocietyFlats: (societyId) => request(`/api/superadmin/societies/${societyId}/flats`),
   superFlatLedger: (flatId) => request(`/api/superadmin/flats/${flatId}/ledger`),
 
-  // Admin: H2O subscription ("Pay to H2O")
+  // Admin: GateMate subscription ("Pay to GateMate")
   adminSubscription: () => request("/api/admin/subscription"),
   createSubscriptionOrder: () =>
     request("/api/admin/subscription/create-order", { method: "POST" }),

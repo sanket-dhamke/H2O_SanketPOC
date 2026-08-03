@@ -76,7 +76,7 @@ export default function SuperAdminDashboardScreen() {
       <ScreenHeader
         icon="planet"
         logo={require("../../../assets/icon.png")}
-        title="H2O Platform"
+        title="GateMate Platform"
         subtitle="Owner overview across all societies"
         right={headerBtns}
       />
@@ -86,7 +86,7 @@ export default function SuperAdminDashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.heroCard}>
-          <Text style={styles.heroLabel}>Societies using H2O</Text>
+          <Text style={styles.heroLabel}>Societies using GateMate</Text>
           <Text style={styles.heroValue}>{data?.societies ?? "—"}</Text>
           <Text style={styles.heroSub}>{data?.activeSocieties ?? 0} active</Text>
         </View>
@@ -99,11 +99,11 @@ export default function SuperAdminDashboardScreen() {
         </View>
         <Text style={styles.tapHint}>Tap any card to see the breakdown by society.</Text>
 
-        <Text style={styles.sectionTitle}>H2O revenue</Text>
+        <Text style={styles.sectionTitle}>GateMate revenue</Text>
         <View style={styles.revenueCard}>
           <View style={styles.revenueTop}>
             <View>
-              <Text style={styles.revenueLabel}>Total H2O revenue</Text>
+              <Text style={styles.revenueLabel}>Total GateMate revenue</Text>
               <Text style={styles.revenueValue}>{money(data?.revenue?.total)}</Text>
             </View>
             <View style={styles.premiumPill}>

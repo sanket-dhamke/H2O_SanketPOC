@@ -77,7 +77,7 @@ export default function LoginScreen() {
 
   // Auto-brand the login ONLY from a branded link/QR (?t=slug or /t/slug).
   // With no such link, we stay neutral — branding is never remembered/sticky,
-  // so a plain refresh always returns to the neutral H2O login.
+  // so a plain refresh always returns to the neutral GateMate login.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -137,7 +137,7 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.logoWrap}>
-            <Text style={styles.logo}>H2O</Text>
+            <Text style={styles.logo}>GateMate</Text>
             <Text style={styles.tagline}>{theme.tagline}</Text>
           </View>
 
@@ -219,7 +219,7 @@ export default function LoginScreen() {
 
             <Text style={styles.hint}>{theme.hint}</Text>
           </View>
-          <Text style={styles.buildTag}>H2O · build 4</Text>
+          <Text style={styles.buildTag}>GateMate · build 7</Text>
         </ScrollView>
       </KeyboardAvoidingView>
       <ForgotPasswordModal

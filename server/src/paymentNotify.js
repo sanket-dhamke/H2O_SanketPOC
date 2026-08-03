@@ -36,7 +36,7 @@ function buildReceiptPdf({ bill, resident, society, account }) {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    const societyName = society?.name || account?.accountHolderName || "H2O Society";
+    const societyName = society?.name || account?.accountHolderName || "GateMate Society";
     const isRzp = !!bill.paymentRef && String(bill.paymentRef).startsWith("pay_");
     const method =
       bill.paymentMode === "cash"
@@ -124,8 +124,8 @@ export async function onBillPaid(billId) {
 
     // 1) Email the resident their receipt PDF.
     if (resident?.email) {
-      const text = `Hi ${resident.name},\n\nThank you! We received your maintenance payment of ${inr(bill.amount)} for ${bill.period} (Flat ${flatNo}). Your receipt is attached.\n\n— ${society?.name || "H2O Society"}`;
-      const html = `<p>Hi ${resident.name},</p><p>Thank you! We received your maintenance payment of <b>${inr(bill.amount)}</b> for <b>${bill.period}</b> (Flat ${flatNo}). Your receipt is attached as a PDF.</p><p>— ${society?.name || "H2O Society"}</p>`;
+      const text = `Hi ${resident.name},\n\nThank you! We received your maintenance payment of ${inr(bill.amount)} for ${bill.period} (Flat ${flatNo}). Your receipt is attached.\n\n— ${society?.name || "GateMate Society"}`;
+      const html = `<p>Hi ${resident.name},</p><p>Thank you! We received your maintenance payment of <b>${inr(bill.amount)}</b> for <b>${bill.period}</b> (Flat ${flatNo}). Your receipt is attached as a PDF.</p><p>— ${society?.name || "GateMate Society"}</p>`;
       await sendEmail({
         to: resident.email,
         subject: `Payment receipt — Flat ${flatNo} — ${bill.period}`,

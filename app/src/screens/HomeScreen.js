@@ -60,7 +60,7 @@ export default function HomeScreen({ navigation }) {
   const roleLabel = { resident: L.payer, admin: L.roleAdmin, guard: "Gate desk" }[user.role];
   const actions = getActions(user.role, L, isPreschool(user));
 
-  // A tenant's branded image (set by the H2O owner) becomes the dashboard header
+  // A tenant's branded image (set by the GateMate owner) becomes the dashboard header
   // background. Fall back to the default themed photo if it's unset or the URL
   // fails to load (e.g. not a direct image link).
   const customBg = !!user.societyLogoUrl && !bgError;

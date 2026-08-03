@@ -777,7 +777,7 @@ adminRouter.post("/flats/import", async (req, res) => {
 });
 
 /* ----------------------- Vendor venue marketplace ------------------------ */
-// Premium perk: outside vendors book a society premise; H2O keeps a platform fee.
+// Premium perk: outside vendors book a society premise; GateMate keeps a platform fee.
 async function loadSocietyForPlan(req) {
   return prisma.society.findUnique({ where: { id: sid(req) } });
 }
@@ -807,7 +807,7 @@ adminRouter.get("/venue-bookings", async (req, res) => {
 adminRouter.post("/venue-bookings", async (req, res) => {
   const society = await loadSocietyForPlan(req);
   if (!isPremium(society)) {
-    return res.status(402).json({ premium: false, message: "The vendor marketplace is a premium feature. Ask H2O to enable premium for your society." });
+    return res.status(402).json({ premium: false, message: "The vendor marketplace is a premium feature. Ask GateMate to enable premium for your society." });
   }
   const { venueName, vendorName, vendorPhone, vendorEmail, purpose, date, slot, amount, platformFeePct, notes } = req.body || {};
   if (!venueName || !vendorName || !date) {
@@ -865,7 +865,7 @@ adminRouter.delete("/venue-bookings/:id", async (req, res) => {
 
 // Create a Razorpay Payment Link the vendor can pay. When the society has a
 // Razorpay Route linked account, the society's 90% (societyNet) is transferred
-// to it and H2O keeps the 10% platform fee on the primary account.
+// to it and GateMate keeps the 10% platform fee on the primary account.
 adminRouter.post("/venue-bookings/:id/payment-link", async (req, res) => {
   const society = await loadSocietyForPlan(req);
   if (!isPremium(society)) return res.status(402).json({ premium: false, message: "Premium feature" });
@@ -886,7 +886,7 @@ adminRouter.post("/venue-bookings/:id/payment-link", async (req, res) => {
   const amountPaise = Math.round(booking.amount * 100);
   const netPaise = Math.round(booking.societyNet * 100);
 
-  // Route the society's share to its linked account (H2O keeps the remainder).
+  // Route the society's share to its linked account (GateMate keeps the remainder).
   const transfers =
     account?.active && account?.razorpayAccountId
       ? [{ account: account.razorpayAccountId, amount: netPaise, currency: "INR", notes: { venueBookingId: booking.id } }]
@@ -951,8 +951,8 @@ adminRouter.post("/venue-bookings/:id/sync", async (req, res) => {
   }
 });
 
-/* ------------------------- H2O subscription (Pay to H2O) ------------------- */
-// A society admin pays H2O's platform subscription. Payment settles to H2O's own
+/* ------------------------- GateMate subscription (Pay to GateMate) ------------------- */
+// A society admin pays GateMate's platform subscription. Payment settles to GateMate's own
 // Razorpay account (a plain order, no Route transfer). Only admins reach these.
 
 function subscriptionAmount(society) {
@@ -983,7 +983,7 @@ async function activateSubscription(society, req, { amount, orderId, paymentRef 
   return { newExpiry, periodLabel };
 }
 
-// Current plan status + H2O bank/UPI reference + recent subscription payments.
+// Current plan status + GateMate bank/UPI reference + recent subscription payments.
 adminRouter.get("/subscription", async (req, res) => {
   const society = await prisma.society.findUnique({ where: { id: sid(req) } });
   const setting = await prisma.platformSetting.findUnique({ where: { id: "platform" } });
@@ -1018,13 +1018,13 @@ adminRouter.get("/subscription", async (req, res) => {
   });
 });
 
-// Step 1: create a Razorpay order for the plan amount (settles to H2O).
+// Step 1: create a Razorpay order for the plan amount (settles to GateMate).
 adminRouter.post("/subscription/create-order", async (req, res) => {
   const society = await prisma.society.findUnique({ where: { id: sid(req) } });
   if (!society) return res.status(404).json({ message: "Society not found" });
   const amount = subscriptionAmount(society);
   if (!(amount > 0)) {
-    return res.status(400).json({ message: "No subscription amount is set yet. Ask H2O to set your plan amount." });
+    return res.status(400).json({ message: "No subscription amount is set yet. Ask GateMate to set your plan amount." });
   }
   if (!razorpayEnabled) return res.json({ enabled: false });
   try {
@@ -1040,8 +1040,8 @@ adminRouter.post("/subscription/create-order", async (req, res) => {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      name: "H2O Platform",
-      description: `H2O subscription - ${society.name}`,
+      name: "GateMate Platform",
+      description: `GateMate subscription - ${society.name}`,
       prefill: { name: req.user.name || "", email: req.user.email || "" },
     });
   } catch (err) {
@@ -1078,7 +1078,7 @@ adminRouter.post("/subscription/pay", async (req, res) => {
   if (!society) return res.status(404).json({ message: "Society not found" });
   const amount = subscriptionAmount(society);
   if (!(amount > 0)) {
-    return res.status(400).json({ message: "No subscription amount is set yet. Ask H2O to set your plan amount." });
+    return res.status(400).json({ message: "No subscription amount is set yet. Ask GateMate to set your plan amount." });
   }
   const { newExpiry, periodLabel } = await activateSubscription(society, req, {
     amount,

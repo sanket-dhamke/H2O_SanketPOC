@@ -29,7 +29,7 @@ const STATUS = {
   pending: { label: "Pending", bg: "#FBE4D5", fg: "#9A3412" },
 };
 
-// Full per-flat payment audit. Admins see flats in their own society; the H2O
+// Full per-flat payment audit. Admins see flats in their own society; the GateMate
 // owner reaches this per-society (societyId passed via route params). Picking a
 // flat loads its COMPLETE history — every bill and every individual payment,
 // oldest first — so a miscalculation can be traced back to the beginning.

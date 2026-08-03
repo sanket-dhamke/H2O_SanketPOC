@@ -56,7 +56,7 @@ function esc(s) {
 
 // Returns { html, filename } for the given paid bill.
 export function buildReceipt({ bill, user, payee }) {
-  const societyName = payee?.accountHolderName || "H2O Society";
+  const societyName = payee?.accountHolderName || "GateMate Society";
   const isRazorpay = !!bill?.paymentRef && String(bill.paymentRef).startsWith("pay_");
   const method = isRazorpay ? "Razorpay (UPI / Card / Net Banking)" : "Manual / Test mode";
   const receiptNo =

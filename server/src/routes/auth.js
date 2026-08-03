@@ -21,7 +21,7 @@ authRouter.post("/auth/login", async (req, res) => {
   }
   // Block login when the user's society has been deactivated by the superadmin.
   if (user.role !== "superadmin" && user.society && !user.society.active) {
-    return res.status(403).json({ message: "This society is currently inactive. Contact H2O support." });
+    return res.status(403).json({ message: "This society is currently inactive. Contact GateMate support." });
   }
   res.json({ token: signToken(user), user: publicUser(user) });
 });
@@ -56,13 +56,13 @@ authRouter.post("/auth/forgot-password", async (req, res) => {
   });
 
   const text =
-    `Hi ${user.name},\n\nYour H2O password reset code is ${otp}.\n` +
+    `Hi ${user.name},\n\nYour GateMate password reset code is ${otp}.\n` +
     `It expires in 15 minutes. If you didn't request this, you can ignore this email.`;
   const html =
-    `<p>Hi ${user.name},</p><p>Your H2O password reset code is ` +
+    `<p>Hi ${user.name},</p><p>Your GateMate password reset code is ` +
     `<b style="font-size:22px;letter-spacing:2px">${otp}</b>.</p>` +
     `<p>It expires in 15 minutes. If you didn't request this, please ignore this email.</p>`;
-  const result = await sendEmail({ to: email, subject: "Your H2O password reset code", text, html });
+  const result = await sendEmail({ to: email, subject: "Your GateMate password reset code", text, html });
 
   const payload = { ...generic };
   // DEV mode (no provider configured): return the OTP so it's testable now.

@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // a faint watermark icon, an optional right-aligned slot (e.g. a stat), and an
 // optional back button (pass onBack to show it).
 // Pass `logo` (an image source) to show a brand image in the chip instead of the
-// Ionicon (used for the H2O owner headers).
+// Ionicon (used for the GateMate owner headers).
 export default function ScreenHeader({ icon, title, subtitle, right, onBack, logo }) {
   const insets = useSafeAreaInsets();
   return (
