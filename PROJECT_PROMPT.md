@@ -3,6 +3,20 @@
 Paste the block below into any fresh agent window to reconstruct or continue this app.
 It captures the full scope of what has been built so far.
 
+> **For accounts, credentials, connection strings and hosting details, see `INFRA.md`**
+> (git-ignored, kept private). This file is only the product/engineering spec.
+>
+> **Quick handoff / how to run**
+> - Repo layout: `server/` (Node + Express + Prisma API) and `app/` (React Native / Expo).
+> - Backend: `cd server; npm install; npm run db:setup` (seed) `; npm start` (port 4000).
+> - App: `cd app; npm install; npx expo start`. API URL is in `app/app.json` → `extra.apiUrl`.
+> - Cloud build (APK/AAB): `cd app; npx eas-cli build -p android --profile preview|production`.
+> - Windows/PowerShell: chain commands with `;` (not `&&`).
+> - Branding: the app is now **GateMate** (icon, splash, and all user-visible text). The internal
+>   Expo `slug` (`h2o`) and Android package (`com.h2o.society`) are intentionally kept for
+>   EAS/Play continuity. Deep-link scheme is `h2o://`. The `PayToH2O` route id is an internal
+>   identifier only (screen title reads "Pay to GateMate").
+
 ```
 You are building a production-grade, multi-tenant community & premises management mobile app
 (React Native / Expo) called "GateMate" (internally "H2O"). It is a MyGate-style app with AI,
@@ -75,6 +89,20 @@ CORE SOCIETY FEATURES
 7. AI assistant: natural-language queries ("who came to my flat 2 weeks ago", balance, dues). Context is
    enriched with month-aware financials (collectedThisMonth, collectionByMonth) and a society staff
    contact directory so residents can ask "who is my guard/admin" and about future/annual maintenance.
+   The assistant is orgType-aware (uses student/school/fees vocabulary for preschools).
+8. Payment audit trail: admin (own tenant) and superadmin (any tenant) can open a per-flat/student
+   LEDGER showing every bill + every individual payment chronologically with running totals, so any
+   miscalculation is traceable from the beginning. Server: buildFlatLedger() in billing.js exposed via
+   GET /admin/flats/:id/ledger and /superadmin/flats/:id/ledger; screen: FlatLedgerScreen (flat picker
+   + summary + timeline). Reachable from the admin finance dashboard and each society card.
+9. Rent management: mark a flat as on-rent (own monthly maintenance amount for rented flats); tenants/
+   admins add rent agreements with admin verification; early notifications before agreement expiry.
+10. Calendar date pickers: dependency-free, cross-platform. DateField (app/src/components/DateField.js)
+    = month-grid day picker with optional minToday (used for reminder dates and amenity/hall booking).
+    MonthField (app/src/components/MonthField.js) = year + 12-month grid with optional minCurrent
+    (used for "Generate monthly bills" so only the current/future months are selectable).
+- Student CRUD: for preschools, admins add/edit/delete students directly from AdminFeesScreen (a
+  student is a Flat). Delete is blocked if linked app accounts (parents) exist.
 
 ================================================================================
 PRESCHOOL FEATURES (orgType = "preschool")
