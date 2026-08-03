@@ -10,6 +10,9 @@ node_modules/
 # Local credentials reference (demo/real logins) — never commit
 CREDENTIALS.md
 
+# Infra / service-account secrets (DB, Razorpay, Groq, Expo, etc.) — never commit
+INFRA.md
+
 # Prisma local SQLite (legacy local dev)
 server/prisma/*.db
 server/prisma/*.db-journal
