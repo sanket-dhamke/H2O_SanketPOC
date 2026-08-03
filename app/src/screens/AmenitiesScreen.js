@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -20,15 +20,10 @@ import { payBooking } from "../lib/pay";
 import { useAuth } from "../lib/auth";
 import { labelsFor } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
+import DateField from "../components/DateField";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
-const ymd = (d) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${dd}`;
-};
 const prettyDate = (iso) => {
   const [y, m, d] = String(iso).split("-").map(Number);
   const dt = new Date(y, (m || 1) - 1, d || 1);
@@ -137,18 +132,6 @@ function BookCard({ amenity, onBooked }) {
   const [taken, setTaken] = useState([]); // [{slotId, date}]
   const [busy, setBusy] = useState(false);
 
-  const days = useMemo(() => {
-    const arr = [];
-    const base = new Date();
-    base.setHours(0, 0, 0, 0);
-    for (let i = 0; i < 14; i++) {
-      const d = new Date(base);
-      d.setDate(base.getDate() + i);
-      arr.push(ymd(d));
-    }
-    return arr;
-  }, []);
-
   const loadAvailability = useCallback(async () => {
     try {
       const r = await api.amenityAvailability(amenity.id);
@@ -160,10 +143,15 @@ function BookCard({ amenity, onBooked }) {
 
   const isTaken = (sId, d) => taken.some((t) => t.slotId === sId && t.date === d);
   const slot = amenity.slots.find((s) => s.id === slotId);
+  const dateTaken = !!(slotId && date && isTaken(slotId, date));
 
   const submit = async () => {
     if (!slotId || !date) {
       Alert.alert("Pick a slot & date", "Select a time slot and a date first.");
+      return;
+    }
+    if (dateTaken) {
+      Alert.alert("Slot already booked", "That slot is already booked on the selected date. Please pick another date or slot.");
       return;
     }
     setBusy(true);
@@ -215,25 +203,12 @@ function BookCard({ amenity, onBooked }) {
       </View>
 
       <Text style={styles.sectionLabel}>Pick a date</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
-        {days.map((d) => {
-          const disabled = slotId && isTaken(slotId, d);
-          const active = d === date;
-          return (
-            <TouchableOpacity
-              key={d}
-              disabled={disabled}
-              style={[styles.day, active && styles.dayActive, disabled && styles.dayDisabled]}
-              onPress={() => setDate(d)}
-            >
-              <Text style={[styles.dayText, active && { color: "#fff" }, disabled && { color: "#B7C1C8" }]}>
-                {prettyDate(d)}
-              </Text>
-              {disabled && <Text style={styles.dayTaken}>booked</Text>}
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      <DateField value={date || ""} onChange={(v) => setDate(v || null)} minToday placeholder="Select a booking date" />
+      {dateTaken && (
+        <Text style={styles.takenWarn}>
+          This slot is already booked on {prettyDate(date)}. Please choose another date or slot.
+        </Text>
+      )}
 
       <TextInput
         style={[styles.input, { marginTop: 12 }]}
@@ -242,7 +217,7 @@ function BookCard({ amenity, onBooked }) {
         placeholder="Add a note for the admin (optional)"
       />
 
-      <TouchableOpacity style={[styles.primaryBtn, busy && { opacity: 0.6 }]} onPress={submit} disabled={busy}>
+      <TouchableOpacity style={[styles.primaryBtn, (busy || dateTaken) && { opacity: 0.6 }]} onPress={submit} disabled={busy || dateTaken}>
         <Ionicons name="calendar-outline" size={16} color="#fff" />
         <Text style={styles.primaryBtnText}>
           {busy ? "Sending…" : `Request booking${slot ? ` · ${money(slot.price)}` : ""}`}
@@ -736,6 +711,7 @@ const styles = StyleSheet.create({
   enabledHint: { color: "#8794A0", fontSize: 12, marginTop: 8, fontWeight: "600" },
 
   sectionLabel: { color: "#48606B", fontWeight: "700", fontSize: 13, marginTop: 14, marginBottom: 8 },
+  takenWarn: { color: "#C2571A", fontSize: 12.5, fontWeight: "600", marginTop: 8 },
   slotWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   slot: { borderWidth: 1, borderColor: "#CFE0E6", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, minWidth: 96 },
   slotActive: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },

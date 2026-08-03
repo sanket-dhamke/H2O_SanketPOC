@@ -17,6 +17,7 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { labelsFor, isPreschool } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
+import MonthField from "../../components/MonthField";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
@@ -227,8 +228,8 @@ function GenerateBillsModal({ visible, onClose, onDone }) {
 
   return (
     <FormModal visible={visible} onClose={onClose} title="Generate monthly bills" icon="receipt-outline" busy={busy} onSubmit={submit}>
-      <Label>Period (YYYY-MM)</Label>
-      <TextInput style={styles.input} value={period} onChangeText={setPeriod} placeholder="2026-08" autoCapitalize="none" />
+      <Label>Billing month</Label>
+      <MonthField value={period} onChange={setPeriod} minCurrent placeholder="Select billing month" />
       <Label>Amount per flat (Rs.)</Label>
       <TextInput style={styles.input} value={amount} onChangeText={setAmount} placeholder="2500" keyboardType="numeric" />
     </FormModal>
