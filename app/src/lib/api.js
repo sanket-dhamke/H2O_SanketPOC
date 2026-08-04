@@ -292,6 +292,13 @@ export const api = {
   updateTicket: (id, payload) =>
     request(`/api/helpdesk/tickets/${id}`, { method: "PATCH", body: payload }),
 
+  // Gate passes / MyGate-style pre-approval
+  gatePasses: () => request("/api/gate-passes"),
+  createGatePass: (payload) => request("/api/gate-passes", { method: "POST", body: payload }),
+  cancelGatePass: (id) => request(`/api/gate-passes/${id}/cancel`, { method: "POST" }),
+  verifyGatePass: (code) => request(`/api/gate-passes/verify/${encodeURIComponent(code)}`),
+  admitGatePass: (id) => request(`/api/gate-passes/${id}/admit`, { method: "POST" }),
+
   // Amenities & bookings (clubhouse booking engine)
   amenities: () => request("/api/amenities"),
   bookings: () => request("/api/bookings"),

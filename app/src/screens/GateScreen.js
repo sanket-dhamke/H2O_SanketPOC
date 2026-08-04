@@ -8,7 +8,10 @@ import {
   ScrollView,
   Image,
   Platform,
+  Modal,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import TextInput from "../components/AppTextInput";
 import * as ImagePicker from "expo-image-picker";
 import { useAudioRecorder, AudioModule, RecordingPresets, setAudioModeAsync } from "expo-audio";
@@ -37,6 +40,7 @@ export default function GateScreen({ navigation }) {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [isRecording, setIsRecording] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
+  const [verifyModal, setVerifyModal] = useState(false);
 
   const flatsRef = useRef([]);
   useEffect(() => {
@@ -181,6 +185,11 @@ export default function GateScreen({ navigation }) {
         </Text>
       </TouchableOpacity>
 
+      <TouchableOpacity style={styles.passBtn} onPress={() => setVerifyModal(true)}>
+        <Ionicons name="qr-code-outline" size={18} color="#2E9E52" />
+        <Text style={styles.passBtnText}>Admit a pre-approved pass</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity style={styles.photoBox} onPress={takePhoto}>
         {photo ? (
           <Image source={{ uri: photo.uri }} style={styles.photo} />
@@ -259,7 +268,88 @@ export default function GateScreen({ navigation }) {
         </Text>
       </TouchableOpacity>
       </ScrollView>
+      <GatePassVerifyModal visible={verifyModal} onClose={() => setVerifyModal(false)} />
     </View>
+  );
+}
+
+function GatePassVerifyModal({ visible, onClose }) {
+  const [code, setCode] = useState("");
+  const [pass, setPass] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const reset = () => {
+    setCode("");
+    setPass(null);
+  };
+
+  const check = async () => {
+    if (!code.trim()) return;
+    setBusy(true);
+    try {
+      const { pass } = await api.verifyGatePass(code.trim());
+      setPass(pass);
+    } catch (e) {
+      setPass(null);
+      Alert.alert("Not found", e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const admit = async () => {
+    setBusy(true);
+    try {
+      await api.admitGatePass(pass.id);
+      Alert.alert("Admitted", `${pass.guestName} admitted. The resident has been notified.`);
+      reset();
+      onClose();
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <View style={styles.modalCard}>
+          <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
+            <View style={styles.modalHeaderIcon}>
+              <Ionicons name="qr-code-outline" size={20} color="#fff" />
+            </View>
+            <Text style={styles.modalTitle}>Pre-approved pass</Text>
+          </LinearGradient>
+          <View style={styles.modalBody}>
+            <Text style={styles.modalLabel}>Enter the gate code the visitor shows</Text>
+            <TextInput style={styles.codeInput} value={code} onChangeText={setCode} placeholder="6-digit code" keyboardType="number-pad" maxLength={6} />
+            {pass && (
+              <View style={styles.passInfo}>
+                <Text style={styles.passName}>{pass.guestName}</Text>
+                <Text style={styles.passMeta}>{pass.type?.toUpperCase()} · for {pass.flatNo || "resident"}{pass.createdByName ? ` · ${pass.createdByName}` : ""}</Text>
+                {!!pass.vehicleNo && <Text style={styles.passMeta}>Vehicle {pass.vehicleNo}</Text>}
+                {!!pass.purpose && <Text style={styles.passMeta}>{pass.purpose}</Text>}
+              </View>
+            )}
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.mBtn, styles.mCancel]} onPress={() => { reset(); onClose(); }}>
+                <Text style={styles.mCancelText}>Close</Text>
+              </TouchableOpacity>
+              {pass ? (
+                <TouchableOpacity style={[styles.mBtn, { backgroundColor: "#2E9E52" }, busy && { opacity: 0.6 }]} onPress={admit} disabled={busy}>
+                  <Text style={styles.mBtnText}>{busy ? "Admitting…" : "Admit"}</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={[styles.mBtn, busy && { opacity: 0.6 }]} onPress={check} disabled={busy}>
+                  <Text style={styles.mBtnText}>{busy ? "Checking…" : "Check"}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -269,6 +359,24 @@ const styles = StyleSheet.create({
   voiceBtn: { backgroundColor: "#E7F1F5", borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 8 },
   voiceBtnActive: { backgroundColor: "#FCEEE2" },
   voiceBtnText: { color: "#0B6E8F", fontWeight: "700", fontSize: 15 },
+  passBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#E3F5E8", borderRadius: 12, paddingVertical: 13, marginTop: 10 },
+  passBtnText: { color: "#2E9E52", fontWeight: "700", fontSize: 15 },
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 24 },
+  modalCard: { backgroundColor: "#fff", borderRadius: 18, overflow: "hidden" },
+  modalHeader: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingVertical: 16 },
+  modalHeaderIcon: { width: 38, height: 38, borderRadius: 11, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
+  modalTitle: { fontSize: 17, fontWeight: "800", color: "#fff", flex: 1 },
+  modalBody: { padding: 20 },
+  modalLabel: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 8 },
+  codeInput: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 14, fontSize: 24, letterSpacing: 6, textAlign: "center", backgroundColor: "#F8FAFB" },
+  passInfo: { backgroundColor: "#F6F9FA", borderRadius: 10, padding: 14, marginTop: 14 },
+  passName: { fontSize: 17, fontWeight: "800", color: "#1B2B33" },
+  passMeta: { color: "#6B7B85", fontSize: 13, marginTop: 3 },
+  modalActions: { flexDirection: "row", gap: 12, marginTop: 20 },
+  mBtn: { flex: 1, backgroundColor: "#0B6E8F", borderRadius: 10, paddingVertical: 13, alignItems: "center" },
+  mBtnText: { color: "#fff", fontWeight: "700" },
+  mCancel: { backgroundColor: "#EEF2F4" },
+  mCancelText: { color: "#6B7B85", fontWeight: "700" },
   photoBox: { alignSelf: "center", marginTop: 12, marginBottom: 4 },
   photo: { width: 120, height: 120, borderRadius: 60 },
   photoPlaceholder: {

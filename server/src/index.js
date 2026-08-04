@@ -17,6 +17,7 @@ import { staffRouter } from "./routes/staff.js";
 import { tenantRouter } from "./routes/tenant.js";
 import { rentRouter } from "./routes/rent.js";
 import { helpdeskRouter } from "./routes/helpdesk.js";
+import { gatePassRouter } from "./routes/gatepass.js";
 import { aiRouter } from "./routes/ai.js";
 import cron from "node-cron";
 import { runMonthlyBackups } from "./backup.js";
@@ -79,6 +80,7 @@ app.use("/api", staffRouter);
 app.use("/api", tenantRouter);
 app.use("/api", rentRouter);
 app.use("/api", helpdeskRouter);
+app.use("/api", gatePassRouter);
 app.use("/api/ai", aiRouter);
 
 // Secure endpoint to trigger the monthly backup from an EXTERNAL scheduler

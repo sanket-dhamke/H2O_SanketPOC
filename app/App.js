@@ -20,6 +20,7 @@ import CommunityScreen from "./src/screens/CommunityScreen";
 import HelpdeskScreen from "./src/screens/HelpdeskScreen";
 import TicketDetailScreen from "./src/screens/TicketDetailScreen";
 import DirectoryScreen from "./src/screens/DirectoryScreen";
+import GatePassScreen from "./src/screens/GatePassScreen";
 import AmenitiesScreen from "./src/screens/AmenitiesScreen";
 import StaffAttendanceScreen from "./src/screens/StaffAttendanceScreen";
 import RentAgreementsScreen from "./src/screens/RentAgreementsScreen";
@@ -45,6 +46,7 @@ const FinanceStack = createNativeStackNavigator();
 const MaintenanceStack = createNativeStackNavigator();
 const SocietiesStack = createNativeStackNavigator();
 const CommunityStack = createNativeStackNavigator();
+const VisitorsStack = createNativeStackNavigator();
 
 const screenHeader = { headerStyle: { backgroundColor: "#0B6E8F" }, headerTintColor: "#fff" };
 
@@ -150,6 +152,16 @@ function CommunityStackScreen() {
   );
 }
 
+// Residents reach the gate-pass (pre-approval) screen from their Visitors tab.
+function VisitorsStackScreen() {
+  return (
+    <VisitorsStack.Navigator screenOptions={{ headerShown: false }}>
+      <VisitorsStack.Screen name="VisitorsHome" component={VisitorsScreen} />
+      <VisitorsStack.Screen name="GatePass" component={GatePassScreen} />
+    </VisitorsStack.Navigator>
+  );
+}
+
 // The owner's Societies tab is a stack so it can drill into a society's flats
 // and any flat's full payment audit ledger.
 function SocietiesStackScreen() {
@@ -189,7 +201,7 @@ function ResidentTabs() {
       <Tab.Screen name="Maintenance" component={MaintenanceStackScreen} options={{ tabBarLabel: L.feesShort }} />
       <Tab.Screen name="Community" component={CommunityStackScreen} />
       <Tab.Screen name="Amenities" component={AmenitiesScreen} />
-      <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ tabBarLabel: L.visitors }} />
+      <Tab.Screen name="Visitors" component={VisitorsStackScreen} options={{ tabBarLabel: L.visitors }} />
       <Tab.Screen name="Assistant" component={AssistantScreen} />
     </Tab.Navigator>
   );

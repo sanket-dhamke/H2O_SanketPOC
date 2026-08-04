@@ -149,6 +149,7 @@ function getActions(role, L, preschool) {
     return [
       { label: `Pay ${L.feesShort.toLowerCase()}`, subtitle: "View bills & download receipts", icon: "card-outline", tint: "#0B6E8F", route: "Maintenance" },
       { label: "Visitors at gate", subtitle: "Approve, deny or leave at gate", icon: "people-outline", tint: "#C2571A", route: "Visitors" },
+      { label: "Gate pass", subtitle: "Pre-approve guests & deliveries", icon: "qr-code-outline", tint: "#7A5AF8", route: "Visitors", params: { screen: "GatePass" } },
       { label: "Helpdesk", subtitle: "Raise a ticket, call security or office", icon: "help-buoy-outline", tint: "#1E7A3D", route: "Community", params: { screen: "Helpdesk" } },
       { label: "Ask the assistant", subtitle: `Get instant answers about your ${L.unit.toLowerCase()}`, icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant" },
     ];
