@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { useAuth } from "../lib/auth";
 import { buildReceipt } from "../lib/receiptHtml";
 import { downloadReceipt } from "../lib/receipt";
 import ScreenHeader from "../components/ScreenHeader";
+import MonthField from "../components/MonthField";
 
 function formatDateTime(iso) {
   if (!iso) return "-";
@@ -37,7 +38,14 @@ export default function MaintenanceScreen() {
   const [payee, setPayee] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const [cashBill, setCashBill] = useState(null);
+  const [monthFilter, setMonthFilter] = useState("");
   const isAdmin = user?.role === "admin";
+
+  // When a month is chosen, show only that period's bills (period is "YYYY-MM").
+  const visibleBills = useMemo(
+    () => (monthFilter ? bills.filter((b) => b.period === monthFilter) : bills),
+    [bills, monthFilter]
+  );
 
   const load = useCallback(async () => {
     let loadedBills = [];
@@ -146,18 +154,40 @@ export default function MaintenanceScreen() {
         </View>
       )}
       <FlatList
-        data={bills}
+        data={visibleBills}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={
-          !isAdmin ? (
-            <TouchableOpacity style={styles.rentLink} onPress={() => navigation.navigate("RentAgreements")}>
-              <Ionicons name="document-text-outline" size={18} color="#0B6E8F" />
-              <Text style={styles.rentLinkText}>Rent agreement — submit & track (rented flats)</Text>
-              <Ionicons name="chevron-forward" size={18} color="#0B6E8F" />
-            </TouchableOpacity>
-          ) : null
+          <View>
+            {!isAdmin ? (
+              <TouchableOpacity style={styles.rentLink} onPress={() => navigation.navigate("RentAgreements")}>
+                <Ionicons name="document-text-outline" size={18} color="#0B6E8F" />
+                <Text style={styles.rentLinkText}>Rent agreement — submit & track (rented flats)</Text>
+                <Ionicons name="chevron-forward" size={18} color="#0B6E8F" />
+              </TouchableOpacity>
+            ) : null}
+            <View style={styles.filterRow}>
+              <Ionicons name="funnel-outline" size={16} color="#0B6E8F" />
+              <Text style={styles.filterLabel}>Filter by month</Text>
+              <View style={{ flex: 1 }}>
+                <MonthField value={monthFilter} onChange={setMonthFilter} placeholder="All months" />
+              </View>
+            </View>
+            {monthFilter ? (
+              <Text style={styles.filterHint}>
+                Showing {visibleBills.length} bill{visibleBills.length === 1 ? "" : "s"} for the selected month.
+              </Text>
+            ) : null}
+          </View>
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyBox}>
+            <Ionicons name="receipt-outline" size={30} color="#B7C2C9" />
+            <Text style={styles.emptyText}>
+              {monthFilter ? "No bills for the selected month." : "No bills yet."}
+            </Text>
+          </View>
         }
         renderItem={({ item }) => (
           <View style={styles.bill}>
@@ -348,6 +378,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
   rentLink: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#EAF4F8", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, marginBottom: 14 },
   rentLinkText: { flex: 1, color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
+  filterRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
+  filterLabel: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
+  filterHint: { color: "#6B7B85", fontSize: 12, marginBottom: 12 },
+  emptyBox: { alignItems: "center", paddingVertical: 48, gap: 10 },
+  emptyText: { color: "#8895A0", fontSize: 14, fontWeight: "600" },
   headerStat: { alignItems: "flex-end" },
   headerStatLabel: { color: "#CDE9F2", fontSize: 11, fontWeight: "600" },
   headerStatValue: { color: "#fff", fontSize: 24, fontWeight: "800", marginTop: 2 },
