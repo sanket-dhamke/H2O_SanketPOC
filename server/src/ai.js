@@ -76,7 +76,7 @@ async function buildContext(user) {
       contacts,
       flat: dbUser?.flat?.flatNo,
       visitors: visitors.map((v) => ({
-        name: v.name, purpose: v.purpose, vehicleNo: v.vehicleNo, phone: v.phone,
+        name: v.name, flatNo: dbUser?.flat?.flatNo, purpose: v.purpose, vehicleNo: v.vehicleNo, phone: v.phone,
         status: v.status, at: v.createdAt,
       })),
       bills: bills.map((b) => ({ period: b.period, amount: b.amount, status: b.status, dueDate: b.dueDate, paidAt: b.paidAt })),
@@ -180,6 +180,12 @@ export async function assistantAnswer(user, question) {
         "Always speak in terms of students, classes, the school and fees. "
       : "";
 
+  const residentRule =
+    user.role === "resident"
+      ? `IMPORTANT: The data is already scoped to this user. Every entry in 'visitors', 'bills' and 'myBookings' belongs to the user's own ${v.unit} (data.flat). ` +
+        `NEVER say the records are 'not linked' to their ${v.unit} — they always are. Just answer directly (e.g. list the visitors for the requested period). `
+      : "";
+
   const completion = await openai.chat.completions.create({
     model: CHAT_MODEL,
     temperature: 0.2,
@@ -189,6 +195,7 @@ export async function assistantAnswer(user, question) {
         content:
           `You are GateMate, a helpful ${v.org}-management assistant. Answer ONLY from the provided JSON data. ` +
           preschoolRule +
+          residentRule +
           `Be concise and specific (dates, names, amounts in INR, formatted like ₹1,200). If the data does not contain the answer, say so. ` +
           `Money fields: society.collectedThisMonth = ${v.fees} collected in the current month (data.currentPeriod, format YYYY-MM); ` +
           "society.collectedAllTime = collected across all time; society.pendingAllTime = outstanding dues; " +
