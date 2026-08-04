@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ImageBackground,
+  Image,
   ScrollView,
   Linking,
 } from "react-native";
@@ -137,6 +138,7 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.logoWrap}>
+            <Image source={require("../../assets/icon.png")} style={styles.logoMark} resizeMode="contain" />
             <Text style={styles.logo}>GateMate</Text>
             <Text style={styles.tagline}>{theme.tagline}</Text>
           </View>
@@ -219,7 +221,6 @@ export default function LoginScreen() {
 
             <Text style={styles.hint}>{theme.hint}</Text>
           </View>
-          <Text style={styles.buildTag}>GateMate · build 7</Text>
         </ScrollView>
       </KeyboardAvoidingView>
       <ForgotPasswordModal
@@ -237,6 +238,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 20 },
   logoWrap: { alignItems: "center", marginBottom: 22 },
+  logoMark: { width: 84, height: 84, borderRadius: 20, marginBottom: 12, shadowColor: "#000", shadowOpacity: 0.3, shadowOffset: { width: 0, height: 6 }, shadowRadius: 14, elevation: 8 },
   logo: { fontSize: 40, fontWeight: "800", color: "#fff", letterSpacing: -0.5, textShadowColor: "rgba(0,0,0,0.35)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12 },
   tagline: { color: "#EAF6FA", marginTop: 6, fontSize: 13, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "600", textShadowColor: "rgba(0,0,0,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 },
   card: {
@@ -296,5 +298,4 @@ const styles = StyleSheet.create({
   forgot: { color: "#0B6E8F", fontWeight: "700", fontSize: 13, textAlign: "center", marginTop: 14 },
   advancedToggle: { color: "#0B6E8F", fontWeight: "600", fontSize: 13, textAlign: "center", marginTop: 16 },
   hint: { color: "#8895A0", fontSize: 12, textAlign: "center", marginTop: 16, lineHeight: 18 },
-  buildTag: { color: "rgba(255,255,255,0.85)", fontSize: 11, textAlign: "center", marginTop: 16, fontWeight: "600", textShadowColor: "rgba(0,0,0,0.4)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
 });
