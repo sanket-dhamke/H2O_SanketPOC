@@ -4,7 +4,7 @@ import { prisma } from "../prisma.js";
 import { authRequired } from "../auth.js";
 import { serializeBill } from "../serializers.js";
 import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorpay.js";
-import { recordPayment, effectivePaid, billBalance } from "../billing.js";
+import { recordPayment, effectivePaid, billBalance, refreshLateFees, refreshBillLateFee } from "../billing.js";
 
 export const maintenanceRouter = Router();
 
@@ -16,6 +16,8 @@ async function currentFlatId(userId) {
 
 // A resident sees their flat's bills; admin/guard can view all.
 maintenanceRouter.get("/maintenance", authRequired, async (req, res) => {
+  // Keep late fees current before reporting balances.
+  await refreshLateFees(req.user.societyId).catch(() => {});
   const where = {};
   if (req.user.role === "resident") {
     where.flatId = await currentFlatId(req.user.id);
@@ -53,6 +55,8 @@ async function getPayableBill(req, res) {
     res.status(400).json({ message: "Bill already paid" });
     return null;
   }
+  // Make sure the late fee (if any) is current so the charge is correct.
+  await refreshBillLateFee(bill).catch(() => {});
   return bill;
 }
 

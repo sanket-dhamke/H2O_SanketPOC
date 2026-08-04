@@ -90,7 +90,10 @@ export function serializeBill(b) {
   // Status-aware so legacy fully-paid bills (paidAmount defaulted to 0) still
   // report the full amount as paid and a zero balance.
   const paidAmount = b.status === "paid" ? (b.amount || 0) : (b.paidAmount || 0);
-  const balance = Math.max(0, (b.amount || 0) - paidAmount);
+  const lateFee = b.status === "paid" ? 0 : (b.lateFee || 0);
+  // Total owed = principal + accrued late fee; balance is what's still due.
+  const amountDue = (b.amount || 0) + lateFee;
+  const balance = Math.max(0, amountDue - paidAmount);
   return {
     id: b.id,
     flatId: b.flatId,
@@ -98,6 +101,9 @@ export function serializeBill(b) {
     block: b.flat?.block || null,
     period: b.period,
     amount: b.amount,
+    lateFee,
+    amountDue,
+    breakdown: Array.isArray(b.breakdown) ? b.breakdown : null,
     paidAmount,
     balance,
     nextDueAmount: b.nextDueAmount ?? null,

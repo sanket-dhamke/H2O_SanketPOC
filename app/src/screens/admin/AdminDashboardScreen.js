@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
   Modal,
+  Switch,
 } from "react-native";
 import TextInput from "../../components/AppTextInput";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -40,6 +41,8 @@ export default function AdminDashboardScreen() {
   const [busy, setBusy] = useState(false);
   const [billModal, setBillModal] = useState(false);
   const [expenseModal, setExpenseModal] = useState(false);
+  const [lateFeeModal, setLateFeeModal] = useState(false);
+  const [headsModal, setHeadsModal] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -137,6 +140,16 @@ export default function AdminDashboardScreen() {
         <Ionicons name="receipt-outline" size={18} color="#0B6E8F" />
         <Text style={styles.collectText}>Payment audit — full {L.unit.toLowerCase()} history</Text>
       </TouchableOpacity>
+      {!preschool && (
+        <TouchableOpacity style={styles.collectBtn} onPress={() => setHeadsModal(true)}>
+          <Ionicons name="list-outline" size={18} color="#0B6E8F" />
+          <Text style={styles.collectText}>Maintenance heads (sinking fund, water…)</Text>
+        </TouchableOpacity>
+      )}
+      <TouchableOpacity style={styles.collectBtn} onPress={() => setLateFeeModal(true)}>
+        <Ionicons name="alarm-outline" size={18} color="#0B6E8F" />
+        <Text style={styles.collectText}>Late fee policy</Text>
+      </TouchableOpacity>
       <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("Amenities")}>
         <Ionicons name="calendar-outline" size={18} color="#0B6E8F" />
         <Text style={styles.collectText}>{L.amenitiesAdminBtn}</Text>
@@ -188,7 +201,96 @@ export default function AdminDashboardScreen() {
         onClose={() => setExpenseModal(false)}
         onDone={load}
       />
+      <LateFeeModal visible={lateFeeModal} onClose={() => setLateFeeModal(false)} onDone={load} />
+      <MaintenanceHeadsModal visible={headsModal} onClose={() => setHeadsModal(false)} />
     </View>
+  );
+}
+
+const LATE_TYPES = [
+  { id: "flat", label: "Flat once" },
+  { id: "perday", label: "Per day" },
+  { id: "percent", label: "% / month" },
+];
+
+function LateFeeModal({ visible, onClose, onDone }) {
+  const [enabled, setEnabled] = useState(false);
+  const [type, setType] = useState("flat");
+  const [amount, setAmount] = useState("");
+  const [grace, setGrace] = useState("");
+  const [cap, setCap] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!visible) return;
+      api
+        .adminGetBillingSettings()
+        .then(({ settings }) => {
+          setEnabled(!!settings.lateFeeEnabled);
+          setType(settings.lateFeeType || "flat");
+          setAmount(settings.lateFeeAmount ? String(settings.lateFeeAmount) : "");
+          setGrace(settings.lateFeeGraceDays ? String(settings.lateFeeGraceDays) : "");
+          setCap(settings.lateFeeMaxAmount ? String(settings.lateFeeMaxAmount) : "");
+        })
+        .catch(() => {});
+    }, [visible])
+  );
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await api.adminSaveBillingSettings({
+        lateFeeEnabled: enabled,
+        lateFeeType: type,
+        lateFeeAmount: Number(amount) || 0,
+        lateFeeGraceDays: Number(grace) || 0,
+        lateFeeMaxAmount: cap === "" ? null : Number(cap) || 0,
+      });
+      onClose();
+      onDone?.();
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const unit = type === "flat" ? "Rs. charged once after due date" : type === "perday" ? "Rs. per day overdue" : "% of the unpaid amount, per month";
+
+  return (
+    <FormModal visible={visible} onClose={onClose} title="Late fee policy" icon="alarm-outline" busy={busy} onSubmit={submit}>
+      <View style={styles.switchRow}>
+        <Text style={styles.switchLabel}>Charge a late fee on overdue bills</Text>
+        <Switch value={enabled} onValueChange={setEnabled} trackColor={{ true: "#0B6E8F", false: "#CBD5DB" }} thumbColor="#fff" />
+      </View>
+      {enabled && (
+        <>
+          <Label>How it's charged</Label>
+          <View style={styles.typeRow}>
+            {LATE_TYPES.map((t) => (
+              <TouchableOpacity key={t.id} style={[styles.typeOpt, type === t.id && styles.typeActive]} onPress={() => setType(t.id)}>
+                <Text style={[styles.typeText, type === t.id && { color: "#fff" }]}>{t.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Label>{type === "percent" ? "Percentage" : "Amount (Rs.)"}</Label>
+          <TextInput style={styles.input} value={amount} onChangeText={setAmount} placeholder={type === "percent" ? "2" : "100"} keyboardType="numeric" />
+          <Text style={styles.helpText}>{unit}</Text>
+          <Label>Grace period (days after due date)</Label>
+          <TextInput style={styles.input} value={grace} onChangeText={setGrace} placeholder="0" keyboardType="numeric" />
+          {type !== "flat" && (
+            <>
+              <Label>Maximum late fee cap (Rs., optional)</Label>
+              <TextInput style={styles.input} value={cap} onChangeText={setCap} placeholder="No cap" keyboardType="numeric" />
+            </>
+          )}
+          <Text style={styles.safeNote}>
+            Fully-paid and advance-paid months never get a late fee — this only applies to bills still unpaid after the due date.
+          </Text>
+        </>
+      )}
+    </FormModal>
   );
 }
 
@@ -204,19 +306,39 @@ function Stat({ label, value, color }) {
 function GenerateBillsModal({ visible, onClose, onDone }) {
   const [period, setPeriod] = useState("");
   const [amount, setAmount] = useState("");
+  const [useHeads, setUseHeads] = useState(false);
+  const [heads, setHeads] = useState([]);
   const [busy, setBusy] = useState(false);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (!visible) return;
+      api.adminMaintenanceHeads().then(({ heads }) => setHeads(heads || [])).catch(() => {});
+    }, [visible])
+  );
+
+  const enabledHeads = heads.filter((h) => h.enabled);
+  const headsTotal = enabledHeads.reduce((s, h) => s + (h.amount || 0), 0);
+
   const submit = async () => {
-    if (!period.trim() || !amount.trim()) {
-      Alert.alert("Missing info", "Enter the period (YYYY-MM) and amount.");
+    if (!period.trim()) {
+      Alert.alert("Missing info", "Select the billing month.");
+      return;
+    }
+    if (!useHeads && !amount.trim()) {
+      Alert.alert("Missing info", "Enter the amount per flat, or turn on maintenance heads.");
       return;
     }
     setBusy(true);
     try {
-      const res = await api.adminGenerateBills({ period: period.trim(), amount: Number(amount) });
+      const payload = useHeads
+        ? { period: period.trim(), useHeads: true }
+        : { period: period.trim(), amount: Number(amount) };
+      const res = await api.adminGenerateBills(payload);
       Alert.alert("Done", `Created ${res.created} new bill(s).`);
       setPeriod("");
       setAmount("");
+      setUseHeads(false);
       onClose();
       onDone();
     } catch (e) {
@@ -230,8 +352,121 @@ function GenerateBillsModal({ visible, onClose, onDone }) {
     <FormModal visible={visible} onClose={onClose} title="Generate monthly bills" icon="receipt-outline" busy={busy} onSubmit={submit}>
       <Label>Billing month</Label>
       <MonthField value={period} onChange={setPeriod} minCurrent placeholder="Select billing month" />
-      <Label>Amount per flat (Rs.)</Label>
-      <TextInput style={styles.input} value={amount} onChangeText={setAmount} placeholder="2500" keyboardType="numeric" />
+      <View style={[styles.switchRow, { marginTop: 16 }]}>
+        <Text style={styles.switchLabel}>Split by maintenance heads</Text>
+        <Switch value={useHeads} onValueChange={setUseHeads} trackColor={{ true: "#0B6E8F", false: "#CBD5DB" }} thumbColor="#fff" />
+      </View>
+      {useHeads ? (
+        <View style={{ marginTop: 8 }}>
+          {enabledHeads.length === 0 ? (
+            <Text style={styles.helpText}>No enabled heads. Set them in “Maintenance heads”.</Text>
+          ) : (
+            enabledHeads.map((h) => (
+              <View key={h.id} style={styles.headRow}>
+                <Text style={styles.headName}>{h.name}</Text>
+                <Text style={styles.headTotalValue}>{money(h.amount)}</Text>
+              </View>
+            ))
+          )}
+          <View style={styles.headTotal}>
+            <Text style={styles.headTotalLabel}>Total per flat</Text>
+            <Text style={styles.headTotalValue}>{money(headsTotal)}</Text>
+          </View>
+        </View>
+      ) : (
+        <>
+          <Label>Amount per flat (Rs.)</Label>
+          <TextInput style={styles.input} value={amount} onChangeText={setAmount} placeholder="2500" keyboardType="numeric" />
+        </>
+      )}
+    </FormModal>
+  );
+}
+
+function MaintenanceHeadsModal({ visible, onClose }) {
+  const [heads, setHeads] = useState([]);
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!visible) return;
+      api
+        .adminMaintenanceHeads()
+        .then(({ heads }) =>
+          setHeads((heads || []).map((h) => ({ ...h, amount: h.amount ? String(h.amount) : "" })))
+        )
+        .catch(() => {});
+    }, [visible])
+  );
+
+  const setAmount = (id, val) => setHeads((hs) => hs.map((h) => (h.id === id ? { ...h, amount: val } : h)));
+  const toggle = (id) => setHeads((hs) => hs.map((h) => (h.id === id ? { ...h, enabled: !h.enabled } : h)));
+  const remove = (id) => setHeads((hs) => hs.filter((h) => h.id !== id));
+  const addHead = () => {
+    const name = newName.trim();
+    if (!name) return;
+    setHeads((hs) => [...hs, { id: `new-${Date.now()}`, name, amount: "", enabled: true, isDefault: false }]);
+    setNewName("");
+  };
+
+  const total = heads.filter((h) => h.enabled).reduce((s, h) => s + (Number(h.amount) || 0), 0);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      const payload = heads.map((h) => ({
+        id: String(h.id).startsWith("new-") ? undefined : h.id,
+        name: h.name,
+        amount: Number(h.amount) || 0,
+        enabled: h.enabled,
+      }));
+      const { heads: saved } = await api.adminSaveMaintenanceHeads(payload);
+      setHeads((saved || []).map((h) => ({ ...h, amount: h.amount ? String(h.amount) : "" })));
+      onClose();
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <FormModal visible={visible} onClose={onClose} title="Maintenance heads" icon="list-outline" busy={busy} onSubmit={submit}>
+      <Text style={styles.helpText}>Maintenance & Sinking fund are default. Add Water bill, Common area, etc. Bills can be split by these heads.</Text>
+      {heads.map((h) => (
+        <View key={h.id} style={styles.headRow}>
+          <TouchableOpacity onPress={() => toggle(h.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name={h.enabled ? "checkbox" : "square-outline"} size={22} color="#0B6E8F" />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headName}>{h.name}</Text>
+            {h.isDefault ? <Text style={styles.headDefault}>Default</Text> : null}
+          </View>
+          <TextInput
+            style={styles.headAmountInput}
+            value={h.amount}
+            onChangeText={(v) => setAmount(h.id, v)}
+            placeholder="0"
+            keyboardType="numeric"
+          />
+          {!h.isDefault && (
+            <TouchableOpacity onPress={() => remove(h.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="trash-outline" size={18} color="#B44" />
+            </TouchableOpacity>
+          )}
+        </View>
+      ))}
+      <View style={styles.headTotal}>
+        <Text style={styles.headTotalLabel}>Total per flat</Text>
+        <Text style={styles.headTotalValue}>{money(total)}</Text>
+      </View>
+      <View style={styles.addHeadRow}>
+        <TextInput style={styles.addHeadInput} value={newName} onChangeText={setNewName} placeholder="Add head e.g. Water bill" />
+        <TouchableOpacity style={styles.addHeadBtn} onPress={addHead}>
+          <Ionicons name="add" size={22} color="#fff" />
+        </TouchableOpacity>
+      </View>
     </FormModal>
   );
 }
@@ -344,4 +579,22 @@ const styles = StyleSheet.create({
   modalBtnText: { color: "#fff", fontWeight: "700" },
   cancelBtn: { backgroundColor: "#EEF2F4" },
   cancelText: { color: "#6B7B85", fontWeight: "700" },
+  switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 4 },
+  switchLabel: { flex: 1, fontSize: 14, fontWeight: "600", color: "#1B2B33" },
+  typeRow: { flexDirection: "row", gap: 8 },
+  typeOpt: { flex: 1, borderWidth: 1, borderColor: "#CFE0E6", borderRadius: 10, paddingVertical: 10, alignItems: "center" },
+  typeActive: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },
+  typeText: { color: "#0B6E8F", fontWeight: "700", fontSize: 12.5 },
+  helpText: { color: "#8895A0", fontSize: 12, marginTop: 6 },
+  safeNote: { color: "#1F7A3D", fontSize: 12, marginTop: 14, backgroundColor: "#E3F5E8", padding: 10, borderRadius: 8, lineHeight: 17 },
+  headRow: { flexDirection: "row", alignItems: "center", gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#E6EDF0", paddingVertical: 10 },
+  headName: { flex: 1, fontSize: 14, fontWeight: "700", color: "#1B2B33" },
+  headAmountInput: { width: 90, borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, backgroundColor: "#F8FAFB", textAlign: "right" },
+  headDefault: { fontSize: 10, color: "#0B6E8F", fontWeight: "700" },
+  headTotal: { flexDirection: "row", justifyContent: "space-between", marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: "#E6EDF0" },
+  headTotalLabel: { fontSize: 14, fontWeight: "700", color: "#1B2B33" },
+  headTotalValue: { fontSize: 16, fontWeight: "800", color: "#0B6E8F" },
+  addHeadRow: { flexDirection: "row", gap: 8, marginTop: 12 },
+  addHeadInput: { flex: 1, borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, backgroundColor: "#F8FAFB" },
+  addHeadBtn: { backgroundColor: "#0B6E8F", borderRadius: 8, paddingHorizontal: 14, justifyContent: "center" },
 });

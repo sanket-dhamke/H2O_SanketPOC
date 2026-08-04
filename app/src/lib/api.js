@@ -182,6 +182,12 @@ export const api = {
 
   // Admin: finance
   adminFinance: () => request("/api/admin/finance"),
+  adminGetBillingSettings: () => request("/api/admin/billing-settings"),
+  adminSaveBillingSettings: (payload) =>
+    request("/api/admin/billing-settings", { method: "PUT", body: payload }),
+  adminMaintenanceHeads: () => request("/api/admin/maintenance-heads"),
+  adminSaveMaintenanceHeads: (heads) =>
+    request("/api/admin/maintenance-heads", { method: "PUT", body: { heads } }),
   // Admin: full per-flat audit ledger (every bill + every payment, from the start)
   adminFlatLedger: (flatId) => request(`/api/admin/flats/${flatId}/ledger`),
   adminGenerateBills: (payload) =>

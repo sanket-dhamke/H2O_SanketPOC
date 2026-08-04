@@ -53,6 +53,10 @@ model Society {
   venueBookings VenueBooking[]
   staffAttendance StaffAttendance[]
   tickets       Ticket[]
+  billingSetting BillingSetting?
+  maintenanceHeads MaintenanceHead[]
+  gatePasses    GatePass[]
+  listings      Listing[]
 }
 
 // A commercial booking of a society premise by an OUTSIDE vendor (not a resident):
@@ -113,6 +117,7 @@ model Flat {
   bills     Bill[]
   visitors  Visitor[]
   agreements RentAgreement[]
+  gatePasses GatePass[]
   createdAt DateTime  @default(now())
 
   // Flat numbers are unique within a society (two societies may both have A-101).
@@ -152,6 +157,11 @@ model User {
   bookings      Booking[] @relation("ResidentBookings")
   // Helpdesk tickets raised by this user.
   tickets       Ticket[]  @relation("TicketAuthor")
+  // Gate passes this resident created for expected guests/deliveries.
+  gatePasses    GatePass[] @relation("GatePassCreator")
+  // Buy & Sell listings authored + messages sent about others' listings.
+  listings      Listing[]  @relation("ListingAuthor")
+  listingMessages ListingMessage[] @relation("ListingMsgFrom")
 
   @@index([societyId])
 }
@@ -175,6 +185,13 @@ model Bill {
   paidAt     DateTime?
   paymentRef String?
   orderId    String?
+  // Late fee currently accrued on this bill (0 unless overdue past the grace
+  // period). Recomputed lazily; always 0 once the bill is fully paid, so an
+  // advance / on-time payment can never pick up a late fee by mistake.
+  lateFee    Float     @default(0)
+  // Optional per-head breakdown snapshot ([{ head, amount }]) captured when the
+  // bill was generated, so receipts can show Maintenance / Sinking fund / etc.
+  breakdown  Json?
   // How the bill was settled: "online" (Razorpay/mock) or "cash" (recorded by admin).
   paymentMode   String?
   // For cash payments: who collected it (society member) and their phone.
@@ -483,4 +500,108 @@ model PlatformPayment {
   createdAt   DateTime @default(now())
 
   @@index([societyId])
+}
+
+// Per-society billing policy. Currently holds the late-fee rule applied to
+// overdue maintenance/fee bills. One row per society.
+model BillingSetting {
+  id               String  @id @default(uuid())
+  society          Society @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId        String  @unique
+  lateFeeEnabled   Boolean @default(false)
+  // "flat" (once past due) | "perday" (per day overdue) | "percent" (of balance / month)
+  lateFeeType      String  @default("flat")
+  lateFeeAmount    Float   @default(0)
+  lateFeeGraceDays Int     @default(0)
+  // Optional cap for perday/percent accrual (0 / null = no cap).
+  lateFeeMaxAmount Float?
+  updatedBy        String?
+  updatedAt        DateTime @updatedAt @default(now())
+}
+
+// A configurable component ("head") of the monthly maintenance bill, e.g.
+// Maintenance, Sinking fund, Water bill, Common area. Society-wide amount.
+model MaintenanceHead {
+  id        String  @id @default(uuid())
+  society   Society @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId String
+  name      String
+  amount    Float   @default(0)
+  enabled   Boolean @default(true)
+  isDefault Boolean @default(false)
+  sortOrder Int     @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([societyId])
+}
+
+// A pre-approved gate pass a resident creates for an expected guest / delivery /
+// cab. The guard admits them by the short code within the validity window
+// (MyGate-style pre-approval), without disturbing the resident.
+model GatePass {
+  id            String    @id @default(uuid())
+  society       Society   @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId     String
+  flat          Flat?     @relation(fields: [flatId], references: [id], onDelete: SetNull)
+  flatId        String?
+  createdBy     User      @relation("GatePassCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdById   String
+  guestName     String
+  guestPhone    String?
+  vehicleNo     String?
+  // guest | delivery | cab | service | other
+  type          String    @default("guest")
+  purpose       String?
+  code          String
+  validFrom     DateTime  @default(now())
+  validUntil    DateTime
+  // active | used | expired | cancelled
+  status        String    @default("active")
+  usedAt        DateTime?
+  usedByGuardId String?
+  createdAt     DateTime  @default(now())
+
+  @@index([societyId, code])
+  @@index([societyId, status])
+}
+
+// A Buy & Sell marketplace listing posted by a resident. Visibility is either
+// "society" (own society only) or "all" (visible to residents of every society).
+model Listing {
+  id          String           @id @default(uuid())
+  society     Society          @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId   String
+  author      User             @relation("ListingAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  authorId    String
+  title       String
+  description String
+  price       Float?
+  // furniture | electronics | vehicles | home_decor | kids | food | services | others
+  category    String           @default("others")
+  images      Json?            // array of image URLs
+  location    String?          // free-text (society/area) shown on the card
+  visibility  String           @default("all") // all | society
+  // active | sold | removed
+  status      String           @default("active")
+  messages    ListingMessage[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([status, visibility])
+  @@index([societyId])
+  @@index([authorId])
+}
+
+// A message from an interested buyer to a listing's owner.
+model ListingMessage {
+  id        String   @id @default(uuid())
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId String
+  from      User     @relation("ListingMsgFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  fromUserId String
+  fromName  String?
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([listingId])
 }

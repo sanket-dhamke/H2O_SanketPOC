@@ -11,7 +11,7 @@ import { buildSocietyBackup, emailSocietyBackup, buildWingReport, listBlocks } f
 import { parseCsv } from "../csv.js";
 import { isPremium } from "../plan.js";
 import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorpay.js";
-import { recordPayment, effectivePaid, billBalance, buildFlatLedger } from "../billing.js";
+import { recordPayment, effectivePaid, billBalance, buildFlatLedger, refreshLateFees } from "../billing.js";
 import { sendFeeReminder, whatsappEnabled, WHATSAPP_BUSINESS_NUMBER } from "../whatsapp.js";
 import { runFeeReminders } from "../feeReminders.js";
 
@@ -262,8 +262,110 @@ adminRouter.put("/bank-account", async (req, res) => {
   res.json({ account });
 });
 
+/* -------------------------- Billing settings ----------------------------- */
+const LATE_FEE_TYPES = ["flat", "perday", "percent"];
+
+function serializeBillingSetting(s) {
+  return {
+    lateFeeEnabled: s?.lateFeeEnabled ?? false,
+    lateFeeType: s?.lateFeeType || "flat",
+    lateFeeAmount: s?.lateFeeAmount ?? 0,
+    lateFeeGraceDays: s?.lateFeeGraceDays ?? 0,
+    lateFeeMaxAmount: s?.lateFeeMaxAmount ?? null,
+  };
+}
+
+adminRouter.get("/billing-settings", async (req, res) => {
+  const s = await prisma.billingSetting.findUnique({ where: { societyId: sid(req) } });
+  res.json({ settings: serializeBillingSetting(s) });
+});
+
+adminRouter.put("/billing-settings", async (req, res) => {
+  const { lateFeeEnabled, lateFeeType, lateFeeAmount, lateFeeGraceDays, lateFeeMaxAmount } = req.body || {};
+  const data = {
+    lateFeeEnabled: Boolean(lateFeeEnabled),
+    lateFeeType: LATE_FEE_TYPES.includes(lateFeeType) ? lateFeeType : "flat",
+    lateFeeAmount: Math.max(0, Number(lateFeeAmount) || 0),
+    lateFeeGraceDays: Math.max(0, Math.floor(Number(lateFeeGraceDays) || 0)),
+    lateFeeMaxAmount:
+      lateFeeMaxAmount === "" || lateFeeMaxAmount == null ? null : Math.max(0, Number(lateFeeMaxAmount) || 0),
+    updatedBy: req.user.id,
+  };
+  const s = await prisma.billingSetting.upsert({
+    where: { societyId: sid(req) },
+    update: data,
+    create: { societyId: sid(req), ...data },
+  });
+  // Re-apply immediately so balances reflect the new policy.
+  await refreshLateFees(sid(req)).catch(() => {});
+  res.json({ settings: serializeBillingSetting(s) });
+});
+
+/* --------------------------- Maintenance heads --------------------------- */
+function serializeHead(h) {
+  return { id: h.id, name: h.name, amount: h.amount || 0, enabled: h.enabled, isDefault: h.isDefault };
+}
+
+// Seed the two default heads (Maintenance + Sinking fund) the first time.
+async function ensureDefaultHeads(societyId) {
+  const count = await prisma.maintenanceHead.count({ where: { societyId } });
+  if (count > 0) return;
+  await prisma.maintenanceHead.createMany({
+    data: [
+      { societyId, name: "Maintenance", amount: 0, enabled: true, isDefault: true, sortOrder: 0 },
+      { societyId, name: "Sinking fund", amount: 0, enabled: true, isDefault: true, sortOrder: 1 },
+    ],
+  });
+}
+
+adminRouter.get("/maintenance-heads", async (req, res) => {
+  await ensureDefaultHeads(sid(req));
+  const heads = await prisma.maintenanceHead.findMany({
+    where: { societyId: sid(req) },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+  });
+  res.json({ heads: heads.map(serializeHead) });
+});
+
+// Bulk save: updates existing heads, creates new ones, deletes removed (custom)
+// heads. Default heads (Maintenance / Sinking fund) can be disabled but not
+// removed.
+adminRouter.put("/maintenance-heads", async (req, res) => {
+  const incoming = Array.isArray(req.body?.heads) ? req.body.heads : [];
+  const existing = await prisma.maintenanceHead.findMany({ where: { societyId: sid(req) } });
+  const incomingIds = new Set(incoming.filter((h) => h.id).map((h) => h.id));
+  for (const e of existing) {
+    if (!incomingIds.has(e.id) && !e.isDefault) {
+      await prisma.maintenanceHead.delete({ where: { id: e.id } });
+    }
+  }
+  let order = 0;
+  for (const h of incoming) {
+    const name = String(h.name || "").trim();
+    if (!name) continue;
+    const data = {
+      name,
+      amount: Math.max(0, Number(h.amount) || 0),
+      enabled: h.enabled !== false,
+      sortOrder: order++,
+    };
+    const match = h.id && existing.find((e) => e.id === h.id);
+    if (match) {
+      await prisma.maintenanceHead.update({ where: { id: match.id }, data });
+    } else {
+      await prisma.maintenanceHead.create({ data: { societyId: sid(req), isDefault: false, ...data } });
+    }
+  }
+  const heads = await prisma.maintenanceHead.findMany({
+    where: { societyId: sid(req) },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+  });
+  res.json({ heads: heads.map(serializeHead) });
+});
+
 /* ------------------------------ Finance ---------------------------------- */
 adminRouter.get("/finance", async (req, res) => {
+  await refreshLateFees(sid(req)).catch(() => {});
   const [flats, bills, expenses] = await Promise.all([
     prisma.flat.findMany({ where: { societyId: sid(req) }, orderBy: { flatNo: "asc" } }),
     prisma.bill.findMany({ where: { flat: { societyId: sid(req) } } }),
@@ -309,20 +411,44 @@ adminRouter.get("/flats/:flatId/ledger", async (req, res) => {
 
 // Generate a monthly bill for every flat (skips flats that already have it).
 adminRouter.post("/bills", async (req, res) => {
-  const { period, amount, dueDate } = req.body || {};
-  if (!period || amount === undefined) {
-    return res.status(400).json({ message: "period and amount are required" });
+  const { period, amount, dueDate, useHeads } = req.body || {};
+  if (!period) {
+    return res.status(400).json({ message: "period is required" });
   }
+
+  // Amount source: either a flat total the admin typed, or the sum of the
+  // society's enabled maintenance heads (Maintenance + Sinking fund + …).
+  let baseAmount;
+  let breakdown = null;
+  if (useHeads) {
+    const heads = await prisma.maintenanceHead.findMany({
+      where: { societyId: sid(req), enabled: true },
+      orderBy: [{ sortOrder: "asc" }],
+    });
+    if (heads.length === 0) {
+      return res.status(400).json({ message: "No maintenance heads configured. Add heads first." });
+    }
+    breakdown = heads.map((h) => ({ head: h.name, amount: h.amount || 0 }));
+    baseAmount = breakdown.reduce((s, x) => s + x.amount, 0);
+    if (baseAmount <= 0) {
+      return res.status(400).json({ message: "Maintenance heads add up to 0. Set head amounts first." });
+    }
+  } else {
+    if (amount === undefined) {
+      return res.status(400).json({ message: "amount is required" });
+    }
+    baseAmount = Number(amount);
+  }
+
   const flats = await prisma.flat.findMany({ where: { societyId: sid(req) } });
   let created = 0;
   for (const flat of flats) {
     const existing = await prisma.bill.findFirst({ where: { flatId: flat.id, period } });
     if (existing) continue;
-    // Rented flats with an override are billed their own maintenance amount.
-    const flatAmount =
-      flat.occupancy === "rented" && flat.rentMaintenanceAmount != null
-        ? flat.rentMaintenanceAmount
-        : Number(amount);
+    // Rented flats with an override are billed their own maintenance amount
+    // (the head breakdown doesn't apply to that override).
+    const overridden = flat.occupancy === "rented" && flat.rentMaintenanceAmount != null;
+    const flatAmount = overridden ? flat.rentMaintenanceAmount : baseAmount;
     await prisma.bill.create({
       data: {
         flatId: flat.id,
@@ -330,6 +456,7 @@ adminRouter.post("/bills", async (req, res) => {
         amount: flatAmount,
         dueDate: dueDate || `${period}-10`,
         status: "pending",
+        breakdown: overridden ? null : breakdown || undefined,
       },
     });
     created++;

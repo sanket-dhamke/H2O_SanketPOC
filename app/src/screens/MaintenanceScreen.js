@@ -242,8 +242,14 @@ export default function MaintenanceScreen() {
               {item.status !== "paid" && item.nextDueAmount ? (
                 <Text style={styles.installment}>Installment ₹{item.nextDueAmount}{item.remindOn ? ` · reminder ${item.remindOn}` : ""}</Text>
               ) : null}
+              {item.status !== "paid" && item.lateFee > 0 ? (
+                <Text style={styles.lateFee}>+ ₹{item.lateFee} late fee (overdue)</Text>
+              ) : null}
+              {Array.isArray(item.breakdown) && item.breakdown.length > 0 ? (
+                <Text style={styles.breakdown}>{item.breakdown.map((b) => `${b.head} ₹${b.amount}`).join(" · ")}</Text>
+              ) : null}
             </View>
-            <Text style={styles.amount}>₹{item.amount}</Text>
+            <Text style={styles.amount}>₹{item.status !== "paid" && item.lateFee > 0 ? item.amountDue : item.amount}</Text>
             {item.status === "paid" ? (
               <TouchableOpacity style={styles.paidTag} onPress={() => setReceipt(item)}>
                 <Text style={styles.paidText}>{item.paymentMode === "cash" ? "CASH" : "PAID"}</Text>
@@ -428,6 +434,8 @@ const styles = StyleSheet.create({
   monthPending: { fontSize: 17, fontWeight: "800", color: "#C2571A" },
   monthCount: { fontSize: 17, fontWeight: "800", color: "#0B6E8F" },
   monthCardLabel: { color: "#6B7B85", fontSize: 11, marginTop: 3 },
+  lateFee: { color: "#C2571A", fontSize: 12, marginTop: 3, fontWeight: "700" },
+  breakdown: { color: "#8895A0", fontSize: 11, marginTop: 3 },
   emptyBox: { alignItems: "center", paddingVertical: 48, gap: 10 },
   emptyText: { color: "#8895A0", fontSize: 14, fontWeight: "600" },
   headerStat: { alignItems: "flex-end" },
