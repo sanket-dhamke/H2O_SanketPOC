@@ -8,15 +8,19 @@ import {
   Alert,
 } from "react-native";
 import TextInput from "../../components/AppTextInput";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { labelsFor, isPreschool } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
 
-export default function CreateAccountScreen({ navigation }) {
+export default function CreateAccountScreen({ navigation, route }) {
   const { user } = useAuth();
   const L = labelsFor(user);
   const preschool = isPreschool(user);
+  // When opened from a specific flat/student, pre-select that unit + resident role.
+  const presetFlatId = route?.params?.flatId || null;
+  const presetFlatNo = route?.params?.flatNo || null;
   // Parents (preschool) and residents (society) are the same underlying role;
   // just labeled per tenant. Both are linked to a unit/student.
   const ROLES = [
@@ -24,13 +28,13 @@ export default function CreateAccountScreen({ navigation }) {
     { id: "guard", label: "Guard" },
     { id: "admin", label: "Admin" },
   ];
-  const [role, setRole] = useState("resident");
+  const [role, setRole] = useState(route?.params?.role || "resident");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [flats, setFlats] = useState([]);
-  const [flatId, setFlatId] = useState(null);
+  const [flatId, setFlatId] = useState(presetFlatId);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -75,6 +79,12 @@ export default function CreateAccountScreen({ navigation }) {
     <View style={styles.container}>
       <ScreenHeader icon="person-add" title="New account" subtitle={`Add a ${L.payer.toLowerCase()}, guard or admin`} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
+      {!!presetFlatNo && (
+        <View style={styles.presetBanner}>
+          <Ionicons name="home-outline" size={16} color="#0B6E8F" />
+          <Text style={styles.presetText}>Creating a {L.payer.toLowerCase()} login for {presetFlatNo}</Text>
+        </View>
+      )}
       <Text style={styles.label}>Role</Text>
       <View style={styles.chips}>
         {ROLES.map((r) => (
@@ -142,6 +152,8 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 6, marginTop: 16 },
   input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, backgroundColor: "#fff" },
   hint: { color: "#8895A0", fontSize: 12, marginTop: 6 },
+  presetBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#EAF4F8", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 4 },
+  presetText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13, flex: 1 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: "#fff", borderWidth: 1, borderColor: "#D6DEE3" },
   chipActive: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },

@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   Alert,
   RefreshControl,
@@ -156,12 +157,8 @@ export default function ManageFlatsScreen({ navigation }) {
         ListEmptyComponent={<Text style={styles.empty}>No {L.units.toLowerCase()} yet.</Text>}
         renderItem={({ item }) => {
           const rented = item.occupancy === "rented";
-          const Wrapper = preschool ? View : TouchableOpacity;
           return (
-            <Wrapper
-              style={styles.card}
-              {...(!preschool ? { onPress: () => setEditFlat(item), activeOpacity: 0.7 } : {})}
-            >
+            <TouchableOpacity style={styles.card} onPress={() => setEditFlat(item)} activeOpacity={0.7}>
               <View style={{ flex: 1 }}>
                 <View style={styles.flatTop}>
                   <Text style={styles.flatNo}>{item.flatNo}{item.block ? `  ·  ${item.block}` : ""}</Text>
@@ -185,44 +182,76 @@ export default function ManageFlatsScreen({ navigation }) {
                   </Text>
                 )}
               </View>
-              {!preschool && <Ionicons name="create-outline" size={18} color="#93A2AB" />}
-            </Wrapper>
+              <Ionicons name="create-outline" size={18} color="#93A2AB" />
+            </TouchableOpacity>
           );
         }}
       />
 
-      {!preschool && (
-        <OccupancyModal
-          flat={editFlat}
-          onClose={() => setEditFlat(null)}
-          onSaved={async () => { setEditFlat(null); await load(); }}
-        />
-      )}
+      <FlatEditorModal
+        flat={editFlat}
+        preschool={preschool}
+        L={L}
+        classOptions={classOptions}
+        navigation={navigation}
+        onClose={() => setEditFlat(null)}
+        onSaved={async () => { setEditFlat(null); await load(); }}
+      />
     </View>
   );
 }
 
-// Society-only: mark a flat owner/rented and set a rent-specific maintenance amount.
-function OccupancyModal({ flat, onClose, onSaved }) {
+// Edit a flat/student: details (name, wing/class, owner/guardian contact), plus
+// society occupancy/rent. Also links straight to creating a login for this unit
+// and deleting it.
+function FlatEditorModal({ flat, preschool, L, classOptions, navigation, onClose, onSaved }) {
   const visible = !!flat;
+  const [flatNo, setFlatNo] = useState("");
+  const [block, setBlock] = useState("");
+  const [ownerName, setOwnerName] = useState("");
+  const [guardianName, setGuardianName] = useState("");
+  const [guardianPhone, setGuardianPhone] = useState("");
+  const [guardianEmail, setGuardianEmail] = useState("");
   const [occupancy, setOccupancy] = useState("owner");
   const [rentAmt, setRentAmt] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (flat) {
+      setFlatNo(flat.flatNo || "");
+      setBlock(flat.block || "");
+      setOwnerName(flat.ownerName || "");
+      setGuardianName(flat.guardianName || "");
+      setGuardianPhone(flat.guardianPhone || "");
+      setGuardianEmail(flat.guardianEmail || "");
       setOccupancy(flat.occupancy === "rented" ? "rented" : "owner");
       setRentAmt(flat.rentMaintenanceAmount != null ? String(flat.rentMaintenanceAmount) : "");
     }
   }, [flat]);
 
   const save = async () => {
+    if (!flatNo.trim()) {
+      Alert.alert("Missing info", `${preschool ? "Student name" : L.unit + " number"} is required.`);
+      return;
+    }
     setBusy(true);
     try {
-      await api.adminUpdateFlat(flat.id, {
-        occupancy,
-        rentMaintenanceAmount: occupancy === "rented" && rentAmt !== "" ? Number(rentAmt) : null,
-      });
+      const payload = preschool
+        ? {
+            flatNo: flatNo.trim(),
+            block: block.trim(),
+            guardianName: guardianName.trim(),
+            guardianPhone: guardianPhone.trim(),
+            guardianEmail: guardianEmail.trim(),
+          }
+        : {
+            flatNo: flatNo.trim(),
+            block: block.trim(),
+            ownerName: ownerName.trim(),
+            occupancy,
+            rentMaintenanceAmount: occupancy === "rented" && rentAmt !== "" ? Number(rentAmt) : null,
+          };
+      await api.adminUpdateFlat(flat.id, payload);
       await onSaved();
     } catch (e) {
       Alert.alert("Error", e.message);
@@ -231,31 +260,104 @@ function OccupancyModal({ flat, onClose, onSaved }) {
     }
   };
 
+  const addLogin = () => {
+    onClose();
+    navigation.navigate("CreateAccount", { flatId: flat.id, flatNo: flat.flatNo, role: "resident" });
+  };
+
+  const remove = () => {
+    Alert.alert(
+      `Delete ${L.unit.toLowerCase()}`,
+      `Delete "${flat.flatNo}"? This removes its bills & history. If a login is linked, remove that account first.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.adminDeleteFlat(flat.id);
+              await onSaved();
+            } catch (e) {
+              Alert.alert("Cannot delete", e.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
-          <Text style={styles.modalTitle}>{flat?.flatNo} · occupancy</Text>
-          <View style={styles.segRow}>
-            {["owner", "rented"].map((o) => (
-              <TouchableOpacity key={o} style={[styles.seg, occupancy === o && styles.segActive]} onPress={() => setOccupancy(o)}>
-                <Text style={[styles.segText, occupancy === o && styles.segTextActive]}>{o === "owner" ? "Owner-occupied" : "Rented"}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          {occupancy === "rented" && (
-            <>
-              <Text style={styles.modalLabel}>Monthly maintenance for this rented flat (₹)</Text>
-              <TextInput style={styles.input} value={rentAmt} onChangeText={setRentAmt} keyboardType="number-pad" placeholder="Leave blank to use the standard amount" />
-              <Text style={styles.modalHint}>Used automatically when you generate monthly bills. The tenant can then submit a rent agreement from their app for you to verify.</Text>
-            </>
-          )}
+          <Text style={styles.modalTitle}>Edit {preschool ? "student" : L.unit.toLowerCase()}</Text>
+          <ScrollView style={{ maxHeight: 460 }} keyboardShouldPersistTaps="handled">
+            {preschool ? (
+              <>
+                <Text style={styles.modalLabel}>Student name / roll no</Text>
+                <TextInput style={styles.input} value={flatNo} onChangeText={setFlatNo} placeholder="Student name / roll no" />
+                {classOptions.length > 0 && (
+                  <>
+                    <Text style={styles.modalLabel}>Class</Text>
+                    <View style={styles.classRow}>
+                      {classOptions.map((c) => (
+                        <TouchableOpacity key={c} style={[styles.classChip, block === c && styles.classChipActive]} onPress={() => setBlock(block === c ? "" : c)}>
+                          <Text style={[styles.classChipText, block === c && styles.classChipTextActive]}>{c}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </>
+                )}
+                <Text style={styles.modalLabel}>Guardian / parent name</Text>
+                <TextInput style={styles.input} value={guardianName} onChangeText={setGuardianName} placeholder="Guardian / parent name" />
+                <Text style={styles.modalLabel}>Guardian phone</Text>
+                <TextInput style={styles.input} value={guardianPhone} onChangeText={setGuardianPhone} keyboardType="phone-pad" placeholder="For reminders" />
+                <Text style={styles.modalLabel}>Guardian email</Text>
+                <TextInput style={styles.input} value={guardianEmail} onChangeText={setGuardianEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Optional" />
+              </>
+            ) : (
+              <>
+                <Text style={styles.modalLabel}>{L.unit} number</Text>
+                <TextInput style={styles.input} value={flatNo} onChangeText={setFlatNo} autoCapitalize="characters" placeholder={L.unit + " no (A-101)"} />
+                <Text style={styles.modalLabel}>{L.wing}</Text>
+                <TextInput style={styles.input} value={block} onChangeText={setBlock} autoCapitalize="characters" placeholder={L.wing} />
+                <Text style={styles.modalLabel}>Owner name</Text>
+                <TextInput style={styles.input} value={ownerName} onChangeText={setOwnerName} placeholder="Owner name (optional)" />
+                <Text style={styles.modalLabel}>Occupancy</Text>
+                <View style={styles.segRow}>
+                  {["owner", "rented"].map((o) => (
+                    <TouchableOpacity key={o} style={[styles.seg, occupancy === o && styles.segActive]} onPress={() => setOccupancy(o)}>
+                      <Text style={[styles.segText, occupancy === o && styles.segTextActive]}>{o === "owner" ? "Owner-occupied" : "Rented"}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {occupancy === "rented" && (
+                  <>
+                    <Text style={styles.modalLabel}>Monthly maintenance for this rented flat (₹)</Text>
+                    <TextInput style={styles.input} value={rentAmt} onChangeText={setRentAmt} keyboardType="number-pad" placeholder="Leave blank to use the standard amount" />
+                    <Text style={styles.modalHint}>Used automatically when you generate monthly bills. The tenant can submit a rent agreement from their app for you to verify.</Text>
+                  </>
+                )}
+              </>
+            )}
+
+            <TouchableOpacity style={styles.loginBtn} onPress={addLogin}>
+              <Ionicons name="person-add-outline" size={18} color="#0B6E8F" />
+              <Text style={styles.loginBtnText}>Add {L.payer.toLowerCase()} login for this {preschool ? "student" : L.unit.toLowerCase()}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.deleteBtn} onPress={remove}>
+              <Ionicons name="trash-outline" size={16} color="#B44" />
+              <Text style={styles.deleteBtnText}>Delete {preschool ? "student" : L.unit.toLowerCase()}</Text>
+            </TouchableOpacity>
+          </ScrollView>
+
           <View style={styles.modalActions}>
             <TouchableOpacity style={styles.cancelBtn} onPress={onClose} disabled={busy}>
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.addBtn, { flex: 1 }, busy && { opacity: 0.6 }]} onPress={save} disabled={busy}>
-              <Text style={styles.addBtnText}>{busy ? "Saving…" : "Save"}</Text>
+              <Text style={styles.addBtnText}>{busy ? "Saving…" : "Save changes"}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -303,6 +405,10 @@ const styles = StyleSheet.create({
   segActive: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },
   segText: { color: "#42525B", fontWeight: "700" },
   segTextActive: { color: "#fff" },
+  loginBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#EAF4F8", borderRadius: 10, paddingVertical: 13, marginTop: 16 },
+  loginBtnText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
+  deleteBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, marginTop: 6 },
+  deleteBtnText: { color: "#B44", fontWeight: "700", fontSize: 13 },
   modalActions: { flexDirection: "row", gap: 10, marginTop: 20 },
   cancelBtn: { paddingVertical: 13, paddingHorizontal: 18, borderRadius: 10, backgroundColor: "#EEF2F4", alignItems: "center" },
   cancelText: { color: "#42525B", fontWeight: "700" },
