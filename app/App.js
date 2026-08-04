@@ -20,6 +20,8 @@ import CommunityScreen from "./src/screens/CommunityScreen";
 import HelpdeskScreen from "./src/screens/HelpdeskScreen";
 import TicketDetailScreen from "./src/screens/TicketDetailScreen";
 import DirectoryScreen from "./src/screens/DirectoryScreen";
+import MarketplaceScreen from "./src/screens/MarketplaceScreen";
+import ListingDetailScreen from "./src/screens/ListingDetailScreen";
 import GatePassScreen from "./src/screens/GatePassScreen";
 import AmenitiesScreen from "./src/screens/AmenitiesScreen";
 import StaffAttendanceScreen from "./src/screens/StaffAttendanceScreen";
@@ -148,6 +150,8 @@ function CommunityStackScreen() {
       <CommunityStack.Screen name="Helpdesk" component={HelpdeskScreen} />
       <CommunityStack.Screen name="TicketDetail" component={TicketDetailScreen} />
       <CommunityStack.Screen name="Directory" component={DirectoryScreen} />
+      <CommunityStack.Screen name="Marketplace" component={MarketplaceScreen} />
+      <CommunityStack.Screen name="ListingDetail" component={ListingDetailScreen} />
     </CommunityStack.Navigator>
   );
 }

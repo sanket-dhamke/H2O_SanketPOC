@@ -299,6 +299,23 @@ export const api = {
   verifyGatePass: (code) => request(`/api/gate-passes/verify/${encodeURIComponent(code)}`),
   admitGatePass: (id) => request(`/api/gate-passes/${id}/admit`, { method: "POST" }),
 
+  // Buy & Sell marketplace
+  listings: ({ category, mine } = {}) => {
+    const qs = new URLSearchParams();
+    if (category) qs.set("category", category);
+    if (mine) qs.set("mine", "1");
+    const q = qs.toString();
+    return request(`/api/listings${q ? `?${q}` : ""}`);
+  },
+  listingCategories: () => request("/api/listings/categories"),
+  listing: (id) => request(`/api/listings/${id}`),
+  createListing: (payload) => request("/api/listings", { method: "POST", body: payload }),
+  updateListing: (id, payload) => request(`/api/listings/${id}`, { method: "PATCH", body: payload }),
+  deleteListing: (id) => request(`/api/listings/${id}`, { method: "DELETE" }),
+  messageListingOwner: (id, body) =>
+    request(`/api/listings/${id}/messages`, { method: "POST", body: { body } }),
+  listingMessages: (id) => request(`/api/listings/${id}/messages`),
+
   // Amenities & bookings (clubhouse booking engine)
   amenities: () => request("/api/amenities"),
   bookings: () => request("/api/bookings"),

@@ -10,7 +10,7 @@ import {
   Modal,
 } from "react-native";
 import TextInput from "../components/AppTextInput";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
@@ -40,6 +40,7 @@ const catMeta = (id) => CATEGORIES.find((c) => c.id === id) || CATEGORIES[0];
 
 export default function CommunityScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation();
   const [tab, setTab] = useState("announcements");
   const [announcements, setAnnouncements] = useState([]);
   const [posts, setPosts] = useState([]);
@@ -131,6 +132,20 @@ export default function CommunityScreen() {
         contentContainerStyle={{ padding: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        <View style={styles.shortcutRow}>
+          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Marketplace")}>
+            <Ionicons name="pricetags" size={20} color="#C99000" />
+            <Text style={styles.shortcutText}>Buy & Sell</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Helpdesk")}>
+            <Ionicons name="help-buoy" size={20} color="#1E7A3D" />
+            <Text style={styles.shortcutText}>Helpdesk</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Directory")}>
+            <Ionicons name="people" size={20} color="#0B6E8F" />
+            <Text style={styles.shortcutText}>Directory</Text>
+          </TouchableOpacity>
+        </View>
         {tab === "announcements" ? (
           <>
             {announcements.length === 0 && <Empty text="No announcements yet." />}
@@ -353,6 +368,9 @@ const styles = StyleSheet.create({
   segText: { color: "#6B7B85", fontWeight: "700", fontSize: 13 },
   segTextActive: { color: "#fff" },
   empty: { color: "#6B7B85", textAlign: "center", marginTop: 30 },
+  shortcutRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  shortcut: { flex: 1, backgroundColor: "#fff", borderRadius: 12, paddingVertical: 14, alignItems: "center", gap: 6 },
+  shortcutText: { color: "#334", fontWeight: "700", fontSize: 12 },
   card: { backgroundColor: "#fff", borderRadius: 14, padding: 16, marginBottom: 12 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
   pin: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#FBEadd", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
