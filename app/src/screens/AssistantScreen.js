@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
 } from "react-native";
 import TextInput from "../components/AppTextInput";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import { isPreschool } from "../lib/org";
@@ -41,6 +41,9 @@ export default function AssistantScreen() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef();
+  // Offset the keyboard-avoider by the bottom tab bar height so the input isn't
+  // hidden behind the keyboard (this screen always lives inside the tab navigator).
+  const tabBarHeight = useBottomTabBarHeight();
 
   const ask = async (q) => {
     const question = (q ?? input).trim();
@@ -64,8 +67,8 @@ export default function AssistantScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={90}
+      behavior="padding"
+      keyboardVerticalOffset={tabBarHeight}
     >
       <ScreenHeader icon="sparkles" title="Assistant" subtitle={`Ask anything about your ${place}`} />
       <ScrollView
