@@ -44,6 +44,7 @@ export default function ProfileModal({ visible, onClose }) {
   const insets = useSafeAreaInsets();
   const [pwModal, setPwModal] = useState(false);
   const [notifyBusy, setNotifyBusy] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
   const [orders, setOrders] = useState(null);
   const [platform, setPlatform] = useState(null);
 
@@ -86,6 +87,18 @@ export default function ProfileModal({ visible, onClose }) {
       Alert.alert("Error", e.message);
     } finally {
       setNotifyBusy(false);
+    }
+  };
+
+  const toggleShare = async (value) => {
+    setShareBusy(true);
+    try {
+      const res = await api.updatePreferences({ sharePhone: value });
+      updateUser({ sharePhone: res.user?.sharePhone ?? value });
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    } finally {
+      setShareBusy(false);
     }
   };
 
@@ -168,6 +181,21 @@ export default function ProfileModal({ visible, onClose }) {
             </View>
             {Platform.OS === "web" && (
               <Text style={styles.note}>This preference applies to the GateMate mobile app.</Text>
+            )}
+            {isResident && (
+              <View style={[styles.prefRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#EAEEF0" }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.prefTitle}>Show my phone in directory</Text>
+                  <Text style={styles.prefSub}>Let neighbours in your society see your number</Text>
+                </View>
+                <Switch
+                  value={user.sharePhone !== false}
+                  onValueChange={toggleShare}
+                  disabled={shareBusy}
+                  trackColor={{ true: "#0B6E8F", false: "#CBD5DB" }}
+                  thumbColor="#fff"
+                />
+              </View>
             )}
           </Section>
 

@@ -17,6 +17,7 @@ export function publicUser(u) {
     flatNo: u.flat?.flatNo || null,
     block: u.flat?.block || null,
     notifyEnabled: u.notifyEnabled ?? true,
+    sharePhone: u.sharePhone ?? true,
     active: u.active,
     // Subscription plan of the user's society (so the app can gate premium perks).
     societyPlan: u.society?.plan || null,
@@ -140,6 +141,40 @@ export function serializePost(p) {
     authorName: p.author?.name || null,
     flatNo: p.author?.flat?.flatNo || null,
     createdAt: p.createdAt,
+  };
+}
+
+export function serializeTicketComment(c) {
+  return {
+    id: c.id,
+    authorId: c.authorId,
+    authorName: c.authorName || null,
+    authorRole: c.authorRole || null,
+    body: c.body,
+    createdAt: c.createdAt,
+  };
+}
+
+export function serializeTicket(t, { includeComments = false } = {}) {
+  return {
+    id: t.id,
+    category: t.category,
+    priority: t.priority,
+    subject: t.subject,
+    description: t.description,
+    status: t.status,
+    resolution: t.resolution || null,
+    resolvedAt: t.resolvedAt || null,
+    authorId: t.authorId,
+    authorName: t.author?.name || null,
+    flatNo: t.author?.flat?.flatNo || null,
+    authorPhone: t.author?.phone || null,
+    commentCount: t._count?.comments ?? (Array.isArray(t.comments) ? t.comments.length : 0),
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+    ...(includeComments && Array.isArray(t.comments)
+      ? { comments: t.comments.map(serializeTicketComment) }
+      : {}),
   };
 }
 

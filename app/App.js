@@ -17,6 +17,9 @@ import VisitorsScreen from "./src/screens/VisitorsScreen";
 import GateScreen from "./src/screens/GateScreen";
 import AssistantScreen from "./src/screens/AssistantScreen";
 import CommunityScreen from "./src/screens/CommunityScreen";
+import HelpdeskScreen from "./src/screens/HelpdeskScreen";
+import TicketDetailScreen from "./src/screens/TicketDetailScreen";
+import DirectoryScreen from "./src/screens/DirectoryScreen";
 import AmenitiesScreen from "./src/screens/AmenitiesScreen";
 import StaffAttendanceScreen from "./src/screens/StaffAttendanceScreen";
 import RentAgreementsScreen from "./src/screens/RentAgreementsScreen";
@@ -41,6 +44,7 @@ const MembersStack = createNativeStackNavigator();
 const FinanceStack = createNativeStackNavigator();
 const MaintenanceStack = createNativeStackNavigator();
 const SocietiesStack = createNativeStackNavigator();
+const CommunityStack = createNativeStackNavigator();
 
 const screenHeader = { headerStyle: { backgroundColor: "#0B6E8F" }, headerTintColor: "#fff" };
 
@@ -133,6 +137,19 @@ function FinanceStackScreen() {
   );
 }
 
+// The Community tab is a stack so residents/admins can open the Helpdesk
+// (tickets + call security/office) and the member directory from within it.
+function CommunityStackScreen() {
+  return (
+    <CommunityStack.Navigator screenOptions={{ headerShown: false }}>
+      <CommunityStack.Screen name="CommunityHome" component={CommunityScreen} />
+      <CommunityStack.Screen name="Helpdesk" component={HelpdeskScreen} />
+      <CommunityStack.Screen name="TicketDetail" component={TicketDetailScreen} />
+      <CommunityStack.Screen name="Directory" component={DirectoryScreen} />
+    </CommunityStack.Navigator>
+  );
+}
+
 // The owner's Societies tab is a stack so it can drill into a society's flats
 // and any flat's full payment audit ledger.
 function SocietiesStackScreen() {
@@ -155,7 +172,7 @@ function AdminTabs() {
       <Tab.Screen name="Finance" component={FinanceStackScreen} options={{ tabBarLabel: L.feesShort }} />
       <Tab.Screen name="Members" component={MembersStackScreen} options={{ headerShown: false, tabBarLabel: L.members }} />
       {preschool && <Tab.Screen name="Staff" component={StaffAttendanceScreen} />}
-      <Tab.Screen name="Community" component={CommunityScreen} />
+      <Tab.Screen name="Community" component={CommunityStackScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: L.gate }} />
       <Tab.Screen name="Assistant" component={AssistantScreen} />
     </Tab.Navigator>
@@ -170,7 +187,7 @@ function ResidentTabs() {
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
       <Tab.Screen name="Maintenance" component={MaintenanceStackScreen} options={{ tabBarLabel: L.feesShort }} />
-      <Tab.Screen name="Community" component={CommunityScreen} />
+      <Tab.Screen name="Community" component={CommunityStackScreen} />
       <Tab.Screen name="Amenities" component={AmenitiesScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ tabBarLabel: L.visitors }} />
       <Tab.Screen name="Assistant" component={AssistantScreen} />
@@ -198,7 +215,7 @@ function GuardTabs() {
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
       <Tab.Screen name="Gate" component={GateScreen} />
       {preschool && <Tab.Screen name="Staff" component={StaffAttendanceScreen} />}
-      <Tab.Screen name="Community" component={CommunityScreen} />
+      <Tab.Screen name="Community" component={CommunityStackScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: L.gate }} />
       <Tab.Screen name="Assistant" component={AssistantScreen} />
     </Tab.Navigator>

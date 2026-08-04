@@ -145,12 +145,13 @@ authRouter.post("/push-token", authRequired, async (req, res) => {
 // Update the user's own preferences (currently: notifications on/off).
 // Turning notifications off also clears the stored push token immediately.
 authRouter.patch("/me/preferences", authRequired, async (req, res) => {
-  const { notifyEnabled } = req.body || {};
+  const { notifyEnabled, sharePhone } = req.body || {};
   const data = {};
   if (notifyEnabled !== undefined) {
     data.notifyEnabled = Boolean(notifyEnabled);
     if (!data.notifyEnabled) data.expoPushToken = null;
   }
+  if (sharePhone !== undefined) data.sharePhone = Boolean(sharePhone);
   const user = await prisma.user.update({
     where: { id: req.user.id },
     data,

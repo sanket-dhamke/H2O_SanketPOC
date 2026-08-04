@@ -149,6 +149,7 @@ function getActions(role, L, preschool) {
     return [
       { label: `Pay ${L.feesShort.toLowerCase()}`, subtitle: "View bills & download receipts", icon: "card-outline", tint: "#0B6E8F", route: "Maintenance" },
       { label: "Visitors at gate", subtitle: "Approve, deny or leave at gate", icon: "people-outline", tint: "#C2571A", route: "Visitors" },
+      { label: "Helpdesk", subtitle: "Raise a ticket, call security or office", icon: "help-buoy-outline", tint: "#1E7A3D", route: "Community", params: { screen: "Helpdesk" } },
       { label: "Ask the assistant", subtitle: `Get instant answers about your ${L.unit.toLowerCase()}`, icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant" },
     ];
   }
@@ -169,6 +170,14 @@ function getActions(role, L, preschool) {
       });
       admin.splice(3, 0, { label: "Staff attendance", subtitle: "Teacher & staff check-in/out", icon: "id-card-outline", tint: "#7A5AC2", route: "Staff" });
     }
+    admin.push({
+      label: "Helpdesk",
+      subtitle: "Resident tickets & requests",
+      icon: "help-buoy-outline",
+      tint: "#1E7A3D",
+      route: "Community",
+      params: { screen: "Helpdesk" },
+    });
     admin.push({
       label: "Ask the assistant",
       subtitle: preschool ? "Query visitors, fees & attendance" : "Query anything about the society",

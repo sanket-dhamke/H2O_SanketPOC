@@ -47,6 +47,26 @@ export default function MaintenanceScreen() {
     [bills, monthFilter]
   );
 
+  // Collected / pending totals for the selected month (admin collection view).
+  const monthSummary = useMemo(() => {
+    if (!monthFilter) return null;
+    let collected = 0;
+    let pending = 0;
+    for (const b of visibleBills) {
+      const paid = b.status === "paid" ? b.amount || 0 : b.paidAmount || 0;
+      collected += paid;
+      pending += Math.max(0, (b.amount || 0) - paid);
+    }
+    return { collected, pending, count: visibleBills.length };
+  }, [visibleBills, monthFilter]);
+
+  const prettyMonth = (period) => {
+    if (!period) return "";
+    const [y, m] = period.split("-").map(Number);
+    const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${names[m - 1]} ${y}`;
+  };
+
   const load = useCallback(async () => {
     let loadedBills = [];
     try {
@@ -178,6 +198,25 @@ export default function MaintenanceScreen() {
               <Text style={styles.filterHint}>
                 Showing {visibleBills.length} bill{visibleBills.length === 1 ? "" : "s"} for the selected month.
               </Text>
+            ) : null}
+            {isAdmin && monthSummary ? (
+              <View style={styles.monthCard}>
+                <Text style={styles.monthCardTitle}>Collection · {prettyMonth(monthFilter)}</Text>
+                <View style={styles.monthCardRow}>
+                  <View style={styles.monthCardBox}>
+                    <Text style={styles.monthCollected}>₹{monthSummary.collected.toLocaleString("en-IN")}</Text>
+                    <Text style={styles.monthCardLabel}>Collected</Text>
+                  </View>
+                  <View style={styles.monthCardBox}>
+                    <Text style={styles.monthPending}>₹{monthSummary.pending.toLocaleString("en-IN")}</Text>
+                    <Text style={styles.monthCardLabel}>Pending</Text>
+                  </View>
+                  <View style={styles.monthCardBox}>
+                    <Text style={styles.monthCount}>{monthSummary.count}</Text>
+                    <Text style={styles.monthCardLabel}>Bills</Text>
+                  </View>
+                </View>
+              </View>
             ) : null}
           </View>
         }
@@ -381,6 +420,14 @@ const styles = StyleSheet.create({
   filterRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   filterLabel: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
   filterHint: { color: "#6B7B85", fontSize: 12, marginBottom: 12 },
+  monthCard: { backgroundColor: "#fff", borderRadius: 14, padding: 16, marginBottom: 14, borderLeftWidth: 4, borderLeftColor: "#0B6E8F" },
+  monthCardTitle: { fontSize: 14, fontWeight: "800", color: "#1B2B33", marginBottom: 12 },
+  monthCardRow: { flexDirection: "row", gap: 10 },
+  monthCardBox: { flex: 1, backgroundColor: "#F6F9FA", borderRadius: 10, paddingVertical: 12, alignItems: "center" },
+  monthCollected: { fontSize: 17, fontWeight: "800", color: "#2E9E52" },
+  monthPending: { fontSize: 17, fontWeight: "800", color: "#C2571A" },
+  monthCount: { fontSize: 17, fontWeight: "800", color: "#0B6E8F" },
+  monthCardLabel: { color: "#6B7B85", fontSize: 11, marginTop: 3 },
   emptyBox: { alignItems: "center", paddingVertical: 48, gap: 10 },
   emptyText: { color: "#8895A0", fontSize: 14, fontWeight: "600" },
   headerStat: { alignItems: "flex-end" },

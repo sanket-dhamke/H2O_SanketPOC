@@ -52,6 +52,7 @@ model Society {
   bookings      Booking[]
   venueBookings VenueBooking[]
   staffAttendance StaffAttendance[]
+  tickets       Ticket[]
 }
 
 // A commercial booking of a society premise by an OUTSIDE vendor (not a resident):
@@ -135,6 +136,9 @@ model User {
   active        Boolean   @default(true)
   // Whether this user wants push notifications (visitor alerts, reminders, etc.).
   notifyEnabled Boolean   @default(true)
+  // Whether this resident agrees to show their phone in the society member
+  // directory. Residents can opt out from their profile. Defaults to visible.
+  sharePhone    Boolean   @default(true)
   createdAt     DateTime  @default(now())
   // Self-service password reset via emailed OTP.
   resetOtpHash      String?
@@ -146,6 +150,8 @@ model User {
   posts         Post[]
   // Amenity/clubhouse bookings made by this resident.
   bookings      Booking[] @relation("ResidentBookings")
+  // Helpdesk tickets raised by this user.
+  tickets       Ticket[]  @relation("TicketAuthor")
 
   @@index([societyId])
 }
@@ -340,6 +346,50 @@ model Post {
 
   @@index([societyId])
   @@index([authorId])
+}
+
+// Helpdesk ticket raised by a resident (complaint / maintenance request / query).
+// The society admin (manager) gets notified, replies via comments, and marks it
+// resolved with a closing note. Residents track status + full history.
+model Ticket {
+  id          String          @id @default(uuid())
+  society     Society         @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId   String
+  author      User            @relation("TicketAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  authorId    String
+  flatId      String?
+  // plumbing | electrical | housekeeping | security | billing | general | other
+  category    String          @default("general")
+  // low | normal | high
+  priority    String          @default("normal")
+  subject     String
+  description String
+  // open | in_progress | resolved
+  status      String          @default("open")
+  resolution  String?
+  resolvedById String?
+  resolvedAt  DateTime?
+  comments    TicketComment[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([societyId])
+  @@index([authorId])
+  @@index([status])
+}
+
+// A message in a ticket thread (resident <-> admin back-and-forth + history).
+model TicketComment {
+  id         String   @id @default(uuid())
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId   String
+  authorId   String
+  authorName String?
+  authorRole String?  // resident | admin | guard
+  body       String
+  createdAt  DateTime @default(now())
+
+  @@index([ticketId])
 }
 
 // A bookable society amenity (clubhouse, party hall, etc.). Disabled by default;

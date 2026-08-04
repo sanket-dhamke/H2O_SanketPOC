@@ -274,6 +274,18 @@ export const api = {
   createPost: (payload) => request("/api/posts", { method: "POST", body: payload }),
   deletePost: (id) => request(`/api/posts/${id}`, { method: "DELETE" }),
 
+  // Helpdesk: society contacts (call guard/office) + resident tickets thread.
+  helpdeskContacts: () => request("/api/helpdesk/contacts"),
+  directoryResidents: () => request("/api/directory/residents"),
+  tickets: (status) =>
+    request(`/api/helpdesk/tickets${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  ticket: (id) => request(`/api/helpdesk/tickets/${id}`),
+  createTicket: (payload) => request("/api/helpdesk/tickets", { method: "POST", body: payload }),
+  addTicketComment: (id, body) =>
+    request(`/api/helpdesk/tickets/${id}/comments`, { method: "POST", body: { body } }),
+  updateTicket: (id, payload) =>
+    request(`/api/helpdesk/tickets/${id}`, { method: "PATCH", body: payload }),
+
   // Amenities & bookings (clubhouse booking engine)
   amenities: () => request("/api/amenities"),
   bookings: () => request("/api/bookings"),
