@@ -110,8 +110,87 @@ async function loadSummaries() {
   return [...byId.values()];
 }
 
+// Month-scoped platform snapshot for a "YYYY-MM" period. Unlike loadSummaries
+// (all-time), this answers "what happened in this specific month":
+//   collected  = money actually RECEIVED that calendar month (Payment.createdAt)
+//   billed     = maintenance/fees BILLED for that period (Bill.period)
+//   pending    = still-unpaid portion of that period's bills
+//   revenue    = GateMate's own income that month (subscriptions + vendor fees)
+// Everything is aggregated in SQL so it scales to large datasets.
+async function loadMonthOverview(period) {
+  const [y, m] = period.split("-").map(Number);
+  const start = new Date(Date.UTC(y, m - 1, 1));
+  const end = new Date(Date.UTC(y, m, 1));
+
+  const societies = await prisma.society.findMany({
+    select: { id: true, name: true, city: true, orgType: true },
+  });
+  const byId = new Map(
+    societies.map((s) => [s.id, { id: s.id, name: s.name, city: s.city || null, orgType: s.orgType || "society", collected: 0, pending: 0 }])
+  );
+
+  const [collectedRows, billRows, subAgg, venueRows, newSocieties] = await Promise.all([
+    // Money received in the calendar month, per society (via the Payment ledger).
+    prisma.$queryRaw`
+      SELECT f."societyId" AS "societyId", COALESCE(SUM(p.amount), 0) AS collected
+      FROM "Payment" p
+      JOIN "Bill" b ON b.id = p."billId"
+      JOIN "Flat" f ON f.id = b."flatId"
+      WHERE p."createdAt" >= ${start} AND p."createdAt" < ${end}
+      GROUP BY f."societyId"`,
+    // Bills issued FOR this period, per society + status (for billed & pending).
+    prisma.$queryRaw`
+      SELECT f."societyId" AS "societyId", b.status AS status,
+             COALESCE(SUM(b.amount), 0) AS amount,
+             COALESCE(SUM(b."paidAmount"), 0) AS paid
+      FROM "Bill" b JOIN "Flat" f ON f.id = b."flatId"
+      WHERE b.period = ${period}
+      GROUP BY f."societyId", b.status`,
+    prisma.platformPayment.aggregate({
+      _sum: { amount: true },
+      where: { status: "paid", paidAt: { gte: start, lt: end } },
+    }),
+    prisma.$queryRaw`
+      SELECT COALESCE(SUM("platformFee"), 0) AS fees
+      FROM "VenueBooking"
+      WHERE status IN ('paid', 'completed') AND "paidAt" >= ${start} AND "paidAt" < ${end}`,
+    prisma.society.count({ where: { createdAt: { gte: start, lt: end } } }),
+  ]);
+
+  for (const r of collectedRows) {
+    const row = byId.get(r.societyId);
+    if (row) row.collected += Number(r.collected) || 0;
+  }
+  let billed = 0;
+  for (const r of billRows) {
+    const row = byId.get(r.societyId);
+    const amount = Number(r.amount) || 0;
+    billed += amount;
+    if (!row) continue;
+    const paid = r.status === "paid" ? amount : Number(r.paid) || 0;
+    row.pending += Math.max(0, amount - paid);
+  }
+
+  const bySociety = [...byId.values()];
+  const collected = bySociety.reduce((s, r) => s + r.collected, 0);
+  const pending = bySociety.reduce((s, r) => s + r.pending, 0);
+  const subscriptions = subAgg._sum.amount || 0;
+  const platformFees = Number(venueRows?.[0]?.fees) || 0;
+
+  return {
+    period,
+    collected,
+    billed,
+    pending,
+    newSocieties,
+    revenue: { subscriptions, platformFees, total: subscriptions + platformFees },
+    bySociety,
+  };
+}
+
 // GET /api/superadmin/overview — platform-wide totals for the owner dashboard.
-superadminRouter.get("/overview", async (_req, res) => {
+// Optional ?period=YYYY-MM adds a month-scoped snapshot in the `month` field.
+superadminRouter.get("/overview", async (req, res) => {
   const rows = await loadSummaries();
   const totals = rows.reduce(
     (t, s) => {
@@ -133,6 +212,12 @@ superadminRouter.get("/overview", async (_req, res) => {
   const premiumSocieties = rows.filter((s) => s.premium);
   const subscriptionRevenue = premiumSocieties.reduce((s, r) => s + (r.planAmount || 0), 0);
 
+  const period =
+    typeof req.query.period === "string" && /^\d{4}-\d{2}$/.test(req.query.period)
+      ? req.query.period
+      : null;
+  const month = period ? await loadMonthOverview(period) : null;
+
   res.json({
     societies: rows.length,
     activeSocieties: rows.filter((s) => s.active).length,
@@ -146,6 +231,8 @@ superadminRouter.get("/overview", async (_req, res) => {
     },
     // Top societies by outstanding dues, handy for the owner to act on.
     topPending: [...rows].sort((a, b) => b.pending - a.pending).slice(0, 5),
+    // Month-scoped snapshot when a ?period=YYYY-MM was requested.
+    month,
   });
 });
 

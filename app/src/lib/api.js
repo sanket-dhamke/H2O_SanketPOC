@@ -199,7 +199,8 @@ export const api = {
   adminEmailBackup: () => request("/api/admin/backup/email", { method: "POST" }),
 
   // Super admin (GateMate platform owner): cross-society overview + management
-  superOverview: () => request("/api/superadmin/overview"),
+  superOverview: (period) =>
+    request(`/api/superadmin/overview${period ? `?period=${encodeURIComponent(period)}` : ""}`),
   superListSocieties: () => request("/api/superadmin/societies"),
   superCreateSociety: (payload) =>
     request("/api/superadmin/societies", { method: "POST", body: payload }),

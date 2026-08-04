@@ -16,8 +16,19 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import ScreenHeader from "../../components/ScreenHeader";
 import ProfileModal from "../../components/ProfileModal";
+import MonthField from "../../components/MonthField";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
+
+const MONTHS_LONG = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+function prettyMonth(period) {
+  if (!period || !/^\d{4}-\d{2}$/.test(period)) return "";
+  const [y, m] = period.split("-").map(Number);
+  return `${MONTHS_LONG[m - 1]} ${y}`;
+}
 
 // Config for each tappable tile: which per-society field to break down + how to
 // render each value. Counts show as-is; money fields format as rupees.
@@ -37,10 +48,15 @@ export default function SuperAdminDashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [breakdown, setBreakdown] = useState(null); // key into BREAKDOWNS
+  const [period, setPeriod] = useState(""); // "YYYY-MM" month filter for the snapshot
+  const [monthBreakdown, setMonthBreakdown] = useState(null); // "collected" | "pending"
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (selectedPeriod) => {
     try {
-      const [overview, list] = await Promise.all([api.superOverview(), api.superListSocieties()]);
+      const [overview, list] = await Promise.all([
+        api.superOverview(selectedPeriod || undefined),
+        api.superListSocieties(),
+      ]);
       setData(overview);
       setRows(list.societies || []);
     } catch (e) {
@@ -50,15 +66,17 @@ export default function SuperAdminDashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load])
+      load(period);
+    }, [load, period])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await load();
+    await load(period);
     setRefreshing(false);
   };
+
+  const month = data?.month || null;
 
   const headerBtns = (
     <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -91,6 +109,55 @@ export default function SuperAdminDashboardScreen() {
           <Text style={styles.heroSub}>{data?.activeSocieties ?? 0} active</Text>
         </View>
 
+        <View style={styles.monthPickerRow}>
+          <Ionicons name="calendar-outline" size={16} color="#0B6E8F" />
+          <Text style={styles.monthPickerLabel}>Snapshot for</Text>
+          <View style={{ flex: 1 }}>
+            <MonthField value={period} onChange={setPeriod} placeholder="All time" />
+          </View>
+        </View>
+
+        {period && month && (
+          <View style={styles.monthCard}>
+            <View style={styles.monthCardHead}>
+              <Ionicons name="stats-chart" size={16} color="#0B6E8F" />
+              <Text style={styles.monthCardTitle}>For {prettyMonth(month.period)}</Text>
+            </View>
+            <View style={styles.monthGrid}>
+              <MonthTile
+                label="Collected"
+                value={money(month.collected)}
+                hint="received this month"
+                color="#2E9E52"
+                onPress={() => setMonthBreakdown("collected")}
+              />
+              <MonthTile
+                label="Pending"
+                value={money(month.pending)}
+                hint="unpaid for this month"
+                color="#C2571A"
+                onPress={() => setMonthBreakdown("pending")}
+              />
+              <MonthTile label="Billed" value={money(month.billed)} hint="issued for this month" color="#0B6E8F" />
+              <MonthTile
+                label="New tenants"
+                value={String(month.newSocieties ?? 0)}
+                hint="onboarded this month"
+                color="#7A5AF8"
+              />
+            </View>
+            <View style={styles.monthRevenue}>
+              <Text style={styles.monthRevenueLabel}>GateMate revenue this month</Text>
+              <Text style={styles.monthRevenueValue}>{money(month.revenue?.total)}</Text>
+              <Text style={styles.monthRevenueSub}>
+                Subscriptions {money(month.revenue?.subscriptions)} · Vendor fees {money(month.revenue?.platformFees)}
+              </Text>
+            </View>
+            <Text style={styles.monthTapHint}>Tap Collected or Pending to see the per-society breakdown.</Text>
+          </View>
+        )}
+
+        <Text style={styles.sectionTitle}>All-time totals</Text>
         <View style={styles.grid}>
           <Metric icon="business" label="Flats" value={data?.flats ?? 0} color="#0B6E8F" onPress={() => setBreakdown("flats")} />
           <Metric icon="people" label="Residents" value={data?.residents ?? 0} color="#2E9E52" onPress={() => setBreakdown("residents")} />
@@ -159,7 +226,74 @@ export default function SuperAdminDashboardScreen() {
         rows={rows}
         onClose={() => setBreakdown(null)}
       />
+      <MonthBreakdownModal
+        field={monthBreakdown}
+        monthLabel={prettyMonth(month?.period)}
+        rows={month?.bySociety || []}
+        onClose={() => setMonthBreakdown(null)}
+      />
     </View>
+  );
+}
+
+function MonthTile({ label, value, hint, color, onPress }) {
+  const Wrap = onPress ? TouchableOpacity : View;
+  return (
+    <Wrap style={styles.monthTile} onPress={onPress} activeOpacity={0.7}>
+      <Text style={[styles.monthTileValue, { color }]}>{value}</Text>
+      <Text style={styles.monthTileLabel}>{label}</Text>
+      <Text style={styles.monthTileHint}>{hint}</Text>
+      {onPress ? <Ionicons name="chevron-forward" size={13} color="#B7C1C8" style={styles.monthTileChevron} /> : null}
+    </Wrap>
+  );
+}
+
+// Per-society breakdown of the selected month's collected or pending amount.
+function MonthBreakdownModal({ field, monthLabel, rows, onClose }) {
+  if (!field) return null;
+  const isCollected = field === "collected";
+  const title = isCollected ? "Collected" : "Pending";
+  const color = isCollected ? "#2E9E52" : "#C2571A";
+  const list = [...rows].filter((r) => (r[field] || 0) > 0).sort((a, b) => (b[field] || 0) - (a[field] || 0));
+  const total = rows.reduce((s, r) => s + (Number(r[field]) || 0), 0);
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <View style={styles.modalCard}>
+          <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
+            <View style={styles.modalHeaderIcon}>
+              <Ionicons name={isCollected ? "cash" : "alert-circle"} size={20} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.modalTitle}>{title} · {monthLabel}</Text>
+              <Text style={styles.modalSub}>Total: {money(total)} across {list.length} tenant{list.length === 1 ? "" : "s"}</Text>
+            </View>
+          </LinearGradient>
+          <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={styles.modalBody}>
+            {list.length === 0 && (
+              <Text style={styles.bdEmpty}>
+                {isCollected ? "No payments received this month." : "Nothing pending for this month."}
+              </Text>
+            )}
+            {list.map((s) => (
+              <View key={s.id} style={styles.bdRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.bdName} numberOfLines={1}>{s.name}</Text>
+                  <Text style={styles.bdCity} numberOfLines={1}>
+                    {s.orgType === "preschool" ? "Preschool" : "Society"}{s.city ? ` · ${s.city}` : ""}
+                  </Text>
+                </View>
+                <Text style={[styles.bdVal, { color }]}>{money(s[field])}</Text>
+              </View>
+            ))}
+            <TouchableOpacity style={styles.bdCloseBtn} onPress={onClose}>
+              <Text style={styles.bdCloseText}>Done</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -235,6 +369,22 @@ const styles = StyleSheet.create({
   heroLabel: { color: "#CDE9F2", fontSize: 13 },
   heroValue: { color: "#fff", fontSize: 40, fontWeight: "800", marginTop: 2 },
   heroSub: { color: "#CDE9F2", fontSize: 12, marginTop: 4 },
+  monthPickerRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 16 },
+  monthPickerLabel: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
+  monthCard: { backgroundColor: "#fff", borderRadius: 16, padding: 16, marginTop: 12, borderLeftWidth: 4, borderLeftColor: "#0B6E8F" },
+  monthCardHead: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+  monthCardTitle: { fontSize: 15, fontWeight: "800", color: "#1B2B33" },
+  monthGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  monthTile: { width: "47%", flexGrow: 1, backgroundColor: "#F6F9FA", borderRadius: 12, padding: 14 },
+  monthTileValue: { fontSize: 20, fontWeight: "800" },
+  monthTileLabel: { color: "#1B2B33", fontSize: 13, fontWeight: "700", marginTop: 4 },
+  monthTileHint: { color: "#8895A0", fontSize: 11, marginTop: 2 },
+  monthTileChevron: { position: "absolute", right: 10, top: 12 },
+  monthRevenue: { backgroundColor: "#FBF6EA", borderRadius: 12, padding: 14, marginTop: 10 },
+  monthRevenueLabel: { color: "#8A6A1E", fontSize: 12, fontWeight: "600" },
+  monthRevenueValue: { color: "#1B2B33", fontSize: 20, fontWeight: "800", marginTop: 2 },
+  monthRevenueSub: { color: "#8A6A1E", fontSize: 11, marginTop: 3 },
+  monthTapHint: { color: "#8895A0", fontSize: 11, marginTop: 10, textAlign: "center" },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 12 },
   metric: {
     width: "47%",
