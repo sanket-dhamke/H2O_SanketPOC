@@ -236,9 +236,9 @@ const styles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(6, 40, 52, 0.38)" },
   container: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 20 },
-  logoWrap: { alignItems: "center", marginBottom: 20 },
-  logo: { fontSize: 48, fontWeight: "800", color: "#fff", letterSpacing: 2, textShadowColor: "rgba(0,0,0,0.45)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 },
-  tagline: { color: "#EAF6FA", marginTop: 4, fontSize: 14, textShadowColor: "rgba(0,0,0,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 },
+  logoWrap: { alignItems: "center", marginBottom: 22 },
+  logo: { fontSize: 40, fontWeight: "800", color: "#fff", letterSpacing: -0.5, textShadowColor: "rgba(0,0,0,0.35)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12 },
+  tagline: { color: "#EAF6FA", marginTop: 6, fontSize: 13, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "600", textShadowColor: "rgba(0,0,0,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 },
   card: {
     width: "100%",
     maxWidth: 380,
