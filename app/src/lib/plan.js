@@ -21,16 +21,16 @@ export const FEATURE_TIER = {
   community: "base",
   helpdesk: "base",
   directory: "base",
+  marketplace: "base", // Buy & Sell is an individual/consumer feature → everyone gets it
+  latefee: "base",     // late-fee policy is core billing config
+  heads: "base",       // maintenance heads (sinking fund, water, common…) are core billing
 
   // ---- Prime (automation & engagement) ----
   assistant: "prime",
   gatepass: "prime",
   amenities: "prime",
-  marketplace: "prime",
   rent: "prime",
   reminders: "prime",
-  latefee: "prime",
-  heads: "prime",
   backups: "prime",
   exports: "prime",
 
@@ -67,6 +67,8 @@ export const TIER_FEATURES = {
   base: [
     "Visitor log & gate entries",
     "Maintenance / fee billing + online payments",
+    "Late-fee policy & maintenance heads (sinking fund, water, common, etc.)",
+    "Buy & Sell marketplace",
     "Announcements",
     "Helpdesk tickets",
     "Resident / parent directory",
@@ -77,9 +79,7 @@ export const TIER_FEATURES = {
     "AI Assistant",
     "Gate Pass (pre-approve guests & deliveries)",
     "Amenities / hall booking",
-    "Buy & Sell marketplace",
     "WhatsApp + email reminders",
-    "Late-fee policy & maintenance heads",
     "Rent management",
     "Automated monthly backup & wing-wise exports",
   ],

@@ -24,6 +24,7 @@ import MarketplaceScreen from "./src/screens/MarketplaceScreen";
 import ListingDetailScreen from "./src/screens/ListingDetailScreen";
 import GatePassScreen from "./src/screens/GatePassScreen";
 import VehiclesScreen from "./src/screens/VehiclesScreen";
+import PlansScreen from "./src/screens/PlansScreen";
 import AmenitiesScreen from "./src/screens/AmenitiesScreen";
 import StaffAttendanceScreen from "./src/screens/StaffAttendanceScreen";
 import RentAgreementsScreen from "./src/screens/RentAgreementsScreen";
@@ -116,6 +117,7 @@ function MembersStackScreen() {
       <MembersStack.Screen name="BankAccount" component={BankAccountScreen} />
       <MembersStack.Screen name="Vehicles" component={VehiclesScreen} />
       <MembersStack.Screen name="GateDevices" component={GateDevicesScreen} />
+      <MembersStack.Screen name="Plans" component={PlansScreen} />
     </MembersStack.Navigator>
   );
 }

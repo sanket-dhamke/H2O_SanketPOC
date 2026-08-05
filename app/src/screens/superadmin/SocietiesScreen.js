@@ -181,16 +181,16 @@ export default function SocietiesScreen() {
                     {s.active ? "Active" : "Inactive"}
                   </Text>
                 </View>
-                <View style={[styles.badge, s.premium ? styles.badgePremium : styles.badgeFree]}>
-                  <Text style={[styles.badgeText, s.premium ? { color: "#8A5A00" } : { color: "#5A6B75" }]}>
-                    {s.premium ? "★ Premium" : "Free"}
+                <View style={[styles.badge, { backgroundColor: (TIER_COLOR[s.tier] || TIER_COLOR.base) + "22" }]}>
+                  <Text style={[styles.badgeText, { color: TIER_COLOR[s.tier] || TIER_COLOR.base }]}>
+                    {(TIER_LABEL[s.tier] || "Base")} Package
                   </Text>
                 </View>
-                <View style={[styles.badge, { backgroundColor: (TIER_COLOR[s.tier] || "#7A5AF8") + "22" }]}>
-                  <Text style={[styles.badgeText, { color: TIER_COLOR[s.tier] || "#7A5AF8" }]}>
-                    {TIER_LABEL[s.tier] || "Platinum"}
-                  </Text>
-                </View>
+                {s.premium && (
+                  <View style={[styles.badge, styles.badgePremium]}>
+                    <Text style={[styles.badgeText, { color: "#8A5A00" }]}>★ Premium</Text>
+                  </View>
+                )}
               </View>
             </View>
 

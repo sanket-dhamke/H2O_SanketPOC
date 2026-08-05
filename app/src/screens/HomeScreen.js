@@ -208,6 +208,14 @@ function getActions(role, L, preschool) {
       route: "Assistant",
       feature: "assistant",
     });
+    admin.push({
+      label: "Your plan",
+      subtitle: "See what your package includes",
+      icon: "pricetags-outline",
+      tint: "#C99000",
+      route: "Members",
+      params: { screen: "Plans" },
+    });
     return admin;
   }
   const guard = [
