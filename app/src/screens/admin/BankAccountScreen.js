@@ -10,9 +10,13 @@ import {
 } from "react-native";
 import TextInput from "../../components/AppTextInput";
 import { api } from "../../lib/api";
+import { useAuth } from "../../lib/auth";
+import { labelsFor } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
 
 export default function BankAccountScreen({ navigation }) {
+  const { user } = useAuth();
+  const L = labelsFor(user);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -60,7 +64,7 @@ export default function BankAccountScreen({ navigation }) {
         upiId: upiId.trim(),
         razorpayAccountId: razorpayAccountId.trim(),
       });
-      Alert.alert("Saved", "Society bank account updated.");
+      Alert.alert("Saved", `${L.org} bank account updated.`);
       navigation.goBack();
     } catch (e) {
       setError(e.message);
@@ -72,7 +76,7 @@ export default function BankAccountScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.container}>
-        <ScreenHeader icon="card" title="Bank account" subtitle="Society payout account" onBack={() => navigation.goBack()} />
+        <ScreenHeader icon="card" title="Bank account" subtitle={`${L.org} payout account`} onBack={() => navigation.goBack()} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#0B6E8F" />
         </View>
@@ -82,10 +86,10 @@ export default function BankAccountScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader icon="card" title="Bank account" subtitle="Where maintenance is collected" onBack={() => navigation.goBack()} />
+      <ScreenHeader icon="card" title="Bank account" subtitle={`Where ${L.fees.toLowerCase()} is collected`} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
       <Text style={styles.subtitle}>
-        Maintenance collections are routed to this account. Add the Razorpay Route linked
+        {L.fees} collections are routed to this account. Add the Razorpay Route linked
         account id below to auto-settle online payments into it.
       </Text>
 
@@ -94,7 +98,7 @@ export default function BankAccountScreen({ navigation }) {
         style={styles.input}
         value={accountHolderName}
         onChangeText={setAccountHolderName}
-        placeholder="e.g. Green Valley Society"
+        placeholder={L.org === "Preschool" ? "e.g. Little Millennium" : "e.g. Green Valley Society"}
       />
 
       <Text style={styles.label}>Bank name</Text>
@@ -124,7 +128,7 @@ export default function BankAccountScreen({ navigation }) {
         value={upiId}
         onChangeText={setUpiId}
         autoCapitalize="none"
-        placeholder="society@bank"
+        placeholder="name@bank"
       />
 
       <View style={styles.divider} />

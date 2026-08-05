@@ -17,6 +17,8 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
+import { useAuth } from "../lib/auth";
+import { labelsFor } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
@@ -87,7 +89,7 @@ export default function MarketplaceScreen() {
       <ScreenHeader
         icon="pricetags"
         title="Buy & Sell"
-        subtitle="Marketplace across societies"
+        subtitle="Buy, sell & discover nearby"
         onBack={() => navigation.goBack()}
         right={addBtn}
       />
@@ -168,6 +170,8 @@ export default function MarketplaceScreen() {
 }
 
 function CreateListingModal({ visible, onClose, onDone }) {
+  const { user } = useAuth();
+  const L = labelsFor(user);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
@@ -272,11 +276,11 @@ function CreateListingModal({ visible, onClose, onDone }) {
             <View style={styles.visRow}>
               <TouchableOpacity style={[styles.visOpt, visibility === "all" && styles.visActive]} onPress={() => setVisibility("all")}>
                 <Ionicons name="globe-outline" size={16} color={visibility === "all" ? "#fff" : "#0B6E8F"} />
-                <Text style={[styles.visText, visibility === "all" && { color: "#fff" }]}>All societies</Text>
+                <Text style={[styles.visText, visibility === "all" && { color: "#fff" }]}>Everywhere</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.visOpt, visibility === "society" && styles.visActive]} onPress={() => setVisibility("society")}>
                 <Ionicons name="home-outline" size={16} color={visibility === "society" ? "#fff" : "#0B6E8F"} />
-                <Text style={[styles.visText, visibility === "society" && { color: "#fff" }]}>My society only</Text>
+                <Text style={[styles.visText, visibility === "society" && { color: "#fff" }]}>My {L.org.toLowerCase()} only</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.modalActions}>

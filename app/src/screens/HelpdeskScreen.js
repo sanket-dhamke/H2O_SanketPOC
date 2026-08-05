@@ -16,6 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { labelsFor } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
 
 const timeAgo = (iso) => {
@@ -50,6 +51,7 @@ const cleanPhone = (p) => String(p || "").replace(/[^\d+]/g, "");
 
 export default function HelpdeskScreen() {
   const { user } = useAuth();
+  const L = labelsFor(user);
   const navigation = useNavigation();
   const isAdmin = user?.role === "admin";
   const [contacts, setContacts] = useState([]);
@@ -95,7 +97,7 @@ export default function HelpdeskScreen() {
       <ScreenHeader
         icon="help-buoy"
         title="Helpdesk"
-        subtitle={isAdmin ? "Resident tickets & contacts" : "Raise a request or reach the office"}
+        subtitle={isAdmin ? `${L.payer} tickets & contacts` : "Raise a request or reach the office"}
         onBack={() => navigation.goBack()}
         right={addBtn}
       />
@@ -118,7 +120,7 @@ export default function HelpdeskScreen() {
         {/* Contacts list */}
         {contacts.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>Society contacts</Text>
+            <Text style={styles.sectionTitle}>{L.org} contacts</Text>
             {contacts.map((c) => (
               <View key={c.id} style={styles.contactCard}>
                 <View style={[styles.contactIcon, { backgroundColor: c.role === "guard" ? "#F1EEFF" : "#EAF4F7" }]}>

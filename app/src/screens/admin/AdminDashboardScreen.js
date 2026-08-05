@@ -27,7 +27,7 @@ function unreachableNote(res, L) {
   if (!res.unreachable?.length) return "";
   return (
     `\n\n${res.unreachable.length} ${L.unit.toLowerCase()}(s) have dues but no app/email on file: ` +
-    `${res.unreachable.join(", ")}. Add a resident email or ask them to log into the app.`
+    `${res.unreachable.join(", ")}. Add a ${L.payer.toLowerCase()} email or ask them to log into the app.`
   );
 }
 

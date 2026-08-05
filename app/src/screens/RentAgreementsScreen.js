@@ -18,6 +18,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { labelsFor } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
 
 const money = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
@@ -39,6 +40,7 @@ const STATUS_UI = {
 
 export default function RentAgreementsScreen({ navigation }) {
   const { user } = useAuth();
+  const L = labelsFor(user);
   const isAdmin = user?.role === "admin";
   const [agreements, setAgreements] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -254,7 +256,7 @@ function SubmitModal({ visible, onClose, onDone }) {
         documentBase64: doc?.base64 || null,
         documentName: doc?.name || null,
       });
-      notify("Submitted", "Your agreement was sent to the society admin for verification.");
+      notify("Submitted", `Your agreement was sent to the ${L.roleAdmin.toLowerCase()} for verification.`);
       reset();
       onDone();
     } catch (e) {

@@ -223,8 +223,8 @@ export default function GateScreen({ navigation }) {
               onPress={() =>
                 noResident
                   ? Alert.alert(
-                      "No resident yet",
-                      `${f.flatNo} has no resident account yet, so nobody can approve the visitor. Ask the admin to add a resident for ${f.flatNo}.`
+                      `No ${L.payer.toLowerCase()} yet`,
+                      `${f.flatNo} has no ${L.payer.toLowerCase()} account yet, so nobody can approve the visitor. Ask the admin to add a ${L.payer.toLowerCase()} for ${f.flatNo}.`
                     )
                   : setFlatId(f.id)
               }
@@ -274,6 +274,8 @@ export default function GateScreen({ navigation }) {
 }
 
 function GatePassVerifyModal({ visible, onClose }) {
+  const { user } = useAuth();
+  const L = labelsFor(user);
   const [code, setCode] = useState("");
   const [pass, setPass] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -301,7 +303,7 @@ function GatePassVerifyModal({ visible, onClose }) {
     setBusy(true);
     try {
       await api.admitGatePass(pass.id);
-      Alert.alert("Admitted", `${pass.guestName} admitted. The resident has been notified.`);
+      Alert.alert("Admitted", `${pass.guestName} admitted. The ${L.payer.toLowerCase()} has been notified.`);
       reset();
       onClose();
     } catch (e) {
@@ -327,7 +329,7 @@ function GatePassVerifyModal({ visible, onClose }) {
             {pass && (
               <View style={styles.passInfo}>
                 <Text style={styles.passName}>{pass.guestName}</Text>
-                <Text style={styles.passMeta}>{pass.type?.toUpperCase()} · for {pass.flatNo || "resident"}{pass.createdByName ? ` · ${pass.createdByName}` : ""}</Text>
+                <Text style={styles.passMeta}>{pass.type?.toUpperCase()} · for {pass.flatNo || L.unit.toLowerCase()}{pass.createdByName ? ` · ${pass.createdByName}` : ""}</Text>
                 {!!pass.vehicleNo && <Text style={styles.passMeta}>Vehicle {pass.vehicleNo}</Text>}
                 {!!pass.purpose && <Text style={styles.passMeta}>{pass.purpose}</Text>}
               </View>

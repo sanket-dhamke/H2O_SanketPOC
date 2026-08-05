@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { labelsFor } from "../lib/org";
 import { SUPPORT, memberId } from "../lib/support";
 import ChangePasswordModal from "./ChangePasswordModal";
 
@@ -48,8 +49,11 @@ export default function ProfileModal({ visible, onClose }) {
   const [orders, setOrders] = useState(null);
   const [platform, setPlatform] = useState(null);
 
+  const L = labelsFor(user);
   const isResident = user?.role === "resident";
   const isSuper = user?.role === "superadmin";
+  const roleLabel = user?.role === "admin" ? L.roleAdmin : ROLE_LABEL[user?.role] || user?.role;
+  const idLabel = user?.role === "resident" ? `${L.payer} ID` : ID_LABEL[user?.role] || "ID";
 
   const loadOrders = useCallback(async () => {
     if (!isResident) return;
@@ -57,7 +61,7 @@ export default function ProfileModal({ visible, onClose }) {
       const [m, b] = await Promise.all([api.maintenance(), api.bookings()]);
       const bills = (m.bills || [])
         .filter((x) => x.status === "paid")
-        .map((x) => ({ id: `bill-${x.id}`, title: `Maintenance · ${x.period}`, amount: x.amount, date: x.paidAt, icon: "card-outline" }));
+        .map((x) => ({ id: `bill-${x.id}`, title: `${L.fees} · ${x.period}`, amount: x.amount, date: x.paidAt, icon: "card-outline" }));
       const bookings = (b.bookings || [])
         .filter((x) => x.status === "paid")
         .map((x) => ({ id: `bk-${x.id}`, title: `${x.amenityName} · ${x.slotLabel}`, amount: x.amount, date: x.paidAt || x.date, icon: "calendar-outline" }));
@@ -106,9 +110,9 @@ export default function ProfileModal({ visible, onClose }) {
   const sendFeedback = () => {
     const subject = encodeURIComponent(`GateMate feedback — ${user?.name} (${memberId(user)})`);
     const body = encodeURIComponent(
-      `\n\n—\nFrom: ${user?.name}\nRole: ${ROLE_LABEL[user?.role]}\n` +
-        (user?.societyName ? `Society: ${user.societyName}\n` : "") +
-        (user?.flatNo ? `Flat: ${user.flatNo}\n` : "")
+      `\n\n—\nFrom: ${user?.name}\nRole: ${roleLabel}\n` +
+        (user?.societyName ? `${L.org}: ${user.societyName}\n` : "") +
+        (user?.flatNo ? `${L.unit}: ${user.flatNo}\n` : "")
     );
     open(`mailto:${SUPPORT.email}?subject=${subject}&body=${body}`);
   };
@@ -140,16 +144,16 @@ export default function ProfileModal({ visible, onClose }) {
           </View>
           <Text style={styles.name}>{user.name}</Text>
           <View style={styles.roleChip}>
-            <Text style={styles.roleChipText}>{ROLE_LABEL[user.role] || user.role}</Text>
+            <Text style={styles.roleChipText}>{roleLabel}</Text>
           </View>
         </LinearGradient>
 
         <ScrollView contentContainerStyle={styles.body}>
           {/* Identity */}
           <Section title="Account details">
-            <Row icon="finger-print-outline" label={ID_LABEL[user.role] || "ID"} value={memberId(user)} />
-            {!!user.flatNo && <Row icon="home-outline" label="Flat" value={`${user.flatNo}${user.block ? ` · Block ${user.block}` : ""}`} />}
-            {!!addressLine && <Row icon="location-outline" label="Society" value={addressLine} />}
+            <Row icon="finger-print-outline" label={idLabel} value={memberId(user)} />
+            {!!user.flatNo && <Row icon="home-outline" label={L.unit} value={`${user.flatNo}${user.block ? ` · Block ${user.block}` : ""}`} />}
+            {!!addressLine && <Row icon="location-outline" label={L.org} value={addressLine} />}
             {!!user.societyAddress && <Row icon="map-outline" label="Address" value={user.societyAddress} />}
             <Row icon="mail-outline" label="Email" value={user.email} />
             {!!user.phone && <Row icon="call-outline" label="Phone" value={user.phone} />}
@@ -167,7 +171,7 @@ export default function ProfileModal({ visible, onClose }) {
                   {isResident
                     ? "Visitor alerts, approvals & payment reminders"
                     : user.role === "guard"
-                    ? "Resident decisions on your gate entries"
+                    ? `${L.payer} decisions on your gate entries`
                     : "Booking requests, alerts & reminders"}
                 </Text>
               </View>
@@ -186,7 +190,7 @@ export default function ProfileModal({ visible, onClose }) {
               <View style={[styles.prefRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#EAEEF0" }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.prefTitle}>Show my phone in directory</Text>
-                  <Text style={styles.prefSub}>Let neighbours in your society see your number</Text>
+                  <Text style={styles.prefSub}>Let others in your {L.org.toLowerCase()} see your number</Text>
                 </View>
                 <Switch
                   value={user.sharePhone !== false}

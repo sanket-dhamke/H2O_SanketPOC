@@ -485,7 +485,7 @@ function AdminAmenities({ onBack, L }) {
                   />
                 </View>
                 <Text style={styles.enabledHint}>
-                  {a.enabled ? "Open for residents to book" : "Disabled — residents can't see this"}
+                  {a.enabled ? `Open for ${L.payers.toLowerCase()} to book` : `Disabled — ${L.payers.toLowerCase()} can't see this`}
                 </Text>
 
                 {a.slots.map((s) => (

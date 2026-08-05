@@ -116,7 +116,7 @@ export default function ListingDetailScreen({ navigation, route }) {
           </View>
           <Text style={styles.loc}>
             {listing.location || listing.societyName}
-            {listing.visibility === "all" ? " · visible to all societies" : " · your society only"}
+            {listing.visibility === "all" ? " · visible everywhere" : " · same community only"}
           </Text>
           <Text style={styles.seller}>
             {listing.authorName}

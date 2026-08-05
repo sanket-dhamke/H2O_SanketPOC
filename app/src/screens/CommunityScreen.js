@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { isPreschool } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
@@ -48,6 +49,7 @@ export default function CommunityScreen() {
   const [annModal, setAnnModal] = useState(false);
   const [postModal, setPostModal] = useState(false);
 
+  const preschool = isPreschool(user);
   const isAdmin = user?.role === "admin";
   const canPost = user?.role === "resident" || user?.role === "admin";
 
@@ -121,7 +123,7 @@ export default function CommunityScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader icon="megaphone" title="Community" subtitle="Announcements & neighbours' board" right={addBtn} />
+      <ScreenHeader icon="megaphone" title="Community" subtitle={`Announcements & ${preschool ? "parents'" : "neighbours'"} board`} right={addBtn} />
 
       <View style={styles.segment}>
         <Seg label="Announcements" active={tab === "announcements"} onPress={() => setTab("announcements")} />
@@ -258,7 +260,7 @@ function AnnouncementModal({ visible, onClose, onDone }) {
       <Label>Title</Label>
       <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Water supply maintenance" />
       <Label>Message</Label>
-      <TextInput style={[styles.input, styles.multiline]} value={body} onChangeText={setBody} placeholder="Details residents should know…" multiline />
+      <TextInput style={[styles.input, styles.multiline]} value={body} onChangeText={setBody} placeholder="Details everyone should know…" multiline />
       <TouchableOpacity style={styles.checkRow} onPress={() => setPinned((p) => !p)}>
         <Ionicons name={pinned ? "checkbox" : "square-outline"} size={22} color="#0B6E8F" />
         <Text style={styles.checkText}>Pin to top</Text>

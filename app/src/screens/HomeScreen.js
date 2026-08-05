@@ -174,7 +174,7 @@ function getActions(role, L, preschool) {
     }
     admin.push({
       label: "Helpdesk",
-      subtitle: "Resident tickets & requests",
+      subtitle: `${L.payer} tickets & requests`,
       icon: "help-buoy-outline",
       tint: "#1E7A3D",
       route: "Community",

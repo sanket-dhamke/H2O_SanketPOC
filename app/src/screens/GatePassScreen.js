@@ -15,6 +15,8 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
+import { useAuth } from "../lib/auth";
+import { labelsFor } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
 
 const TYPES = [
@@ -56,6 +58,8 @@ const STATUS_META = {
 
 export default function GatePassScreen() {
   const navigation = useNavigation();
+  const { user } = useAuth();
+  const L = labelsFor(user);
   const [passes, setPasses] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [modal, setModal] = useState(false);
@@ -83,7 +87,7 @@ export default function GatePassScreen() {
 
   const share = (p) =>
     Share.share({
-      message: `Gate pass for ${p.guestName} at my society.\nCode: ${p.code}\nValid till ${fmt(p.validUntil)}.\nShow this code at the gate.`,
+      message: `Gate pass for ${p.guestName} at my ${L.org.toLowerCase()}.\nCode: ${p.code}\nValid till ${fmt(p.validUntil)}.\nShow this code at the gate.`,
     }).catch(() => {});
 
   const cancel = (p) =>

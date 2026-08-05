@@ -16,6 +16,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { labelsFor } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
 import { TICKET_CATEGORIES, STATUS_META } from "./HelpdeskScreen";
 
@@ -24,6 +25,7 @@ const fmt = (iso) => (iso ? new Date(iso).toLocaleString() : "");
 
 export default function TicketDetailScreen({ navigation, route }) {
   const { user } = useAuth();
+  const L = labelsFor(user);
   const isAdmin = user?.role === "admin";
   const ticketId = route?.params?.ticketId;
   const [ticket, setTicket] = useState(null);
@@ -191,7 +193,7 @@ export default function TicketDetailScreen({ navigation, route }) {
             style={styles.input}
             value={comment}
             onChangeText={setComment}
-            placeholder={isAdmin ? "Reply to resident…" : "Add a message…"}
+            placeholder={isAdmin ? `Reply to ${L.payer.toLowerCase()}…` : "Add a message…"}
             multiline
           />
           <TouchableOpacity style={[styles.sendBtn, busy && { opacity: 0.5 }]} onPress={send} disabled={busy}>

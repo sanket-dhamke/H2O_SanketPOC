@@ -13,6 +13,8 @@ import TextInput from "../components/AppTextInput";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
+import { useAuth } from "../lib/auth";
+import { labelsFor } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
 
 const initials = (name) =>
@@ -28,6 +30,8 @@ const cleanPhone = (p) => String(p || "").replace(/[^\d+]/g, "");
 
 export default function DirectoryScreen() {
   const navigation = useNavigation();
+  const { user } = useAuth();
+  const L = labelsFor(user);
   const [residents, setResidents] = useState([]);
   const [query, setQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -75,7 +79,7 @@ export default function DirectoryScreen() {
       <ScreenHeader
         icon="people"
         title="Member directory"
-        subtitle="Reach a neighbour in your society"
+        subtitle={`Reach someone in your ${L.org.toLowerCase()}`}
         onBack={() => navigation.goBack()}
       />
       <View style={styles.searchWrap}>
@@ -84,7 +88,7 @@ export default function DirectoryScreen() {
           style={styles.search}
           value={query}
           onChangeText={setQuery}
-          placeholder="Search by name or flat"
+          placeholder={`Search by name or ${L.unit.toLowerCase()}`}
         />
       </View>
       <FlatList
@@ -95,7 +99,7 @@ export default function DirectoryScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="people-outline" size={30} color="#B7C2C9" />
-            <Text style={styles.emptyText}>No residents found.</Text>
+            <Text style={styles.emptyText}>No {L.payers.toLowerCase()} found.</Text>
           </View>
         }
         renderItem={({ item }) => (

@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { payBill } from "../lib/pay";
 import { useAuth } from "../lib/auth";
+import { labelsFor } from "../lib/org";
 import { buildReceipt } from "../lib/receiptHtml";
 import { downloadReceipt } from "../lib/receipt";
 import ScreenHeader from "../components/ScreenHeader";
@@ -29,6 +30,7 @@ function formatDateTime(iso) {
 
 export default function MaintenanceScreen() {
   const { user } = useAuth();
+  const L = labelsFor(user);
   const navigation = useNavigation();
   const canGoBack = navigation.canGoBack();
   const [bills, setBills] = useState([]);
@@ -153,8 +155,8 @@ export default function MaintenanceScreen() {
     <View style={styles.container}>
       <ScreenHeader
         icon="card"
-        title={isAdmin ? "Collections" : "Maintenance"}
-        subtitle={isAdmin ? "Society bills & cash entries" : "Bills, payments & receipts"}
+        title={isAdmin ? "Collections" : L.feesShort}
+        subtitle={isAdmin ? `${L.fees} & cash entries` : "Bills, payments & receipts"}
         onBack={canGoBack ? () => navigation.goBack() : undefined}
         right={
           <View style={styles.headerStat}>

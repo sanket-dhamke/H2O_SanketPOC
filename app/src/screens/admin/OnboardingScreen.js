@@ -10,6 +10,8 @@ import {
 import TextInput from "../../components/AppTextInput";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
+import { useAuth } from "../../lib/auth";
+import { labelsFor } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
 
 const CSV_TEMPLATE = `flatNo,block,ownerName,ownerEmail,ownerPhone
@@ -18,6 +20,8 @@ A-102,A,Sneha Rao,sneha@example.com,9876500000
 B-201,B,Imran Shaikh,,9812345678`;
 
 export default function OnboardingScreen({ navigation }) {
+  const { user } = useAuth();
+  const L = labelsFor(user);
   const [tab, setTab] = useState("generate");
 
   return (
@@ -25,7 +29,7 @@ export default function OnboardingScreen({ navigation }) {
       <ScreenHeader
         icon="construct"
         title="Bulk setup"
-        subtitle="Generate or import flats & residents"
+        subtitle={`Generate or import ${L.units.toLowerCase()} & ${L.payers.toLowerCase()}`}
         onBack={() => navigation.goBack()}
       />
       <View style={styles.tabs}>
