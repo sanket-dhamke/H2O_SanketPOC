@@ -18,10 +18,10 @@
     },
     "android": {
       "package": "com.h2o.society",
-      "versionCode": 19,
+      "versionCode": 22,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon-fg.png",
-        "backgroundImage": "./assets/icon.png",
+        "backgroundImage": "./assets/adaptive-icon-bg.png",
         "backgroundColor": "#0C4A8C"
       },
       "permissions": [

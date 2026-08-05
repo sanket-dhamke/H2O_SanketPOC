@@ -29,6 +29,7 @@ function baseRow(s) {
     slug: s.slug || null,
     logoUrl: s.logoUrl || null,
     plan: s.plan || "free",
+    tier: s.tier || "platinum",
     premium: isPremium(s),
     planExpiresAt: s.planExpiresAt || null,
     planAmount: s.planAmount ?? null,
@@ -362,7 +363,7 @@ superadminRouter.post("/societies", async (req, res) => {
 
 // PATCH /api/superadmin/societies/:id — edit details, activate, or set plan.
 superadminRouter.patch("/societies/:id", async (req, res) => {
-  const { name, city, address, active, plan, planExpiresAt, planAmount, planNote, orgType, logoUrl } = req.body || {};
+  const { name, city, address, active, plan, tier, planExpiresAt, planAmount, planNote, orgType, logoUrl } = req.body || {};
   const society = await prisma.society.findUnique({ where: { id: req.params.id } });
   if (!society) return res.status(404).json({ message: "Society not found" });
 
@@ -372,6 +373,12 @@ superadminRouter.patch("/societies/:id", async (req, res) => {
   if (address !== undefined) data.address = address ? String(address).trim() : null;
   if (logoUrl !== undefined) data.logoUrl = logoUrl ? String(logoUrl).trim() : null;
   if (active !== undefined) data.active = Boolean(active);
+  if (tier !== undefined) {
+    if (!["base", "prime", "platinum"].includes(tier)) {
+      return res.status(400).json({ message: "tier must be 'base', 'prime' or 'platinum'" });
+    }
+    data.tier = tier;
+  }
   if (orgType !== undefined) {
     if (!["society", "preschool"].includes(orgType)) return res.status(400).json({ message: "orgType must be 'society' or 'preschool'" });
     data.orgType = orgType;

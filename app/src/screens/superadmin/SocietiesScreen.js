@@ -17,6 +17,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
+import { TIERS, TIER_LABEL, TIER_COLOR } from "../../lib/plan";
 import ScreenHeader from "../../components/ScreenHeader";
 
 // Cross-platform alert: RN's Alert.alert is a no-op on web, so fall back to the
@@ -183,6 +184,11 @@ export default function SocietiesScreen() {
                 <View style={[styles.badge, s.premium ? styles.badgePremium : styles.badgeFree]}>
                   <Text style={[styles.badgeText, s.premium ? { color: "#8A5A00" } : { color: "#5A6B75" }]}>
                     {s.premium ? "★ Premium" : "Free"}
+                  </Text>
+                </View>
+                <View style={[styles.badge, { backgroundColor: (TIER_COLOR[s.tier] || "#7A5AF8") + "22" }]}>
+                  <Text style={[styles.badgeText, { color: TIER_COLOR[s.tier] || "#7A5AF8" }]}>
+                    {TIER_LABEL[s.tier] || "Platinum"}
                   </Text>
                 </View>
               </View>
@@ -668,6 +674,7 @@ function AddAdminModal({ society, onClose, onDone }) {
 
 // Set a society's subscription plan (free / premium yearly).
 function EditPlanModal({ society, onClose, onDone }) {
+  const [tier, setTier] = useState("platinum");
   const [premium, setPremium] = useState(false);
   const [amount, setAmount] = useState("");
   const [expires, setExpires] = useState("");
@@ -678,6 +685,7 @@ function EditPlanModal({ society, onClose, onDone }) {
   // Prefill whenever a new society is selected.
   React.useEffect(() => {
     if (!society) return;
+    setTier(society.tier || "platinum");
     setPremium(society.premium || society.plan === "premium");
     setAmount(society.planAmount ? String(society.planAmount) : "");
     setExpires(society.planExpiresAt ? new Date(society.planExpiresAt).toISOString().slice(0, 10) : "");
@@ -689,6 +697,7 @@ function EditPlanModal({ society, onClose, onDone }) {
     setBusy(true);
     try {
       const res = await api.superUpdateSociety(society.id, {
+        tier,
         plan: premium ? "premium" : "free",
         planAmount: amount === "" ? null : Number(amount),
         planExpiresAt: premium ? (expires || undefined) : null,
@@ -718,6 +727,23 @@ function EditPlanModal({ society, onClose, onDone }) {
       busy={busy}
       onSubmit={submit}
     >
+      <Label>Product tier</Label>
+      <View style={styles.tierRow}>
+        {TIERS.map((t) => {
+          const active = tier === t;
+          return (
+            <TouchableOpacity
+              key={t}
+              style={[styles.tierChip, active && { backgroundColor: TIER_COLOR[t], borderColor: TIER_COLOR[t] }]}
+              onPress={() => setTier(t)}
+            >
+              <Text style={[styles.tierChipText, active && { color: "#fff" }]}>{TIER_LABEL[t]}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      <Text style={styles.helpText}>Base = core ops · Prime = automation & AI · Platinum = smart vehicle gate</Text>
+
       <TouchableOpacity style={styles.planToggle} onPress={() => setPremium((p) => !p)}>
         <View>
           <Text style={styles.planToggleTitle}>Premium plan</Text>
@@ -851,6 +877,9 @@ const styles = StyleSheet.create({
   planToggleSub: { color: "#6B7B85", fontSize: 12, marginTop: 2, maxWidth: 200 },
   invoiceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 16 },
   invoiceText: { color: "#334", fontWeight: "600", flex: 1 },
+  tierRow: { flexDirection: "row", gap: 8, marginTop: 4 },
+  tierChip: { flex: 1, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#CFE0E6", borderRadius: 10, paddingVertical: 10 },
+  tierChipText: { color: "#42525B", fontWeight: "800", fontSize: 13 },
   typeRow: { flexDirection: "row", gap: 10 },
   typeChip: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 1, borderColor: "#CFE0E6", borderRadius: 10, paddingVertical: 11 },
   typeChipActive: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },

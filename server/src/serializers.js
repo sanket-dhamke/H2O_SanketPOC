@@ -22,6 +22,8 @@ export function publicUser(u) {
     // Subscription plan of the user's society (so the app can gate premium perks).
     societyPlan: u.society?.plan || null,
     societyPlanExpiresAt: u.society?.planExpiresAt || null,
+    // Customer-facing product tier ("base" | "prime" | "platinum") for feature gating.
+    societyTier: u.society?.tier || "platinum",
     // Tenant type ("society" | "preschool") so the app can adapt labels/features.
     societyOrgType: u.society?.orgType || "society",
     // Optional tenant logo shown in-app so each tenant sees their own brand.

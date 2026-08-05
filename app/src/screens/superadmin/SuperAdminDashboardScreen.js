@@ -17,6 +17,7 @@ import { useAuth } from "../../lib/auth";
 import ScreenHeader from "../../components/ScreenHeader";
 import ProfileModal from "../../components/ProfileModal";
 import MonthField from "../../components/MonthField";
+import MarketplaceModerationModal from "./MarketplaceModerationModal";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
@@ -47,6 +48,7 @@ export default function SuperAdminDashboardScreen() {
   const [rows, setRows] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [moderationOpen, setModerationOpen] = useState(false);
   const [breakdown, setBreakdown] = useState(null); // key into BREAKDOWNS
   const [period, setPeriod] = useState(""); // "YYYY-MM" month filter for the snapshot
   const [monthBreakdown, setMonthBreakdown] = useState(null); // "collected" | "pending"
@@ -80,6 +82,9 @@ export default function SuperAdminDashboardScreen() {
 
   const headerBtns = (
     <View style={{ flexDirection: "row", alignItems: "center" }}>
+      <TouchableOpacity onPress={() => setModerationOpen(true)} style={styles.logoutBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <Ionicons name="pricetags-outline" size={22} color="#fff" />
+      </TouchableOpacity>
       <TouchableOpacity onPress={() => setProfileOpen(true)} style={styles.logoutBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Ionicons name="person-circle-outline" size={24} color="#fff" />
       </TouchableOpacity>
@@ -99,6 +104,7 @@ export default function SuperAdminDashboardScreen() {
         right={headerBtns}
       />
       <ProfileModal visible={profileOpen} onClose={() => setProfileOpen(false)} />
+      <MarketplaceModerationModal visible={moderationOpen} onClose={() => setModerationOpen(false)} />
       <ScrollView
         contentContainerStyle={{ padding: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -108,6 +114,17 @@ export default function SuperAdminDashboardScreen() {
           <Text style={styles.heroValue}>{data?.societies ?? "—"}</Text>
           <Text style={styles.heroSub}>{data?.activeSocieties ?? 0} active</Text>
         </View>
+
+        <TouchableOpacity style={styles.moderateCard} activeOpacity={0.85} onPress={() => setModerationOpen(true)}>
+          <View style={styles.moderateIcon}>
+            <Ionicons name="pricetags" size={18} color="#B0620B" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.moderateTitle}>Moderate Buy &amp; Sell</Text>
+            <Text style={styles.moderateSub}>Review, disable or delete posts across all societies</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#9AA7AF" />
+        </TouchableOpacity>
 
         <View style={styles.monthPickerRow}>
           <Ionicons name="calendar-outline" size={16} color="#0B6E8F" />
@@ -369,6 +386,10 @@ const styles = StyleSheet.create({
   heroLabel: { color: "#CDE9F2", fontSize: 13 },
   heroValue: { color: "#fff", fontSize: 40, fontWeight: "800", marginTop: 2 },
   heroSub: { color: "#CDE9F2", fontSize: 12, marginTop: 4 },
+  moderateCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", borderRadius: 14, padding: 14, marginTop: 14 },
+  moderateIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: "#FEF3E2", alignItems: "center", justifyContent: "center" },
+  moderateTitle: { fontSize: 15, fontWeight: "800", color: "#1B2B33" },
+  moderateSub: { fontSize: 12.5, color: "#6B7B85", marginTop: 2 },
   monthPickerRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 16 },
   monthPickerLabel: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
   monthCard: { backgroundColor: "#fff", borderRadius: 16, padding: 16, marginTop: 12, borderLeftWidth: 4, borderLeftColor: "#0B6E8F" },

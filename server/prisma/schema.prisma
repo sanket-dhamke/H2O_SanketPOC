@@ -41,6 +41,10 @@ model Society {
   planExpiresAt DateTime?
   planAmount    Float?           // agreed yearly subscription amount (INR)
   planNote      String?
+  // Customer-facing product tier: "base" | "prime" | "platinum". Set by the
+  // GateMate superadmin; drives which features are unlocked in the app. Defaults
+  // to "platinum" so existing tenants keep all features until explicitly tiered.
+  tier          String           @default("platinum")
   createdAt     DateTime         @default(now())
   flats         Flat[]
   users         User[]
@@ -57,6 +61,9 @@ model Society {
   maintenanceHeads MaintenanceHead[]
   gatePasses    GatePass[]
   listings      Listing[]
+  vehicles      Vehicle[]
+  gateDevices   GateDevice[]
+  vehicleEntries VehicleEntry[]
 }
 
 // A commercial booking of a society premise by an OUTSIDE vendor (not a resident):
@@ -118,6 +125,7 @@ model Flat {
   visitors  Visitor[]
   agreements RentAgreement[]
   gatePasses GatePass[]
+  vehicles  Vehicle[]
   createdAt DateTime  @default(now())
 
   // Flat numbers are unique within a society (two societies may both have A-101).
@@ -604,4 +612,62 @@ model ListingMessage {
   createdAt DateTime @default(now())
 
   @@index([listingId])
+}
+
+// ---- Platinum: automated vehicle gate (RFID / ANPR / QR) ----
+
+// A resident vehicle registered to a flat. Each carries an opaque, revocable
+// `code` that is encoded into a printable QR and/or matched by the gate scanner.
+model Vehicle {
+  id        String   @id @default(uuid())
+  society   Society  @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId String
+  flat      Flat?    @relation(fields: [flatId], references: [id], onDelete: SetNull)
+  flatId    String?
+  type      String   @default("car") // car | bike | other
+  plate     String                    // stored uppercased for display + matching
+  ownerName String?
+  code      String   @unique          // opaque code encoded in the QR (revocable)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  entries   VehicleEntry[]
+
+  @@index([societyId])
+  @@index([flatId])
+}
+
+// A physical gate scanner/controller installed at a society entry lane. It
+// authenticates to /gate/verify and /gate/whitelist using its `deviceKey`.
+model GateDevice {
+  id         String    @id @default(uuid())
+  society    Society   @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId  String
+  name       String
+  deviceKey  String    @unique
+  location   String?
+  active     Boolean   @default(true)
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+  entries    VehicleEntry[]
+
+  @@index([societyId])
+}
+
+// A log row for every gate read (open or deny), for audit + resident notifications.
+model VehicleEntry {
+  id        String   @id @default(uuid())
+  society   Society  @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId String
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  vehicleId String?
+  device    GateDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  deviceId  String?
+  plate     String?
+  code      String?
+  direction String?  // in | out
+  decision  String   // open | deny
+  reason    String?
+  at        DateTime @default(now())
+
+  @@index([societyId, at])
 }

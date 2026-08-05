@@ -23,6 +23,7 @@ import DirectoryScreen from "./src/screens/DirectoryScreen";
 import MarketplaceScreen from "./src/screens/MarketplaceScreen";
 import ListingDetailScreen from "./src/screens/ListingDetailScreen";
 import GatePassScreen from "./src/screens/GatePassScreen";
+import VehiclesScreen from "./src/screens/VehiclesScreen";
 import AmenitiesScreen from "./src/screens/AmenitiesScreen";
 import StaffAttendanceScreen from "./src/screens/StaffAttendanceScreen";
 import RentAgreementsScreen from "./src/screens/RentAgreementsScreen";
@@ -34,6 +35,7 @@ import CreateAccountScreen from "./src/screens/admin/CreateAccountScreen";
 import ManageFlatsScreen from "./src/screens/admin/ManageFlatsScreen";
 import OnboardingScreen from "./src/screens/admin/OnboardingScreen";
 import BankAccountScreen from "./src/screens/admin/BankAccountScreen";
+import GateDevicesScreen from "./src/screens/admin/GateDevicesScreen";
 import ReportsScreen from "./src/screens/admin/ReportsScreen";
 import VenueMarketplaceScreen from "./src/screens/admin/VenueMarketplaceScreen";
 import AdminFeesScreen from "./src/screens/admin/AdminFeesScreen";
@@ -112,6 +114,8 @@ function MembersStackScreen() {
       <MembersStack.Screen name="RentAgreements" component={RentAgreementsScreen} />
       <MembersStack.Screen name="Onboarding" component={OnboardingScreen} />
       <MembersStack.Screen name="BankAccount" component={BankAccountScreen} />
+      <MembersStack.Screen name="Vehicles" component={VehiclesScreen} />
+      <MembersStack.Screen name="GateDevices" component={GateDevicesScreen} />
     </MembersStack.Navigator>
   );
 }
@@ -162,6 +166,7 @@ function VisitorsStackScreen() {
     <VisitorsStack.Navigator screenOptions={{ headerShown: false }}>
       <VisitorsStack.Screen name="VisitorsHome" component={VisitorsScreen} />
       <VisitorsStack.Screen name="GatePass" component={GatePassScreen} />
+      <VisitorsStack.Screen name="Vehicles" component={VehiclesScreen} />
     </VisitorsStack.Navigator>
   );
 }

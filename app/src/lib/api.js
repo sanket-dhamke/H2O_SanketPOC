@@ -315,6 +315,34 @@ export const api = {
   messageListingOwner: (id, body) =>
     request(`/api/listings/${id}/messages`, { method: "POST", body: { body } }),
   listingMessages: (id) => request(`/api/listings/${id}/messages`),
+  // Superadmin moderation of Buy & Sell posts (all societies)
+  moderationListings: (q) =>
+    request(`/api/moderation/listings${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+  moderateListingStatus: (id, status) =>
+    request(`/api/moderation/listings/${id}`, { method: "PATCH", body: { status } }),
+  moderateDeleteListing: (id) =>
+    request(`/api/moderation/listings/${id}`, { method: "DELETE" }),
+
+  // Platinum: vehicle gate (registry + printable QR)
+  vehicles: () => request("/api/vehicles"),
+  createVehicle: (payload) =>
+    request("/api/vehicles", { method: "POST", body: payload }),
+  updateVehicle: (id, payload) =>
+    request(`/api/vehicles/${id}`, { method: "PATCH", body: payload }),
+  rotateVehicleCode: (id) =>
+    request(`/api/vehicles/${id}/rotate`, { method: "POST" }),
+  deleteVehicle: (id) =>
+    request(`/api/vehicles/${id}`, { method: "DELETE" }),
+
+  // Platinum: gate devices (scanners) — admin only
+  gateDevices: () => request("/api/gate/devices"),
+  createGateDevice: (payload) =>
+    request("/api/gate/devices", { method: "POST", body: payload }),
+  updateGateDevice: (id, payload) =>
+    request(`/api/gate/devices/${id}`, { method: "PATCH", body: payload }),
+  deleteGateDevice: (id) =>
+    request(`/api/gate/devices/${id}`, { method: "DELETE" }),
+  gateEntries: () => request("/api/gate/entries"),
 
   // Amenities & bookings (clubhouse booking engine)
   amenities: () => request("/api/amenities"),

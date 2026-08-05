@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ImageBackground,
   Image,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,6 +15,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import { labelsFor, isPreschool } from "../lib/org";
+import { hasFeature, requiredTierLabel } from "../lib/plan";
 import AdsCarousel from "../components/AdsCarousel";
 import ProfileModal from "../components/ProfileModal";
 
@@ -134,9 +136,25 @@ export default function HomeScreen({ navigation }) {
         )}
 
         <Text style={styles.sectionTitle}>{roleLabel}</Text>
-        {actions.map((a) => (
-          <ActionTile key={a.label} {...a} onPress={() => navigation.navigate(a.route, a.params)} />
-        ))}
+        {actions.map((a) => {
+          const locked = a.feature && !hasFeature(user, a.feature);
+          return (
+            <ActionTile
+              key={a.label}
+              {...a}
+              locked={locked}
+              lockLabel={locked ? requiredTierLabel(a.feature) : null}
+              onPress={() =>
+                locked
+                  ? Alert.alert(
+                      `${requiredTierLabel(a.feature)} feature`,
+                      `“${a.label}” is available on the ${requiredTierLabel(a.feature)} plan. Ask your GateMate owner to upgrade your ${L.org.toLowerCase()}.`
+                    )
+                  : navigation.navigate(a.route, a.params)
+              }
+            />
+          );
+        })}
 
         <AdsCarousel />
       </View>
@@ -149,10 +167,11 @@ function getActions(role, L, preschool) {
     return [
       { label: `Pay ${L.feesShort.toLowerCase()}`, subtitle: "View bills & download receipts", icon: "card-outline", tint: "#0B6E8F", route: "Maintenance" },
       { label: "Visitors at gate", subtitle: "Approve, deny or leave at gate", icon: "people-outline", tint: "#C2571A", route: "Visitors" },
-      { label: "Gate pass", subtitle: "Pre-approve guests & deliveries", icon: "qr-code-outline", tint: "#7A5AF8", route: "Visitors", params: { screen: "GatePass" } },
+      { label: "Gate pass", subtitle: "Pre-approve guests & deliveries", icon: "qr-code-outline", tint: "#7A5AF8", route: "Visitors", params: { screen: "GatePass" }, feature: "gatepass" },
+      { label: "Vehicle passes", subtitle: "Register vehicles & print gate QR", icon: "car-sport-outline", tint: "#0B6E8F", route: "Visitors", params: { screen: "Vehicles" }, feature: "vehicleqr" },
       { label: "Helpdesk", subtitle: "Raise a ticket, call security or office", icon: "help-buoy-outline", tint: "#1E7A3D", route: "Community", params: { screen: "Helpdesk" } },
-      { label: "Buy & Sell", subtitle: "Marketplace across societies", icon: "pricetags-outline", tint: "#C99000", route: "Community", params: { screen: "Marketplace" } },
-      { label: "Ask the assistant", subtitle: `Get instant answers about your ${L.unit.toLowerCase()}`, icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant" },
+      { label: "Buy & Sell", subtitle: "Buy, sell & discover nearby", icon: "pricetags-outline", tint: "#C99000", route: "Community", params: { screen: "Marketplace" }, feature: "marketplace" },
+      { label: "Ask the assistant", subtitle: `Get instant answers about your ${L.unit.toLowerCase()}`, icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant", feature: "assistant" },
     ];
   }
   if (role === "admin") {
@@ -160,6 +179,7 @@ function getActions(role, L, preschool) {
       { label: "Finances & dues", subtitle: "Balance, collections & reminders", icon: "stats-chart-outline", tint: "#0B6E8F", route: "Finance" },
       { label: L.manageTile, subtitle: L.manageTileSub, icon: "people-circle-outline", tint: "#2E9E52", route: "Members" },
       { label: "Gate log", subtitle: L.gateAdminSub, icon: "shield-checkmark-outline", tint: "#C2571A", route: "Visitors" },
+      { label: "Vehicle gate", subtitle: "Vehicle QR registry & scanners", icon: "car-sport-outline", tint: "#0B6E8F", route: "Members", params: { screen: "Vehicles" }, feature: "vehicleqr" },
     ];
     if (preschool) {
       admin.splice(1, 0, {
@@ -186,13 +206,14 @@ function getActions(role, L, preschool) {
       icon: "sparkles-outline",
       tint: "#6D3BD1",
       route: "Assistant",
+      feature: "assistant",
     });
     return admin;
   }
   const guard = [
     { label: "Log a new visitor", subtitle: `Photo, ${L.unit.toLowerCase()} & purpose in seconds`, icon: "person-add-outline", tint: "#0B6E8F", route: "Gate" },
     { label: "View gate log", subtitle: "Today's entries & their status", icon: "list-outline", tint: "#C2571A", route: "Visitors" },
-    { label: "Ask the assistant", subtitle: "Voice & AI help at the gate", icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant" },
+    { label: "Ask the assistant", subtitle: "Voice & AI help at the gate", icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant", feature: "assistant" },
   ];
   if (preschool) {
     guard.splice(2, 0, { label: "Staff attendance", subtitle: "Teacher & staff check-in/out", icon: "id-card-outline", tint: "#7A5AC2", route: "Staff" });
@@ -212,17 +233,23 @@ function StatCard({ icon, title, value, tint, onPress }) {
   );
 }
 
-function ActionTile({ label, subtitle, icon, tint, onPress }) {
+function ActionTile({ label, subtitle, icon, tint, onPress, locked, lockLabel }) {
   return (
-    <TouchableOpacity style={styles.tile} onPress={onPress} activeOpacity={0.85}>
-      <View style={[styles.tileIcon, { backgroundColor: tint + "1A" }]}>
-        <Ionicons name={icon} size={22} color={tint} />
+    <TouchableOpacity style={[styles.tile, locked && styles.tileLocked]} onPress={onPress} activeOpacity={0.85}>
+      <View style={[styles.tileIcon, { backgroundColor: (locked ? "#9AA7AF" : tint) + "1A" }]}>
+        <Ionicons name={locked ? "lock-closed" : icon} size={22} color={locked ? "#9AA7AF" : tint} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={styles.tileLabel}>{label}</Text>
+        <Text style={[styles.tileLabel, locked && { color: "#6B7B85" }]}>{label}</Text>
         <Text style={styles.tileSub}>{subtitle}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#B7C2C9" />
+      {locked ? (
+        <View style={styles.lockBadge}>
+          <Text style={styles.lockBadgeText}>{lockLabel}</Text>
+        </View>
+      ) : (
+        <Ionicons name="chevron-forward" size={20} color="#B7C2C9" />
+      )}
     </TouchableOpacity>
   );
 }
@@ -357,4 +384,7 @@ const styles = StyleSheet.create({
   tileIcon: { width: 46, height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   tileLabel: { fontSize: 16, fontWeight: "700", color: "#1B2B33" },
   tileSub: { color: "#6B7B85", fontSize: 12, marginTop: 2 },
+  tileLocked: { backgroundColor: "#F7F9FA" },
+  lockBadge: { flexDirection: "row", alignItems: "center", backgroundColor: "#EDE9FB", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  lockBadgeText: { color: "#6D3BD1", fontWeight: "800", fontSize: 11 },
 });

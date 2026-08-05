@@ -176,6 +176,52 @@ marketplaceRouter.delete("/listings/:id", authRequired, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ---- Superadmin moderation: view & moderate ALL listings across societies ----
+// The GateMate owner can see every post (any society, any status) and either
+// disable it (hide from residents) or delete it outright if it's inappropriate.
+marketplaceRouter.get("/moderation/listings", authRequired, roleRequired("superadmin"), async (req, res) => {
+  const q = (req.query.q || "").toString().trim().toLowerCase();
+  const status = ["active", "sold", "removed"].includes(req.query.status) ? req.query.status : null;
+  const where = status ? { status } : {};
+  const listings = await prisma.listing.findMany({
+    where,
+    include: { author: { include: { flat: true } }, society: true, _count: { select: { messages: true } } },
+    orderBy: { createdAt: "desc" },
+    take: 300,
+  });
+  let out = listings.map((l) => serializeListing(l, req.user.id));
+  if (q) {
+    out = out.filter((l) =>
+      [l.title, l.description, l.authorName, l.societyName, l.category].some((f) =>
+        (f || "").toString().toLowerCase().includes(q)
+      )
+    );
+  }
+  res.json({ listings: out });
+});
+
+// Disable (status="removed") or re-enable (status="active") a post.
+marketplaceRouter.patch("/moderation/listings/:id", authRequired, roleRequired("superadmin"), async (req, res) => {
+  const { status } = req.body || {};
+  if (!["active", "removed"].includes(status)) return res.status(400).json({ message: "Invalid status" });
+  const listing = await prisma.listing.findUnique({ where: { id: req.params.id } });
+  if (!listing) return res.status(404).json({ message: "Listing not found" });
+  const updated = await prisma.listing.update({
+    where: { id: listing.id },
+    data: { status },
+    include: { author: { include: { flat: true } }, society: true, _count: { select: { messages: true } } },
+  });
+  res.json({ listing: serializeListing(updated, req.user.id) });
+});
+
+// Permanently delete a post (any society).
+marketplaceRouter.delete("/moderation/listings/:id", authRequired, roleRequired("superadmin"), async (req, res) => {
+  const listing = await prisma.listing.findUnique({ where: { id: req.params.id } });
+  if (!listing) return res.status(404).json({ message: "Listing not found" });
+  await prisma.listing.delete({ where: { id: listing.id } });
+  res.json({ ok: true });
+});
+
 // A buyer messages the owner. Stored + pushed to the owner.
 marketplaceRouter.post("/listings/:id/messages", authRequired, async (req, res) => {
   const { body } = req.body || {};
