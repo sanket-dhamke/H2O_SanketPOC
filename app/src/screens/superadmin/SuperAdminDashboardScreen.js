@@ -100,7 +100,7 @@ export default function SuperAdminDashboardScreen() {
         icon="planet"
         logo={require("../../../assets/icon.png")}
         title="GateMate Platform"
-        subtitle="Owner overview across all societies"
+        subtitle="Overview of all societies"
         right={headerBtns}
       />
       <ProfileModal visible={profileOpen} onClose={() => setProfileOpen(false)} />

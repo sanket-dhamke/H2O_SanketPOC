@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.h2o.society",
-      "versionCode": 23,
+      "versionCode": 25,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon-fg.png",
         "backgroundImage": "./assets/adaptive-icon-bg.png",

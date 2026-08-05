@@ -43,7 +43,7 @@ export default function ScreenHeader({ icon, title, subtitle, right, onBack, log
             {title}
           </Text>
           {!!subtitle && (
-            <Text style={styles.subtitle} numberOfLines={1}>
+            <Text style={styles.subtitle} numberOfLines={2}>
               {subtitle}
             </Text>
           )}
