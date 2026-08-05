@@ -38,11 +38,17 @@ export default function ScreenHeader({ icon, title, subtitle, right, onBack, log
             <Ionicons name={icon} size={22} color="#fff" />
           )}
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>{title}</Text>
-          {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+        <View style={styles.titleWrap}>
+          <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+            {title}
+          </Text>
+          {!!subtitle && (
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          )}
         </View>
-        {right}
+        {right ? <View style={styles.rightSlot}>{right}</View> : null}
       </View>
     </LinearGradient>
   );
@@ -60,7 +66,9 @@ const styles = StyleSheet.create({
   watermarkLogo: { position: "absolute", right: -10, top: 8, width: 120, height: 120, opacity: 0.12 },
   backBtn: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", marginBottom: 12, marginLeft: -4 },
   backText: { color: "#fff", fontSize: 14, fontWeight: "700", marginLeft: 2 },
-  row: { flexDirection: "row", alignItems: "center", gap: 14 },
+  row: { flexDirection: "row", alignItems: "center", gap: 12 },
+  titleWrap: { flex: 1, minWidth: 0 },
+  rightSlot: { flexShrink: 0, marginLeft: 8 },
   iconChip: {
     width: 46,
     height: 46,

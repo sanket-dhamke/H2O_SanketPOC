@@ -833,7 +833,7 @@ const Label = ({ children }) => <Text style={styles.label}>{children}</Text>;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
-  addBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
+  addBtn: { width: 34, height: 34, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
   empty: { color: "#6B7B85", textAlign: "center", marginTop: 24 },
   card: { backgroundColor: "#fff", borderRadius: 16, padding: 16, marginBottom: 14 },
   cardTop: { flexDirection: "row", alignItems: "flex-start" },
