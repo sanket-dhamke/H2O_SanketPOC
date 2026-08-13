@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Alert,
 } from "react-native";
 import TextInput from "../../components/AppTextInput";
 import PasswordInput from "../../components/PasswordInput";
 import FlatPicker from "../../components/FlatPicker";
+import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -85,7 +85,7 @@ export default function CreateAccountScreen({ navigation, route }) {
   return (
     <View style={styles.container}>
       <ScreenHeader icon="person-add" title="New account" subtitle={`Add a ${L.payer.toLowerCase()}, guard or admin`} onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
+      <KeyboardAwareScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
       {!!presetFlatNo && (
         <View style={styles.presetBanner}>
           <Ionicons name="home-outline" size={16} color="#0B6E8F" />
@@ -152,7 +152,7 @@ export default function CreateAccountScreen({ navigation, route }) {
       <TouchableOpacity style={[styles.button, busy && { opacity: 0.6 }]} onPress={submit} disabled={busy}>
         <Text style={styles.buttonText}>{busy ? "Creating..." : "Create account"}</Text>
       </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

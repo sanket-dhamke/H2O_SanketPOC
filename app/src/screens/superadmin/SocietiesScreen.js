@@ -20,6 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import { TIERS, TIER_LABEL, TIER_COLOR } from "../../lib/plan";
 import ScreenHeader from "../../components/ScreenHeader";
+import KeyboardAvoider from "../../components/KeyboardAvoider";
 
 // Cross-platform alert: RN's Alert.alert is a no-op on web, so fall back to the
 // browser's native dialog there (otherwise clicks appear to "do nothing").
@@ -318,7 +319,7 @@ function ShareLinkModal({ society, onClose }) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
           <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
             <View style={styles.modalHeaderIcon}>
@@ -363,7 +364,7 @@ function ShareLinkModal({ society, onClose }) {
             </TouchableOpacity>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoider>
     </Modal>
   );
 }
@@ -480,7 +481,7 @@ function ResetPasswordModal({ visible, onClose }) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
           <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
             <View style={styles.modalHeaderIcon}>
@@ -549,7 +550,7 @@ function ResetPasswordModal({ visible, onClose }) {
             </View>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoider>
     </Modal>
   );
 }
@@ -865,7 +866,7 @@ function PlatformSettingsModal({ visible, onClose }) {
 function FormModal({ visible, onClose, title, icon, children, busy, onSubmit }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
           <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
             <View style={styles.modalHeaderIcon}>
@@ -885,7 +886,7 @@ function FormModal({ visible, onClose, title, icon, children, busy, onSubmit }) 
             </View>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoider>
     </Modal>
   );
 }

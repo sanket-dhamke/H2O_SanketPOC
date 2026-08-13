@@ -16,6 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import ScreenHeader from "../../components/ScreenHeader";
+import KeyboardAvoider from "../../components/KeyboardAvoider";
 
 const fmt = (iso) =>
   iso ? new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "never";
@@ -171,7 +172,7 @@ function DeviceDetailModal({ device, onClose }) {
     }).catch(() => {});
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
           <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
             <View style={styles.modalHeaderIcon}>
@@ -206,7 +207,7 @@ Response → open the barrier when:
             </TouchableOpacity>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoider>
     </Modal>
   );
 }
@@ -241,7 +242,7 @@ function AddDeviceModal({ visible, onClose, onDone }) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
           <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
             <View style={styles.modalHeaderIcon}>
@@ -264,7 +265,7 @@ function AddDeviceModal({ visible, onClose, onDone }) {
             </View>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoider>
     </Modal>
   );
 }

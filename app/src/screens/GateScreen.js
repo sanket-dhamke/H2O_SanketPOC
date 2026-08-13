@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
-  ScrollView,
   Image,
   Platform,
   Modal,
@@ -14,6 +13,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import TextInput from "../components/AppTextInput";
 import FlatPicker from "../components/FlatPicker";
+import KeyboardAwareScrollView from "../components/KeyboardAwareScrollView";
+import KeyboardAvoider from "../components/KeyboardAvoider";
 import * as ImagePicker from "expo-image-picker";
 import { useAudioRecorder, AudioModule, RecordingPresets, setAudioModeAsync } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
@@ -171,7 +172,7 @@ export default function GateScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <ScreenHeader icon="person-add" title="New visitor" subtitle="Log an entry at the gate" />
-      <ScrollView contentContainerStyle={{ padding: 20 }}>
+      <KeyboardAwareScrollView contentContainerStyle={{ padding: 20 }}>
       <TouchableOpacity
         style={[styles.voiceBtn, isRecording && styles.voiceBtnActive, voiceBusy && { opacity: 0.6 }]}
         onPress={isRecording ? stopRecording : startRecording}
@@ -249,7 +250,7 @@ export default function GateScreen({ navigation }) {
           {busy ? (preschool ? "Logging..." : "Notifying...") : preschool ? "Log entry & notify CLO" : "Notify resident"}
         </Text>
       </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <GatePassVerifyModal visible={verifyModal} onClose={() => setVerifyModal(false)} />
     </View>
   );
@@ -297,7 +298,7 @@ function GatePassVerifyModal({ visible, onClose }) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
           <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
             <View style={styles.modalHeaderIcon}>
@@ -332,7 +333,7 @@ function GatePassVerifyModal({ visible, onClose }) {
             </View>
           </View>
         </View>
-      </View>
+      </KeyboardAvoider>
     </Modal>
   );
 }

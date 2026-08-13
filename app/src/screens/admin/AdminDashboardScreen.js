@@ -20,6 +20,7 @@ import { labelsFor, isPreschool } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
 import MonthField from "../../components/MonthField";
 import WingedFlats from "../../components/WingedFlats";
+import KeyboardAvoider from "../../components/KeyboardAvoider";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
@@ -510,7 +511,7 @@ function AddExpenseModal({ visible, onClose, onDone }) {
 function FormModal({ visible, onClose, title, icon, children, busy, onSubmit }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
           <LinearGradient
             colors={["#0E85AC", "#0B6E8F", "#075064"]}
@@ -535,7 +536,7 @@ function FormModal({ visible, onClose, title, icon, children, busy, onSubmit }) 
             </View>
           </View>
         </View>
-      </View>
+      </KeyboardAvoider>
     </Modal>
   );
 }

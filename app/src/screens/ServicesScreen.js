@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import ScreenHeader from "../components/ScreenHeader";
+import KeyboardAvoider from "../components/KeyboardAvoider";
 
 const cleanPhone = (p) => String(p || "").replace(/[^\d+]/g, "");
 
@@ -398,7 +399,7 @@ function ServiceEditor({ visible, contact, role, onClose, onDone }) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
           <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
             <View style={styles.modalHeaderIcon}>
@@ -456,7 +457,7 @@ function ServiceEditor({ visible, contact, role, onClose, onDone }) {
             </View>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoider>
     </Modal>
   );
 }

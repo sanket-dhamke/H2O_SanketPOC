@@ -4,11 +4,11 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Alert,
   ActivityIndicator,
 } from "react-native";
 import TextInput from "../../components/AppTextInput";
+import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { labelsFor } from "../../lib/org";
@@ -87,7 +87,7 @@ export default function BankAccountScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <ScreenHeader icon="card" title="Bank account" subtitle={`Where ${L.fees.toLowerCase()} is collected`} onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
+      <KeyboardAwareScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
       <Text style={styles.subtitle}>
         {L.fees} collections are routed to this account. Add the Razorpay Route linked
         account id below to auto-settle online payments into it.
@@ -153,7 +153,7 @@ export default function BankAccountScreen({ navigation }) {
       <TouchableOpacity style={[styles.button, busy && { opacity: 0.6 }]} onPress={submit} disabled={busy}>
         <Text style={styles.buttonText}>{busy ? "Saving..." : "Save bank account"}</Text>
       </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

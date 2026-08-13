@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import TextInput from "../components/AppTextInput";
+import KeyboardAvoider from "../components/KeyboardAvoider";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -221,7 +222,7 @@ function MessageModal({ visible, onClose, listingId, title }) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
           <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
             <View style={styles.modalHeaderIcon}>
@@ -248,7 +249,7 @@ function MessageModal({ visible, onClose, listingId, title }) {
             </View>
           </View>
         </View>
-      </View>
+      </KeyboardAvoider>
     </Modal>
   );
 }

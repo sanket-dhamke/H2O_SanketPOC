@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import TextInput from "../components/AppTextInput";
+import KeyboardAvoider from "../components/KeyboardAvoider";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -667,7 +668,7 @@ const Label = ({ children }) => <Text style={styles.label}>{children}</Text>;
 function FormModal({ visible, onClose, title, icon, children, busy, onSubmit, submitLabel = "Save" }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
           <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
             <View style={styles.modalHeaderIcon}>
@@ -687,7 +688,7 @@ function FormModal({ visible, onClose, title, icon, children, busy, onSubmit, su
             </View>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoider>
     </Modal>
   );
 }

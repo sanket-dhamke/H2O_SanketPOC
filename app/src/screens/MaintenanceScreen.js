@@ -10,6 +10,7 @@ import {
   Modal,
 } from "react-native";
 import TextInput from "../components/AppTextInput";
+import KeyboardAvoider from "../components/KeyboardAvoider";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -379,7 +380,7 @@ function CashModal({ bill, onClose, onSubmit }) {
 
   return (
     <Modal visible={!!bill} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
+      <KeyboardAvoider style={styles.modalOverlay}>
         <View style={styles.receiptCard}>
           <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.receiptTop}>
             <View style={styles.receiptTopRow}>
@@ -405,7 +406,7 @@ function CashModal({ bill, onClose, onSubmit }) {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoider>
     </Modal>
   );
 }

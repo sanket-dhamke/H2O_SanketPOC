@@ -18,6 +18,7 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { labelsFor } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
+import KeyboardAvoider from "../components/KeyboardAvoider";
 
 const TYPES = [
   { id: "guest", label: "Guest", icon: "person-outline" },
@@ -230,7 +231,7 @@ function CreatePassModal({ visible, onClose, onDone }) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
           <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
             <View style={styles.modalHeaderIcon}>
@@ -274,7 +275,7 @@ function CreatePassModal({ visible, onClose, onDone }) {
             </View>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoider>
     </Modal>
   );
 }

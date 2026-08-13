@@ -17,6 +17,7 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { labelsFor, isPreschool } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
+import KeyboardAvoider from "../../components/KeyboardAvoider";
 
 export default function ManageFlatsScreen({ navigation }) {
   const { user } = useAuth();
@@ -289,7 +290,7 @@ function FlatEditorModal({ flat, preschool, L, classOptions, navigation, onClose
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
           <Text style={styles.modalTitle}>Edit {preschool ? "student" : L.unit.toLowerCase()}</Text>
           <ScrollView style={{ maxHeight: 460 }} keyboardShouldPersistTaps="handled">
@@ -361,7 +362,7 @@ function FlatEditorModal({ flat, preschool, L, classOptions, navigation, onClose
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoider>
     </Modal>
   );
 }

@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import TextInput from "./AppTextInput";
 import PasswordInput from "./PasswordInput";
+import KeyboardAvoider from "./KeyboardAvoider";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
@@ -73,7 +74,7 @@ export default function RegisterModal({ visible, onClose }) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoider style={styles.overlay}>
         <View style={styles.card}>
           <LinearGradient
             colors={["#0E85AC", "#0B6E8F", "#075064"]}
@@ -147,7 +148,7 @@ export default function RegisterModal({ visible, onClose }) {
             </View>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoider>
     </Modal>
   );
 }

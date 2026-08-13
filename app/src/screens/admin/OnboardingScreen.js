@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Alert,
 } from "react-native";
@@ -13,6 +12,7 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { labelsFor } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
+import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 
 const CSV_TEMPLATE = `flatNo,block,ownerName,ownerEmail,ownerPhone
 A-101,A,Ravi Kumar,ravi@example.com,9876543210
@@ -36,9 +36,9 @@ export default function OnboardingScreen({ navigation }) {
         <TabBtn label="Generate structure" active={tab === "generate"} onPress={() => setTab("generate")} />
         <TabBtn label="Import CSV" active={tab === "csv"} onPress={() => setTab("csv")} />
       </View>
-      <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView contentContainerStyle={{ padding: 16 }}>
         {tab === "generate" ? <GenerateForm /> : <CsvForm />}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }
