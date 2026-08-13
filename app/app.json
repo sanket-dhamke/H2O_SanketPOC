@@ -5,6 +5,13 @@
     "scheme": "h2o",
     "owner": "sanket2891",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/75b8960c-eda5-41bf-a856-751342266f3b",
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "backgroundColor": "#0C4A8C",
