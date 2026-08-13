@@ -170,17 +170,18 @@ export default function ServicesScreen() {
         <TextInput style={styles.search} value={query} onChangeText={setQuery} placeholder="Search maid, electrician, ambulance…" />
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.catBar}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
-      >
-        <Chip label="All" active={cat === "all"} onPress={() => setCat("all")} />
-        {Object.keys(CAT_META).map((id) => (
-          <Chip key={id} label={catMeta(id).label} active={cat === id} icon={catMeta(id).icon} onPress={() => setCat(id)} />
-        ))}
-      </ScrollView>
+      <View style={styles.catBar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.catBarContent}
+        >
+          <Chip label="All" active={cat === "all"} onPress={() => setCat("all")} />
+          {Object.keys(CAT_META).map((id) => (
+            <Chip key={id} label={catMeta(id).label} active={cat === id} icon={catMeta(id).icon} onPress={() => setCat(id)} />
+          ))}
+        </ScrollView>
+      </View>
 
       <FlatList
         data={visible}
@@ -474,8 +475,9 @@ const styles = StyleSheet.create({
   segTextActive: { color: "#fff" },
   searchWrap: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#fff", marginHorizontal: 16, marginTop: 12, borderRadius: 12, paddingHorizontal: 14 },
   search: { flex: 1, paddingVertical: 12, fontSize: 15 },
-  catBar: { marginTop: 12, maxHeight: 44, flexGrow: 0 },
-  chip: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: "#CFE0E6", backgroundColor: "#fff", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8 },
+  catBar: { marginTop: 12, height: 42 },
+  catBarContent: { paddingHorizontal: 16, gap: 8, alignItems: "center" },
+  chip: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, borderWidth: 1, borderColor: "#CFE0E6", backgroundColor: "#fff", borderRadius: 20, paddingHorizontal: 14, height: 34 },
   chipActive: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },
   chipText: { color: "#0B6E8F", fontSize: 12.5, fontWeight: "700" },
   sectionTitle: { fontSize: 15, fontWeight: "800", color: "#1B2B33", marginBottom: 10, marginTop: 4 },
