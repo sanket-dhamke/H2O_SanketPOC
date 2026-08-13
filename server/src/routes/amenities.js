@@ -3,7 +3,7 @@ import { createHmac } from "crypto";
 import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
 import { serializeAmenity, serializeBooking } from "../serializers.js";
-import { sendPush } from "../push.js";
+import { enqueuePush } from "../queue.js";
 import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorpay.js";
 
 // Amenity / clubhouse booking engine (per society).
@@ -366,7 +366,7 @@ amenitiesRouter.post("/admin/bookings/:id/decision", authRequired, roleRequired(
       status === "approved"
         ? `Your ${booking.amenity?.name} booking (${booking.slot?.label}, ${booking.date}) is approved. Pay ₹${booking.amount} in the app to confirm.`
         : `Your ${booking.amenity?.name} booking (${booking.slot?.label}, ${booking.date}) was declined.`;
-    await sendPush(booking.resident.expoPushToken, `Booking ${status}`, msg, { type: "booking", bookingId: booking.id });
+    enqueuePush(booking.resident.expoPushToken, `Booking ${status}`, msg, { type: "booking", bookingId: booking.id });
   }
   res.json({ booking: serializeBooking(updated) });
 });

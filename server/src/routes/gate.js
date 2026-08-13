@@ -2,7 +2,9 @@ import { Router } from "express";
 import crypto from "crypto";
 import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
-import { sendPush } from "../push.js";
+import { enqueuePush } from "../queue.js";
+import { cacheWrap } from "../cache.js";
+import { parsePaging } from "../paging.js";
 
 // Platinum vehicle-gate module. Residents/admins register vehicles (each gets a
 // printable QR carrying an opaque, revocable `code`). A gate scanner at the
@@ -30,7 +32,11 @@ const normPlate = (p) => String(p || "").toUpperCase().replace(/[^A-Z0-9]/g, "")
 
 async function loadSociety(societyId) {
   if (!societyId) return null;
-  return prisma.society.findUnique({ where: { id: societyId } });
+  // Cached briefly: the gate verify path reads this on every single scan, but a
+  // society's tier/active flag changes very rarely. Short TTL keeps it fresh.
+  return cacheWrap(`society:${societyId}`, 30, () =>
+    prisma.society.findUnique({ where: { id: societyId } })
+  );
 }
 const isPlatinum = (society) => (society?.tier || "platinum") === "platinum";
 
@@ -218,11 +224,13 @@ gateRouter.delete("/gate/devices/:id", authRequired, roleRequired("admin"), asyn
 
 // Recent gate reads for the admin log view.
 gateRouter.get("/gate/entries", authRequired, roleRequired("admin"), async (req, res) => {
+  const paging = parsePaging(req, { def: 100, max: 500 });
   const entries = await prisma.vehicleEntry.findMany({
     where: { societyId: req.user.societyId },
     include: { vehicle: { include: { flat: true } }, device: true },
     orderBy: { at: "desc" },
-    take: 100,
+    take: paging.take,
+    skip: paging.skip,
   });
   res.json({
     entries: entries.map((e) => ({
@@ -235,6 +243,7 @@ gateRouter.get("/gate/entries", authRequired, roleRequired("admin"), async (req,
       reason: e.reason || null,
       at: e.at,
     })),
+    hasMore: entries.length >= paging.limit,
   });
 });
 
@@ -335,7 +344,7 @@ gateRouter.post("/gate/verify", async (req, res) => {
     const title = "Vehicle at the gate";
     const body = `${vehicle.plate} ${dir === "out" ? "exited" : "entered"}${device.name ? ` · ${device.name}` : ""}`;
     for (const r of residents) {
-      if (r.expoPushToken) sendPush(r.expoPushToken, title, body, { type: "gate", vehicleId: vehicle.id });
+      if (r.expoPushToken) enqueuePush(r.expoPushToken, title, body, { type: "gate", vehicleId: vehicle.id });
     }
   }
 
@@ -355,7 +364,7 @@ gateRouter.post("/gate/verify", async (req, res) => {
       `${vehicle.plate}'s gate QR was blocked at ${device.name || "the gate"} — it looks like it was reused/copied. ` +
       `If this wasn't you, open GateMate and regenerate the QR.`;
     for (const r of recipients) {
-      if (r.expoPushToken) sendPush(r.expoPushToken, title, body, { type: "gate_alert", vehicleId: vehicle.id });
+      if (r.expoPushToken) enqueuePush(r.expoPushToken, title, body, { type: "gate_alert", vehicleId: vehicle.id });
     }
   }
 

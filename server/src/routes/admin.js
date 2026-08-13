@@ -829,6 +829,45 @@ adminRouter.post("/flats/generate", async (req, res) => {
   res.json({ created: toCreate.length, skipped: total - toCreate.length, sample });
 });
 
+// Bulk-create flats from an EXPLICIT, already-reviewed list (the app's "Generate
+// structure" preview lets the admin edit/add/remove flats before sending them).
+// Body: { flats: [{ flatNo, block?, ownerName? }] }. Idempotent (skips existing).
+adminRouter.post("/flats/bulk", async (req, res) => {
+  const societyId = req.user.societyId;
+  let { flats } = req.body || {};
+  if (!Array.isArray(flats)) return res.status(400).json({ message: "Provide a 'flats' array" });
+
+  // Normalise + de-dupe within the payload.
+  const seen = new Set();
+  const cleaned = [];
+  for (const f of flats) {
+    const flatNo = String(f?.flatNo ?? "").trim();
+    if (!flatNo || seen.has(flatNo)) continue;
+    seen.add(flatNo);
+    cleaned.push({
+      flatNo,
+      block: f?.block != null && String(f.block).trim() !== "" ? String(f.block).trim() : null,
+      ownerName: f?.ownerName != null && String(f.ownerName).trim() !== "" ? String(f.ownerName).trim() : null,
+      societyId,
+    });
+  }
+  if (cleaned.length === 0) return res.status(400).json({ message: "No valid flats to create" });
+  if (cleaned.length > 3000) return res.status(400).json({ message: "Please keep it under 3000 flats at a time" });
+
+  // Skip flat numbers that already exist in this society.
+  const existing = new Set(
+    (await prisma.flat.findMany({ where: { societyId }, select: { flatNo: true } })).map((f) => f.flatNo)
+  );
+  const toCreate = cleaned.filter((f) => !existing.has(f.flatNo));
+
+  if (toCreate.length) await prisma.flat.createMany({ data: toCreate, skipDuplicates: true });
+  res.json({
+    created: toCreate.length,
+    skipped: cleaned.length - toCreate.length,
+    sample: toCreate.slice(0, 6).map((f) => f.flatNo),
+  });
+});
+
 // Bulk import flats (and optionally their owners as resident logins) from CSV.
 // CSV headers (case-insensitive): flatNo, block, ownerName, ownerEmail, ownerPhone
 // Optionally: password (else a temp one is generated & returned).

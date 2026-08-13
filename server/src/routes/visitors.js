@@ -3,7 +3,8 @@ import { randomUUID } from "crypto";
 import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
 import { serializeVisitor } from "../serializers.js";
-import { sendPush } from "../push.js";
+import { enqueuePush } from "../queue.js";
+import { parsePaging } from "../paging.js";
 import { uploadVisitorPhoto, placeholderPhoto } from "../storage.js";
 
 export const visitorsRouter = Router();
@@ -72,32 +73,28 @@ visitorsRouter.post("/visitors", authRequired, roleRequired("guard", "admin"), a
     const admins = await prisma.user.findMany({
       where: { societyId, role: "admin", active: true },
     });
-    await Promise.all(
-      admins
-        .filter((a) => a.expoPushToken)
-        .map((a) =>
-          sendPush(
-            a.expoPushToken,
-            "Visitor logged at the gate",
-            `${name} (${visitor.purpose}) entered for ${flat.flatNo}.`,
-            { type: "visitor", visitorId: visitor.id }
-          )
+    admins
+      .filter((a) => a.expoPushToken)
+      .forEach((a) =>
+        enqueuePush(
+          a.expoPushToken,
+          "Visitor logged at the gate",
+          `${name} (${visitor.purpose}) entered for ${flat.flatNo}.`,
+          { type: "visitor", visitorId: visitor.id }
         )
-    );
+      );
   } else {
     // Notify every resident of the flat that has a registered device.
-    await Promise.all(
-      residents
-        .filter((r) => r.expoPushToken)
-        .map((r) =>
-          sendPush(
-            r.expoPushToken,
-            "Visitor at the gate",
-            `${name} (${visitor.purpose}) is waiting. Tap to approve, reject or leave at gate.`,
-            { type: "visitor", visitorId: visitor.id }
-          )
+    residents
+      .filter((r) => r.expoPushToken)
+      .forEach((r) =>
+        enqueuePush(
+          r.expoPushToken,
+          "Visitor at the gate",
+          `${name} (${visitor.purpose}) is waiting. Tap to approve, reject or leave at gate.`,
+          { type: "visitor", visitorId: visitor.id }
         )
-    );
+      );
   }
 
   res.status(201).json({ visitor: serializeVisitor(visitor) });
@@ -113,12 +110,15 @@ visitorsRouter.get("/visitors", authRequired, async (req, res) => {
     // guard/admin see the whole gate log for their society.
     where.flat = { societyId: req.user.societyId || "__none__" };
   }
+  const paging = parsePaging(req, { def: 200, max: 500 });
   const visitors = await prisma.visitor.findMany({
     where,
     include: { flat: true },
     orderBy: { createdAt: "desc" },
+    take: paging.take,
+    skip: paging.skip,
   });
-  res.json({ visitors: visitors.map(serializeVisitor) });
+  res.json({ visitors: visitors.map(serializeVisitor), hasMore: visitors.length >= paging.limit });
 });
 
 // Guard/admin marks a visitor as having left (entry/exit tracking). Records the
@@ -169,7 +169,7 @@ visitorsRouter.post("/visitors/:id/decision", authRequired, async (req, res) => 
     leave_at_gate: "LEAVE AT GATE",
   }[status];
   if (guard?.expoPushToken) {
-    await sendPush(
+    enqueuePush(
       guard.expoPushToken,
       `Flat ${updated.flat?.flatNo}: ${label}`,
       `${updated.name} was ${status.replace(/_/g, " ")} by the resident.`,

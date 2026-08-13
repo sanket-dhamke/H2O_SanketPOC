@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
 import { serializeTicket, serializeTicketComment } from "../serializers.js";
-import { sendPush } from "../push.js";
+import { enqueuePush } from "../queue.js";
 
 // Society helpdesk: residents raise tickets (complaints / maintenance requests),
 // the admin (manager) gets notified, replies in a comment thread and marks the
@@ -24,7 +24,7 @@ async function notifyUsers(userIds, title, body, data = {}) {
     where: { id: { in: ids }, notifyEnabled: true, expoPushToken: { not: null } },
     select: { expoPushToken: true },
   });
-  await Promise.all(users.map((u) => sendPush(u.expoPushToken, title, body, data)));
+  users.forEach((u) => enqueuePush(u.expoPushToken, title, body, data));
 }
 
 async function societyAdminIds(societyId) {

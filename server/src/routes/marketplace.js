@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
-import { sendPush } from "../push.js";
+import { enqueuePush } from "../queue.js";
 import { uploadDocument } from "../storage.js";
+import { parsePaging } from "../paging.js";
 
 // Buy & Sell marketplace. Residents post items under a category. A listing is
 // visible either only within the poster's society, or across ALL societies
@@ -62,6 +63,7 @@ marketplaceRouter.get("/listings", authRequired, async (req, res) => {
   }
   if (category) where.category = category;
 
+  const paging = parsePaging(req, { def: 200, max: 200 });
   const listings = await prisma.listing.findMany({
     where,
     include: {
@@ -70,9 +72,13 @@ marketplaceRouter.get("/listings", authRequired, async (req, res) => {
       _count: { select: { messages: true } },
     },
     orderBy: { createdAt: "desc" },
-    take: 200,
+    take: paging.take,
+    skip: paging.skip,
   });
-  res.json({ listings: listings.map((l) => serializeListing(l, req.user.id)) });
+  res.json({
+    listings: listings.map((l) => serializeListing(l, req.user.id)),
+    hasMore: listings.length >= paging.limit,
+  });
 });
 
 // Category counts for the browse screen tiles.
@@ -244,7 +250,7 @@ marketplaceRouter.post("/listings/:id/messages", authRequired, async (req, res) 
     select: { expoPushToken: true, notifyEnabled: true },
   });
   if (owner?.expoPushToken && owner.notifyEnabled) {
-    sendPush(owner.expoPushToken, `Enquiry: ${listing.title}`, `${req.user.name || "Someone"}: ${msg.body}`, {
+    enqueuePush(owner.expoPushToken, `Enquiry: ${listing.title}`, `${req.user.name || "Someone"}: ${msg.body}`, {
       type: "listing",
       listingId: listing.id,
     });

@@ -3,8 +3,7 @@ import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
 import { serializeRentAgreement } from "../serializers.js";
 import { uploadDocument } from "../storage.js";
-import { sendPush } from "../push.js";
-import { sendEmail } from "../email.js";
+import { enqueuePush, enqueueEmail } from "../queue.js";
 import { runRentExpiryChecks } from "../rentReminders.js";
 
 export const rentRouter = Router();
@@ -115,12 +114,10 @@ rentRouter.post("/rent-agreements", authRequired, roleRequired("resident", "admi
     where: { societyId, role: "admin", notifyEnabled: true, expoPushToken: { not: null } },
     select: { expoPushToken: true },
   });
-  await Promise.all(
-    admins.map((a) =>
-      sendPush(a.expoPushToken, "Rent agreement to verify", `Flat ${flat.flatNo}: ${tenantName}`, {
-        type: "rent_agreement",
-      })
-    )
+  admins.forEach((a) =>
+    enqueuePush(a.expoPushToken, "Rent agreement to verify", `Flat ${flat.flatNo}: ${tenantName}`, {
+      type: "rent_agreement",
+    })
   );
 
   const full = await prisma.rentAgreement.findUnique({ where: { id: created.id }, include: { flat: true } });
@@ -158,9 +155,9 @@ rentRouter.post("/rent-agreements/:id/verify", authRequired, roleRequired("admin
     ? `Your rent agreement for flat ${agreement.flat?.flatNo} (until ${agreement.endDate}) has been verified.`
     : `Your rent agreement for flat ${agreement.flat?.flatNo} was rejected. ${rejectionReason ? "Reason: " + rejectionReason : ""}`.trim();
 
-  if (owner?.expoPushToken && owner.notifyEnabled) sendPush(owner.expoPushToken, title, body, { type: "rent_agreement" });
+  if (owner?.expoPushToken && owner.notifyEnabled) enqueuePush(owner.expoPushToken, title, body, { type: "rent_agreement" });
   const emails = [owner?.email, agreement.tenantEmail].filter(Boolean);
-  await Promise.all(emails.map((to) => sendEmail({ to, subject: title, text: body }).catch(() => {})));
+  emails.forEach((to) => enqueueEmail({ to, subject: title, text: body }));
 
   res.json({ agreement: serializeRentAgreement(updated) });
 });

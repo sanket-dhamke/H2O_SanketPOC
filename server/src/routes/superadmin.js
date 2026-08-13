@@ -9,6 +9,9 @@ import { buildFlatLedger, effectivePaid } from "../billing.js";
 import { emailPremiumInvoice } from "../invoice.js";
 import { sendEmail, emailConfigured } from "../email.js";
 import { ensureUniqueSlug } from "../slug.js";
+import { runPlatformBackup, buildPlatformBackup } from "../platformBackup.js";
+import { signBackup, storageEnabled } from "../storage.js";
+import { buildSocietyBackup, emailSocietyBackup } from "../backup.js";
 
 // Platform-owner ("superadmin") routes. The superadmin belongs to no society and
 // can see a cross-society summary and manage (create / activate) societies and
@@ -269,6 +272,84 @@ superadminRouter.put("/settings", async (req, res) => {
     create: { id: "platform", ...data },
   });
   res.json({ settings });
+});
+
+/* ------------------------- Backup & recovery -------------------------- */
+// Status: readiness flags + last platform backup + recent history.
+superadminRouter.get("/backup/status", async (_req, res) => {
+  const logs = await prisma.backupLog.findMany({
+    where: { kind: "platform" },
+    orderBy: { at: "desc" },
+    take: 20,
+  });
+  const last = logs[0] || null;
+  res.json({
+    readiness: {
+      offsiteStorage: storageEnabled,
+      encryption: !!process.env.BACKUP_ENCRYPTION_KEY,
+      email: emailConfigured,
+      externalCron: !!process.env.CRON_SECRET,
+    },
+    last,
+    history: logs,
+  });
+});
+
+// Run the full platform backup right now (upload off-site + email owner).
+superadminRouter.post("/backup/run", async (_req, res) => {
+  try {
+    const result = await runPlatformBackup({ trigger: "manual" });
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Build a fresh full backup and stream it straight to the browser/app for a
+// one-tap local download (in addition to the off-site copy + email).
+superadminRouter.get("/backup/download", async (_req, res) => {
+  try {
+    const backup = await buildPlatformBackup();
+    res.setHeader("Content-Type", "application/octet-stream");
+    res.setHeader("Content-Disposition", `attachment; filename="${backup.filename}"`);
+    res.setHeader("X-Backup-Sha256", backup.sha256);
+    res.setHeader("X-Backup-Encrypted", String(backup.encrypted));
+    res.send(backup.buffer);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Re-sign a past backup's storage object so it can be downloaded again.
+superadminRouter.get("/backup/:id/link", async (req, res) => {
+  const log = await prisma.backupLog.findUnique({ where: { id: req.params.id } });
+  if (!log || !log.url) return res.status(404).json({ message: "No stored file for this backup" });
+  const url = await signBackup(log.url, { expiresIn: 3600 });
+  if (!url) return res.status(400).json({ message: "Off-site storage not configured" });
+  res.json({ url });
+});
+
+// Per-society backup: email it to that society's admins.
+superadminRouter.post("/societies/:id/backup/email", async (req, res) => {
+  try {
+    const result = await emailSocietyBackup(req.params.id, { period: req.body?.period });
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Per-society backup: download the JSON snapshot directly.
+superadminRouter.get("/societies/:id/backup/download", async (req, res) => {
+  try {
+    const backup = await buildSocietyBackup(req.params.id, { period: req.query.period });
+    const file = backup.attachments.find((a) => a.filename.endsWith(".json")) || backup.attachments[0];
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Content-Disposition", `attachment; filename="${file.filename}"`);
+    res.send(file.content);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
 });
 
 // GET /api/superadmin/societies/:id/flats — flats in a society with paid/pending

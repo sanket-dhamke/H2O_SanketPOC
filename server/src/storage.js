@@ -43,6 +43,46 @@ export function placeholderPhoto(seed) {
   return `https://i.pravatar.cc/150?u=${encodeURIComponent(seed)}`;
 }
 
+const BACKUP_BUCKET = process.env.SUPABASE_BACKUP_BUCKET || "backups";
+
+// Uploads a backup archive (Buffer) to a PRIVATE bucket and returns a signed,
+// time-limited download URL. Returns null if storage isn't configured. The
+// bucket is created (private) on first use.
+export async function uploadBackup(buffer, filename, { expiresIn = 7 * 24 * 3600 } = {}) {
+  if (!storageEnabled || !buffer) return null;
+  try {
+    // Ensure a private bucket exists (idempotent: ignore "already exists").
+    await supabase.storage.createBucket(BACKUP_BUCKET, { public: false }).catch(() => {});
+    const path = `${new Date().toISOString().slice(0, 10)}/${filename}`;
+    const { error } = await supabase.storage
+      .from(BACKUP_BUCKET)
+      .upload(path, buffer, { contentType: "application/octet-stream", upsert: true });
+    if (error) throw error;
+    const { data, error: signErr } = await supabase.storage
+      .from(BACKUP_BUCKET)
+      .createSignedUrl(path, expiresIn);
+    if (signErr) throw signErr;
+    return { path, url: data?.signedUrl || null, bucket: BACKUP_BUCKET };
+  } catch (err) {
+    console.error("Backup upload failed:", err.message);
+    return null;
+  }
+}
+
+// Re-signs an existing backup object so the superadmin can download it later
+// even after the original signed URL expired.
+export async function signBackup(path, { expiresIn = 3600 } = {}) {
+  if (!storageEnabled || !path) return null;
+  try {
+    const { data, error } = await supabase.storage.from(BACKUP_BUCKET).createSignedUrl(path, expiresIn);
+    if (error) throw error;
+    return data?.signedUrl || null;
+  } catch (err) {
+    console.error("Backup re-sign failed:", err.message);
+    return null;
+  }
+}
+
 // Uploads a document (rent agreement, etc.) sent as a base64 data URL. Supports
 // PDFs and images. Returns a public URL, or null if storage isn't configured.
 export async function uploadDocument(base64, id, folder = "documents") {

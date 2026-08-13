@@ -156,6 +156,8 @@ export const api = {
     request(`/api/admin/flats/${id}`, { method: "DELETE" }),
   adminGenerateFlats: (payload) =>
     request("/api/admin/flats/generate", { method: "POST", body: payload }),
+  adminBulkCreateFlats: (payload) =>
+    request("/api/admin/flats/bulk", { method: "POST", body: payload }),
   adminImportFlats: (payload) =>
     request("/api/admin/flats/import", { method: "POST", body: payload }),
 
@@ -228,6 +230,13 @@ export const api = {
   // Super admin: drill into any society's flats and a flat's full audit ledger
   superSocietyFlats: (societyId) => request(`/api/superadmin/societies/${societyId}/flats`),
   superFlatLedger: (flatId) => request(`/api/superadmin/flats/${flatId}/ledger`),
+
+  // Super admin: backup & recovery
+  superBackupStatus: () => request("/api/superadmin/backup/status"),
+  superRunBackup: () => request("/api/superadmin/backup/run", { method: "POST" }),
+  superBackupLink: (id) => request(`/api/superadmin/backup/${id}/link`),
+  superSocietyBackupEmail: (societyId) =>
+    request(`/api/superadmin/societies/${societyId}/backup/email`, { method: "POST", body: {} }),
 
   // Admin: GateMate subscription ("Pay to GateMate")
   adminSubscription: () => request("/api/admin/subscription"),

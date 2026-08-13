@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
-import { sendPush } from "../push.js";
+import { enqueuePush } from "../queue.js";
 
 // MyGate-style pre-approval: a resident creates a gate pass for an expected
 // guest / delivery / cab with a short code and a validity window. The guard
@@ -179,7 +179,7 @@ gatePassRouter.post("/gate-passes/:id/admit", authRequired, roleRequired("guard"
     select: { expoPushToken: true, notifyEnabled: true },
   });
   if (creator?.expoPushToken && creator.notifyEnabled) {
-    sendPush(creator.expoPushToken, "Your guest arrived", `${pass.guestName} was admitted at the gate.`, {
+    enqueuePush(creator.expoPushToken, "Your guest arrived", `${pass.guestName} was admitted at the gate.`, {
       type: "gate_pass",
       passId: pass.id,
     });

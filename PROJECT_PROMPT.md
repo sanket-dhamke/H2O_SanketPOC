@@ -11,6 +11,9 @@ It captures the full scope of what has been built so far.
 > - Backend: `cd server; npm install; npm run db:setup` (seed) `; npm start` (port 4000).
 > - App: `cd app; npm install; npx expo start`. API URL is in `app/app.json` → `extra.apiUrl`.
 > - Cloud build (APK/AAB): `cd app; npx eas-cli build -p android --profile preview|production`.
+> - Clean slate for QA: `cd server; npm run db:reset` (wipes all tenant data, keeps only the
+>   superadmin login + platform settings). Do NOT run `db:setup`/`seed` for a QA handoff — those
+>   repopulate the fake demo societies. `reset.js` refuses to run if no superadmin exists.
 > - Windows/PowerShell: chain commands with `;` (not `&&`).
 > - Branding: the app is now **GateMate** (icon, splash, and all user-visible text). The internal
 >   Expo `slug` (`h2o`) and Android package (`com.h2o.society`) are intentionally kept for
@@ -43,6 +46,13 @@ Frontend: React Native (Expo SDK), React Navigation (stack + tabs), AsyncStorage
 Push:     Expo Push Notifications.
 Build:    EAS (production profile builds Android .aab; submit profile for Play Store).
 Deploy:   Backend on Render (render.yaml blueprint); DB on Supabase.
+Scale:    OPTIONAL Redis (REDIS_URL) → shared cross-instance cache + durable BullMQ push/email queue.
+          Without Redis the app is identical: a bounded in-process cache (cache.js) + async in-process
+          notification queue (queue.js) keep behavior the same on a single instance. Per-IP rate limiting
+          (express-rate-limit; rateLimit.js) with tight limits on auth/AI and exemptions for health/cron/
+          webhook/gate-device. Backward-compatible pagination helper (paging.js: ?page/?limit, additive
+          hasMore) on high-volume list endpoints. Composite DB indexes on hot paths. `trust proxy` set so
+          req.ip is correct behind Render. GET /api/health reports {cache, queue} backend in use.
 
 ================================================================================
 ROLES & AUTH
@@ -101,8 +111,39 @@ CORE SOCIETY FEATURES
     = month-grid day picker with optional minToday (used for reminder dates and amenity/hall booking).
     MonthField (app/src/components/MonthField.js) = year + 12-month grid with optional minCurrent
     (used for "Generate monthly bills" so only the current/future months are selectable).
+11. Helpdesk tickets (helpdesk.js; Ticket + TicketComment): a resident raises a ticket (category,
+    priority, subject, description); society admins are notified; they reply in a comment thread and
+    mark it open→in_progress→resolved with a closing note. Residents track status + full history.
+12. Member directory (directory): residents who opt in (User.sharePhone) are listed so neighbours can
+    call each other; a one-tap "call the security guard" action. Labels adapt for preschools.
+13. Gate Pass — MyGate-style pre-approval (gatepass.js; GatePass): a resident pre-approves an expected
+    guest/delivery/cab/service with a short code + validity window; the guard admits by code without
+    disturbing the resident; on use the creator gets a "your guest arrived" push. Statuses:
+    active/used/expired/cancelled.
+14. Buy & Sell marketplace (marketplace.js; Listing + ListingMessage): residents post items (category,
+    price, images, location) visible to their own society or ALL societies; buyers message the owner
+    in-app (owner gets a push); owner marks sold. Superadmin moderation: view every listing across all
+    tenants and disable (status="removed") or delete it (MarketplaceModerationModal). It is a consumer/
+    individual feature → available on the Base tier.
+15. Late-fee policy (BillingSetting): per-society rule — flat / per-day / percent, with grace days and an
+    optional cap. Accrues ONLY on overdue bills and is always 0 once a bill is fully paid, so paying
+    several months in advance or on time never picks up a late fee.
+16. Maintenance heads (MaintenanceHead): admins split the monthly bill into configurable components
+    (Maintenance, Sinking fund, Water, Common area, …); generated bills snapshot a per-head breakdown
+    so receipts show the split.
+17. Vehicle gate automation — PLATINUM (gate.js; Vehicle + GateDevice + VehicleEntry): residents/admins
+    register vehicles, each getting an opaque, revocable/rotatable `code` encoded into a printable QR.
+    A gate scanner authenticates with its own deviceKey and calls POST /gate/verify (accepts a scanned
+    code AND/OR an ANPR-read plate) or syncs the active whitelist via GET /gate/whitelist to match
+    offline; the device fires its own relay to lift the boom barrier when open=true. Software-only
+    anti-passback + clone detection: same code at two lanes within IMPOSSIBLE_TRAVEL_SEC = cloned QR
+    (deny + alert), re-open within REOPEN_GRACE_SEC = silent, same direction within SAME_DIR_WINDOW_SEC =
+    passback (deny). Every read is logged (VehicleEntry) with residents/admins notified; anomalies push a
+    "QR blocked — regenerate" alert. Screens: VehiclesScreen (resident/admin), GateDevicesScreen (admin).
 - Student CRUD: for preschools, admins add/edit/delete students directly from AdminFeesScreen (a
   student is a Flat). Delete is blocked if linked app accounts (parents) exist.
+- Flat/student editor: admins edit any unit's details (FlatEditorModal) and create a login for it
+  directly ("Add login"), for both societies and preschools.
 
 ================================================================================
 PRESCHOOL FEATURES (orgType = "preschool")
@@ -130,8 +171,9 @@ PRESCHOOL FEATURES (orgType = "preschool")
 LOGIN BRANDING
 ================================================================================
 - Neutral default login (no Society/Preschool toggle, no sticky behavior).
-- Per-tenant slug enables branded deep links: web "/?t=slug", native "gatemate://?t=slug"
-  (app.json scheme). A public GET /tenant/:slug returns name/orgType/slug/logoUrl for auto-branding.
+- Per-tenant slug enables branded deep links: web "/?t=slug", native "h2o://?t=slug"
+  (app.json scheme is intentionally still `h2o` for continuity). A public GET /tenant/:slug returns
+  name/orgType/slug/logoUrl for auto-branding.
 - Because real users install from app stores (not via QR/URL), the tenant "feels like theirs" via
   IN-APP branding: name + logo shown on header/home after login (societyLogoUrl / logoUrl).
 - Superadmin can generate branded link + QR and edit each tenant's name/logo.
@@ -147,7 +189,46 @@ SUPERADMIN DASHBOARD
 - SCALE: all cross-society aggregation is pushed to the DATABASE (Prisma groupBy for users/expenses/
   bookings + ONE grouped raw SQL join Bill->Flat for bill totals). Never load all rows into Node.
   Constant memory regardless of tenant/bill count. Still partial-payment aware.
+- Month selector on the overview: view collected/pending/billed/revenue for a specific month across ALL
+  tenants (MonthField), computed with month-scoped SQL.
 - Manage plans (premium subscription, yearly amount), premium invoice emails.
+- Product tier per tenant: assign base/prime/platinum (drives in-app feature gating); societies list shows
+  a "<Tier> Package" badge instead of free/premium.
+- Buy & Sell moderation across all tenants; Backup & recovery panel (see DISASTER RECOVERY below).
+
+================================================================================
+PLAN TIERS (customer-facing feature gating)
+================================================================================
+- Society.tier = "base" | "prime" | "platinum" (defaults to "platinum" so existing tenants keep all
+  features until explicitly tiered). Set by the superadmin. app/src/lib/plan.js is the single source of
+  truth: TIERS, TIER_RANK/LABEL/COLOR, FEATURE_TIER (feature→minimum tier), hasFeature(user,feature),
+  requiredTierLabel, and TIER_FEATURES (human lists for the Plans screen). publicUser serializes
+  societyTier so the app can gate locally.
+- Base: visitor log, maintenance/fees + online pay, late-fee policy, maintenance heads, Buy & Sell,
+  announcements, helpdesk, directory, basic reports/profile.
+- Prime: everything in Base + AI Assistant, Gate Pass, amenities/hall booking, WhatsApp+email reminders,
+  rent management, automated backups + wing-wise exports.
+- Platinum: everything in Prime + automated vehicle gate (QR/ANPR), printable vehicle QR & registry,
+  real-time entry/exit logs + notifications, priority support/branding.
+- HomeScreen tiles gate on `feature`: locked tiles show a lock + required-tier badge and prompt to
+  upgrade instead of navigating. Admins get a "Your plan" tile → customer-facing PlansScreen.
+
+================================================================================
+DISASTER RECOVERY (superadmin)
+================================================================================
+- Full-platform backup (platformBackup.js): dumps EVERY table (incl. bcrypt hashes so logins survive)
+  → gzip → optional AES-256-GCM encryption (BACKUP_ENCRYPTION_KEY) → uploads an off-site copy to a
+  PRIVATE Supabase Storage bucket (signed URL) → emails the owner a checksum (SHA-256) + link. Each run
+  is recorded in BackupLog. Runs weekly (in-process cron, default Sun 02:00) and on demand.
+- Triggers: manual POST /api/superadmin/backup/run; external scheduler POST /api/cron/platform-backup
+  (x-cron-secret: CRON_SECRET); GET /api/superadmin/backup/download streams a fresh dump; per-society
+  backup email/download endpoints reuse the monthly society backup builder.
+- App panel: BackupRecoveryScreen (Superadmin → Overview → Backup & recovery) shows a readiness
+  checklist (off-site storage / encryption / email / external cron), last backup (time/size/records/
+  checksum), history with re-signed download links, one-tap "Run full backup now", and per-society email.
+- Restore: server/scripts/restore-platform-backup.js decrypts + verifies + inserts FK-safe (idempotent).
+  DISASTER_RECOVERY.md is the step-by-step runbook (Supabase PITR as primary; the encrypted dump as the
+  account-loss fallback; a quarterly test-restore drill).
 
 ================================================================================
 MONETIZATION
@@ -161,24 +242,39 @@ MONETIZATION
 ================================================================================
 DATA MODEL (Prisma) — key models
 ================================================================================
-Society(id,name,city,address,active,orgType,plan,planExpiresAt,planAmount,slug@unique,logoUrl,bank fields)
-User(id,email@unique,passwordHash,name,phone,role,societyId,expoPushToken,notifPref)
-Flat(id,flatNo,block,societyId,ownerName, guardianName,guardianPhone,guardianEmail)  // Flat==Student for preschool
-Visitor(id,name,flatId,phone,vehicleNo,purpose,photoUrl,status,societyId, exitAt,exitBy, decisionBy)
-StaffAttendance(id,staffName,societyId,checkInAt,checkOutAt)
-Bill(id,flatId,period,amount,status, paidAmount,nextDueAmount,remindOn,lastRemindedAt,
+Society(id,name,city,address,active,orgType,plan,planExpiresAt,planAmount,tier,slug@unique,logoUrl,bank fields)
+User(id,email@unique,passwordHash,name,phone,role,societyId,flatId,expoPushToken,notifyEnabled,sharePhone,resetOtp*)
+Flat(id,flatNo,block,societyId,ownerName,occupancy,rentMaintenanceAmount, guardianName,guardianPhone,guardianEmail)  // Flat==Student for preschool
+Visitor(id,name,flatId,phone,vehicleNo,purpose,photoUrl,status, exitAt,exitBy, decidedBy)
+StaffAttendance(id,name,role,societyId,date,inAt,outAt)
+Bill(id,flatId,period,amount,status, paidAmount,nextDueAmount,remindOn,lastRemindedAt,lateFee,breakdown,
      paymentMode,collectedBy,collectorPhone, payments[])
 Payment(id,billId,amount,mode,ref,collectedBy,collectorPhone,createdAt)  // per-transaction ledger
-Expense(id,societyId,amount,category,note,date)
-Announcement(id,societyId,title,body,createdBy)
-Post(id,societyId,authorId,body,createdAt)  // admin can delete
-Amenity(id,societyId,name,price,enabled) / AmenitySlot / Booking(status: requested/approved/paid)
-VenueBooking(id,societyId,vendorName,amount,platformFee,status)
+Expense(id,societyId,label,amount,date)
+Announcement(id,societyId,title,body,pinned,createdBy) / Post(id,societyId,authorId,category,title,body,price)  // admin can delete
+Amenity(id,societyId,name,enabled) / AmenitySlot(price) / Booking(status: requested/approved/paid)
+VenueBooking(id,societyId,vendorName,amount,platformFee,societyNet,status,paymentLink*)
+RentAgreement(id,flatId,societyId,tenant*,owner*,startDate,endDate,documentUrl,status,lastNotifiedStage)
+Ticket(id,societyId,authorId,flatId,category,priority,subject,description,status,resolution) / TicketComment
+GatePass(id,societyId,flatId,createdById,guestName,type,code,validFrom,validUntil,status)
+Listing(id,societyId,authorId,title,description,price,category,images,visibility,status) / ListingMessage
+BillingSetting(id,societyId@unique,lateFeeEnabled,lateFeeType,lateFeeAmount,lateFeeGraceDays,lateFeeMaxAmount)
+MaintenanceHead(id,societyId,name,amount,enabled,isDefault,sortOrder)
+Vehicle(id,societyId,flatId,type,plate,code@unique,active) / GateDevice(id,societyId,name,deviceKey@unique,active,lastSeenAt)
+VehicleEntry(id,societyId,vehicleId,deviceId,plate,code,direction,decision,reason,at)  // gate read log
+PlatformSetting(id="platform",contactEmail,bank fields) / PlatformPayment(id,societyId,amount,status)
+BackupLog(id,kind,societyId,at,sizeBytes,sha256,url,encrypted,ok,note,stats)  // DR audit
+Hot-path indexes: User(societyId,role)+(flatId), Bill(flatId,period)+(status), Visitor(flatId,createdAt),
+VehicleEntry(societyId,at)+(vehicleId,at), plus existing per-tenant indexes.
 
-Helpers: billing.js (effectivePaid, billBalance, recordPayment), slug.js (slugify, ensureUniqueSlug,
-backfillSlugs on boot), whatsapp.js, feeReminders.js (isDue, guardianContact, runFeeReminders),
-serializers.js (publicUser includes societyOrgType/societyPlan/societyLogoUrl; serializeBill includes
-paidAmount/balance/nextDueAmount/remindOn + payments, status-aware paidAmount for legacy paid bills).
+Helpers: billing.js (effectivePaid, billBalance, recordPayment, buildFlatLedger), slug.js (slugify,
+ensureUniqueSlug, backfillSlugs on boot), whatsapp.js, feeReminders.js (isDue, guardianContact,
+runFeeReminders), rentReminders.js (runRentExpiryChecks), backup.js (society backup + wing reports),
+platformBackup.js (full-platform DR dump), cache.js (cacheGet/Set/Del/Wrap), queue.js (enqueuePush/
+enqueueEmail + startQueueWorkers), rateLimit.js (globalLimiter/authLimiter/aiLimiter), paging.js
+(parsePaging/hasMore), serializers.js (publicUser includes societyOrgType/societyPlan/societyTier/
+societyLogoUrl; serializeBill includes paidAmount/balance/lateFee/breakdown/nextDueAmount/remindOn +
+payments, status-aware paidAmount for legacy paid bills).
 
 ================================================================================
 CONVENTIONS & GOTCHAS
@@ -187,12 +283,21 @@ CONVENTIONS & GOTCHAS
 - Prisma engine DLL can get locked by antivirus -> stop server before `prisma generate`.
 - `prisma db push` warns on new nullable unique columns -> safe, use --accept-data-loss.
 - Demo password for all seeded users: Password123. Keep credentials in CREDENTIALS.md (gitignored).
+- `npm run db:reset` wipes all tenant data but keeps the superadmin + platform settings (for a clean QA
+  slate); it refuses to run if no superadmin remains. `db:setup`/`seed` REPOPULATE demo data — never use
+  those for a handoff. Both are destructive on the shared DB; confirm scope before running.
 - Consistent styled UI: gradient headers with custom back buttons on inner screens, matching
   receipt/form modals, app icon + splash. Teal palette (#0B6E8F / #0E85AC / #075064).
 - Env: DATABASE_URL, JWT_SECRET, GROQ_API_KEY (or OPENAI/OLLAMA), RAZORPAY keys, RESEND/SMTP,
   WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_TEMPLATE, WHATSAPP_LANG,
-  WHATSAPP_BUSINESS_NUMBER=917841889241, CRON_KEY.
-- External cron can hit POST /api/cron/fee-reminders with header x-cron-key.
+  WHATSAPP_BUSINESS_NUMBER=917841889241, CRON_SECRET.
+  Scaling/DR (all OPTIONAL): REDIS_URL (enables shared cache + BullMQ queue), QUEUE_CONCURRENCY,
+  RATE_LIMIT_ENABLED/RATE_LIMIT_MAX/AUTH_RATE_LIMIT_MAX/AI_RATE_LIMIT_MAX, BACKUP_ENCRYPTION_KEY,
+  SUPABASE_BACKUP_BUCKET, PLATFORM_BACKUP_CRON_ENABLED/PLATFORM_BACKUP_CRON.
+- External cron endpoints (all use header x-cron-secret: CRON_SECRET): POST /api/cron/fee-reminders,
+  /api/cron/rent-expiry, /api/cron/monthly-backup, /api/cron/platform-backup.
+- Notifications go through the queue (enqueuePush/enqueueEmail) to stay off the request path; the
+  background cron reminder jobs still call sendPush/sendEmail directly (already off the request path).
 
 ================================================================================
 YOUR TASK
@@ -200,6 +305,10 @@ YOUR TASK
 Recreate and/or extend this app faithfully. Preserve strict multi-tenant isolation, keep society
 behavior unchanged when touching preschool logic (and vice versa), keep all financial math
 partial-payment aware, keep DB-side aggregation for anything cross-tenant, and keep every user-facing
-string driven through the orgType label helper. When adding features, follow the existing patterns
+string driven through the orgType label helper. Gate features by tier via plan.js (hasFeature) rather
+than hardcoding. Keep the optional-infra invariant: everything MUST work with NO Redis (in-process
+cache/queue fallbacks) and degrade gracefully — cache/queue/email/storage errors must never break a
+request. Route user notifications through enqueuePush/enqueueEmail. Paginate new list endpoints with
+paging.js and keep responses backward-compatible. When adding features, follow the existing patterns
 (routes under server/src/routes, screens under app/src/screens, api client in app/src/lib/api.js).
 ```

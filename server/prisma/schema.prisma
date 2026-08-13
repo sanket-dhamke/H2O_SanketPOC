@@ -171,7 +171,10 @@ model User {
   listings      Listing[]  @relation("ListingAuthor")
   listingMessages ListingMessage[] @relation("ListingMsgFrom")
 
-  @@index([societyId])
+  // societyId+role: directory & admin/guard lookups. flatId: fast push targeting
+  // (notify a flat's residents) and "residents of this flat" reads.
+  @@index([societyId, role])
+  @@index([flatId])
 }
 
 model Bill {
@@ -208,7 +211,10 @@ model Bill {
   payments   Payment[]
   createdAt  DateTime  @default(now())
 
-  @@index([flatId])
+  // flatId+period: per-flat ledger & month-scoped bill generation.
+  // status: reminder sweeps and paid/pending aggregation.
+  @@index([flatId, period])
+  @@index([status])
 }
 
 // Ledger of individual payments against a bill (enables partial/installment
@@ -285,7 +291,8 @@ model Visitor {
   exitAt    DateTime?
   exitBy    String?
 
-  @@index([flatId])
+  // flatId+createdAt: resident timeline & society gate log ordered by recency.
+  @@index([flatId, createdAt])
 }
 
 // Staff/teacher gate attendance (check-in / check-out). Used by preschool
@@ -600,6 +607,24 @@ model Listing {
   @@index([authorId])
 }
 
+// Audit log of platform / society backups (for the superadmin's Backup &
+// recovery panel and the disaster-recovery runbook).
+model BackupLog {
+  id        String   @id @default(uuid())
+  kind      String   @default("platform") // platform | society
+  societyId String?
+  at        DateTime @default(now())
+  sizeBytes Int?
+  sha256    String?
+  url       String?  // signed download URL (may be time-limited)
+  encrypted Boolean  @default(false)
+  ok        Boolean  @default(true)
+  note      String?
+  stats     Json?
+
+  @@index([kind, at])
+}
+
 // A message from an interested buyer to a listing's owner.
 model ListingMessage {
   id        String   @id @default(uuid())
@@ -670,4 +695,7 @@ model VehicleEntry {
   at        DateTime @default(now())
 
   @@index([societyId, at])
+  // Anti-passback / clone detection reads the vehicle's most recent open on
+  // every scan — index by (vehicleId, at) so that lookup stays O(1)-ish.
+  @@index([vehicleId, at])
 }

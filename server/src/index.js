@@ -21,14 +21,21 @@ import { gatePassRouter } from "./routes/gatepass.js";
 import { marketplaceRouter } from "./routes/marketplace.js";
 import { gateRouter } from "./routes/gate.js";
 import { aiRouter } from "./routes/ai.js";
+import { globalLimiter, authLimiter, aiLimiter } from "./rateLimit.js";
+import { startQueueWorkers, queueBackend } from "./queue.js";
+import { cacheBackend } from "./cache.js";
 import cron from "node-cron";
 import { runMonthlyBackups } from "./backup.js";
+import { runPlatformBackupSafe } from "./platformBackup.js";
 import { backfillSlugs } from "./slug.js";
 import { recordPayment } from "./billing.js";
 import { runFeeReminders } from "./feeReminders.js";
 import { runRentExpiryChecks } from "./rentReminders.js";
 
 const app = express();
+// Behind Render/other proxies: trust the first proxy hop so req.ip (used by the
+// rate limiter) reflects the real client, not the load balancer.
+app.set("trust proxy", 1);
 app.use(cors());
 
 // Razorpay webhook needs the RAW body to verify the signature, so it must be
@@ -67,8 +74,23 @@ app.post("/api/razorpay/webhook", express.raw({ type: "*/*" }), async (req, res)
 // Visitor photos are sent as base64, so allow a larger JSON body.
 app.use(express.json({ limit: "12mb" }));
 
+// Rate limiting: broad per-IP limiter across the API, with tighter limits on
+// credential and AI endpoints. Exemptions (health, cron, webhook, gate device)
+// are handled inside the limiter's skip fn. Disable with RATE_LIMIT_ENABLED=false.
+app.use("/api", globalLimiter);
+app.use(["/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password"], authLimiter);
+app.use("/api/ai", aiLimiter);
+
 app.get("/api/health", (_req, res) =>
-  res.json({ ok: true, name: "GateMate", razorpay: razorpayEnabled, storage: storageEnabled, ai: aiEnabled })
+  res.json({
+    ok: true,
+    name: "GateMate",
+    razorpay: razorpayEnabled,
+    storage: storageEnabled,
+    ai: aiEnabled,
+    cache: cacheBackend,
+    queue: queueBackend,
+  })
 );
 
 app.use("/api", authRouter);
@@ -102,6 +124,18 @@ app.post("/api/cron/monthly-backup", async (req, res) => {
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
+});
+
+// Secure endpoint to trigger the FULL PLATFORM disaster-recovery backup from an
+// external scheduler. Off-site upload + emails the owner a checksum + link.
+app.post("/api/cron/platform-backup", async (req, res) => {
+  const secret = process.env.CRON_SECRET || "";
+  const provided = req.headers["x-cron-secret"] || req.query.secret;
+  if (!secret || provided !== secret) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const result = await runPlatformBackupSafe({ trigger: "cron" });
+  res.status(result.ok ? 200 : 500).json(result);
 });
 
 // Secure endpoint to trigger the fee-reminder sweep from an external scheduler.
@@ -153,6 +187,17 @@ if (process.env.BACKUP_CRON_ENABLED !== "false") {
   });
 }
 
+// Weekly full-platform disaster-recovery backup (default Sundays 02:00): full
+// logical dump, encrypted + uploaded off-site + emailed to the owner. Disable
+// with PLATFORM_BACKUP_CRON_ENABLED=false. For sleeping hosts, also wire the
+// external endpoint POST /api/cron/platform-backup.
+if (process.env.PLATFORM_BACKUP_CRON_ENABLED !== "false") {
+  cron.schedule(process.env.PLATFORM_BACKUP_CRON || "0 2 * * 0", async () => {
+    console.log("[platform-backup] weekly run starting");
+    await runPlatformBackupSafe({ trigger: "schedule" });
+  });
+}
+
 // Daily fee-reminder sweep (default 9:00am): sends WhatsApp/email reminders for
 // any bill whose remindOn date has arrived and is still unpaid. Disable with
 // FEE_REMINDER_CRON_ENABLED=false. Also exposed via /api/cron/fee-reminders.
@@ -200,6 +245,10 @@ async function ensurePlatformSetting() {
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`GateMate server running on http://0.0.0.0:${PORT}`);
+  console.log(`[infra] cache=${cacheBackend} queue=${queueBackend}`);
+  // Start the notification queue worker (only active in redis mode; the
+  // in-process queue drains on its own when no REDIS_URL is set).
+  startQueueWorkers().catch((e) => console.error("Queue worker init failed:", e.message));
   // Ensure every existing tenant has a branded-login slug (idempotent).
   backfillSlugs()
     .then((n) => n > 0 && console.log(`Backfilled slugs for ${n} societ(y/ies).`))

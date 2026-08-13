@@ -9,7 +9,7 @@ import {
   Alert,
   Modal,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
@@ -43,6 +43,7 @@ const BREAKDOWNS = {
 };
 
 export default function SuperAdminDashboardScreen() {
+  const navigation = useNavigation();
   const { logout } = useAuth();
   const [data, setData] = useState(null);
   const [rows, setRows] = useState([]);
@@ -122,6 +123,21 @@ export default function SuperAdminDashboardScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.moderateTitle}>Moderate Buy &amp; Sell</Text>
             <Text style={styles.moderateSub}>Review, disable or delete posts across all societies</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#9AA7AF" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.moderateCard}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate("Societies", { screen: "BackupRecovery" })}
+        >
+          <View style={[styles.moderateIcon, { backgroundColor: "#E7F1F5" }]}>
+            <Ionicons name="cloud-download" size={18} color="#0B6E8F" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.moderateTitle}>Backup &amp; recovery</Text>
+            <Text style={styles.moderateSub}>Full-platform backups, checksums & per-society exports</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color="#9AA7AF" />
         </TouchableOpacity>

@@ -43,6 +43,7 @@ import AdminFeesScreen from "./src/screens/admin/AdminFeesScreen";
 import PayToH2OScreen from "./src/screens/admin/PayToH2OScreen";
 import SuperAdminDashboardScreen from "./src/screens/superadmin/SuperAdminDashboardScreen";
 import SocietiesScreen from "./src/screens/superadmin/SocietiesScreen";
+import BackupRecoveryScreen from "./src/screens/superadmin/BackupRecoveryScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -180,6 +181,7 @@ function SocietiesStackScreen() {
     <SocietiesStack.Navigator screenOptions={{ headerShown: false }}>
       <SocietiesStack.Screen name="SocietiesHome" component={SocietiesScreen} />
       <SocietiesStack.Screen name="FlatLedger" component={FlatLedgerScreen} />
+      <SocietiesStack.Screen name="BackupRecovery" component={BackupRecoveryScreen} />
     </SocietiesStack.Navigator>
   );
 }

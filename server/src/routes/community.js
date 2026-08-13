@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
 import { serializeAnnouncement, serializePost } from "../serializers.js";
+import { parsePaging } from "../paging.js";
 
 // Society community features: admin announcements + a resident posts board.
 // Everything is scoped to the caller's society.
@@ -50,13 +51,15 @@ communityRouter.delete("/announcements/:id", authRequired, roleRequired("admin")
 const POST_CATEGORIES = ["general", "sale", "query", "lost_found", "recommend"];
 
 communityRouter.get("/posts", authRequired, async (req, res) => {
+  const paging = parsePaging(req, { def: 100, max: 300 });
   const posts = await prisma.post.findMany({
     where: { societyId: sid(req) },
     include: { author: { include: { flat: true } } },
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: paging.take,
+    skip: paging.skip,
   });
-  res.json({ posts: posts.map(serializePost) });
+  res.json({ posts: posts.map(serializePost), hasMore: posts.length >= paging.limit });
 });
 
 // Residents (and admins) can post to the community board.
