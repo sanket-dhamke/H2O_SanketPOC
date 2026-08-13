@@ -20,6 +20,7 @@ import { helpdeskRouter } from "./routes/helpdesk.js";
 import { gatePassRouter } from "./routes/gatepass.js";
 import { marketplaceRouter } from "./routes/marketplace.js";
 import { gateRouter } from "./routes/gate.js";
+import { servicesRouter, ensureDefaultHelplines } from "./routes/services.js";
 import { aiRouter } from "./routes/ai.js";
 import { globalLimiter, authLimiter, aiLimiter } from "./rateLimit.js";
 import { startQueueWorkers, queueBackend } from "./queue.js";
@@ -78,7 +79,7 @@ app.use(express.json({ limit: "12mb" }));
 // credential and AI endpoints. Exemptions (health, cron, webhook, gate device)
 // are handled inside the limiter's skip fn. Disable with RATE_LIMIT_ENABLED=false.
 app.use("/api", globalLimiter);
-app.use(["/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password"], authLimiter);
+app.use(["/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/register"], authLimiter);
 app.use("/api/ai", aiLimiter);
 
 app.get("/api/health", (_req, res) =>
@@ -107,6 +108,7 @@ app.use("/api", helpdeskRouter);
 app.use("/api", gatePassRouter);
 app.use("/api", marketplaceRouter);
 app.use("/api", gateRouter);
+app.use("/api", servicesRouter);
 app.use("/api/ai", aiRouter);
 
 // Secure endpoint to trigger the monthly backup from an EXTERNAL scheduler
@@ -256,4 +258,6 @@ app.listen(PORT, "0.0.0.0", () => {
   ensurePlatformSetting()
     .then((created) => created && console.log("Created default platform settings."))
     .catch((e) => console.error("Platform settings init failed:", e.message));
+  // Seed national helplines into the platform-curated services layer (idempotent).
+  ensureDefaultHelplines().catch((e) => console.error("Helpline seed failed:", e.message));
 });

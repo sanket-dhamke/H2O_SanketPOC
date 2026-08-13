@@ -19,10 +19,17 @@ export async function registerForPushNotifications() {
   if (Platform.OS === "web") return null; // No push in the browser preview.
   if (!Device.isDevice) return null; // Push only works on real devices.
 
+  // Android REQUIRES a channel with high importance for a heads-up popup. The
+  // channelId here must match the one the server sends on ("default").
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
-      name: "default",
-      importance: Notifications.AndroidImportance.MAX,
+      name: "GateMate alerts",
+      importance: Notifications.AndroidImportance.MAX, // heads-up banner + sound
+      sound: "default",
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#0B6E8F",
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      bypassDnd: false,
     });
   }
 

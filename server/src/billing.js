@@ -1,6 +1,7 @@
 import { prisma } from "./prisma.js";
 import { onBillPaid } from "./paymentNotify.js";
 import { serializeBill } from "./serializers.js";
+import { cacheGet, cacheSet } from "./cache.js";
 
 // The amount effectively collected for a bill (handles legacy fully-paid bills
 // that predate partial-payment tracking, where paidAmount may be 0).
@@ -49,26 +50,54 @@ export function computeLateFee(bill, setting, now = new Date()) {
 // Recomputes + persists late fees for every unpaid bill in a society. Called
 // lazily when bills are read and from the daily cron. If the policy is off, it
 // clears any stale late fees so nothing lingers.
-export async function refreshLateFees(societyId) {
+//
+// Performance: late fees only change day-to-day, so recomputing on EVERY page
+// load (admin/resident/guard) is wasteful and, at scale, hammers the DB. We
+// therefore (a) throttle per society via the cache (skip if refreshed in the
+// last ~30 min) and (b) batch the writes into a handful of grouped updateMany
+// calls instead of one UPDATE per bill. `force:true` bypasses the throttle
+// (used by scheduled sweeps). The actual charge at pay time is always exact
+// because getPayableBill() re-computes that single bill's fee via
+// refreshBillLateFee().
+const LATEFEE_THROTTLE_SEC = Number(process.env.LATEFEE_THROTTLE_SEC || 1800);
+
+export async function refreshLateFees(societyId, { force = false } = {}) {
   if (!societyId) return;
+  const marker = `latefee:refreshed:${societyId}`;
+  if (!force && (await cacheGet(marker))) return;
+
   const setting = await prisma.billingSetting.findUnique({ where: { societyId } });
   if (!setting || !setting.lateFeeEnabled) {
     await prisma.bill.updateMany({
       where: { flat: { societyId }, status: { not: "paid" }, lateFee: { gt: 0 } },
       data: { lateFee: 0 },
     });
+    await cacheSet(marker, 1, LATEFEE_THROTTLE_SEC);
     return;
   }
+
   const bills = await prisma.bill.findMany({
     where: { flat: { societyId }, status: { in: ["pending", "partial"] } },
+    select: { id: true, amount: true, lateFee: true, paidAmount: true, status: true, dueDate: true },
   });
   const now = new Date();
+  // Group bills whose fee changed by the new fee value → one updateMany per
+  // distinct fee (a few queries) instead of hundreds of single updates.
+  const byFee = new Map(); // fee -> [billId]
   for (const b of bills) {
     const fee = computeLateFee(b, setting, now);
     if (fee !== (b.lateFee || 0)) {
-      await prisma.bill.update({ where: { id: b.id }, data: { lateFee: fee } });
+      const arr = byFee.get(fee) || [];
+      arr.push(b.id);
+      byFee.set(fee, arr);
     }
   }
+  await Promise.all(
+    [...byFee.entries()].map(([fee, ids]) =>
+      prisma.bill.updateMany({ where: { id: { in: ids } }, data: { lateFee: fee } })
+    )
+  );
+  await cacheSet(marker, 1, LATEFEE_THROTTLE_SEC);
 }
 
 // Recomputes + persists the late fee for a single bill (which must include its
@@ -91,52 +120,80 @@ export async function recordPayment(
   billId,
   { amount, mode = "online", ref = null, collectedBy = null, collectorPhone = null } = {}
 ) {
-  const bill = await prisma.bill.findUnique({ where: { id: billId }, include: { flat: true } });
-  if (!bill) throw new Error("Bill not found");
-  if (bill.status === "paid") throw new Error("Bill already fully paid");
+  // The whole read-modify-write runs inside a single transaction so the bill
+  // update and the payment-ledger row commit atomically (no half-written
+  // payments). We take a row lock on the bill up front (SELECT … FOR UPDATE) so
+  // that concurrent payments against the SAME bill serialise correctly and can't
+  // lose an update; payments on DIFFERENT bills/flats never contend. paidAmount
+  // is recomputed from the SUM of the ledger, which is the source of truth.
+  const result = await prisma.$transaction(async (tx) => {
+    // Best-effort row lock; if the raw lock ever fails we still proceed (the
+    // aggregate + max below keeps paidAmount monotonic).
+    try {
+      await tx.$executeRaw`SELECT id FROM "Bill" WHERE id = ${billId} FOR UPDATE`;
+    } catch {
+      /* ignore — fall back to optimistic path */
+    }
 
-  // Lock in the current late fee (if any) so the total owed is stable for this
-  // transaction. On-time / advance payments compute a 0 late fee here.
-  const setting = bill.flat
-    ? await prisma.billingSetting.findUnique({ where: { societyId: bill.flat.societyId } })
-    : null;
-  const lateFee = computeLateFee(bill, setting, new Date());
+    const bill = await tx.bill.findUnique({ where: { id: billId }, include: { flat: true } });
+    if (!bill) throw new Error("Bill not found");
+    if (bill.status === "paid") throw new Error("Bill already fully paid");
 
-  const alreadyPaid = effectivePaid(bill);
-  const total = (bill.amount || 0) + lateFee;
-  const balance = Math.max(0, total - alreadyPaid);
-  // Default to clearing the full balance; never accept more than what's owed.
-  let pay = amount === undefined || amount === null ? balance : Number(amount);
-  if (!(pay > 0)) throw new Error("Payment amount must be greater than zero");
-  pay = Math.min(pay, balance);
+    // Idempotency: if this exact gateway payment (ref) was already recorded for
+    // this bill, don't count it again. Protects against the client `verify` call
+    // and the Razorpay webhook both firing for the same payment.
+    if (ref) {
+      const dup = await tx.payment.findFirst({ where: { billId: bill.id, ref } });
+      if (dup) return { bill, paid: 0, fullyPaid: bill.status === "paid", duplicate: true };
+    }
 
-  const newPaid = alreadyPaid + pay;
-  const fullyPaid = newPaid >= total - 0.01;
+    // Lock in the current late fee (if any) so the total owed is stable for this
+    // transaction. On-time / advance payments compute a 0 late fee here.
+    const setting = bill.flat
+      ? await tx.billingSetting.findUnique({ where: { societyId: bill.flat.societyId } })
+      : null;
+    const lateFee = computeLateFee(bill, setting, new Date());
 
-  const updated = await prisma.bill.update({
-    where: { id: bill.id },
-    data: {
-      paidAmount: newPaid,
-      lateFee,
-      status: fullyPaid ? "paid" : "partial",
-      paidAt: fullyPaid ? new Date() : bill.paidAt,
-      paymentMode: mode,
-      paymentRef: ref || bill.paymentRef,
-      collectedBy: collectedBy ?? bill.collectedBy,
-      collectorPhone: collectorPhone ?? bill.collectorPhone,
-      // Consume any pre-set installment target as it gets paid down.
-      nextDueAmount:
-        bill.nextDueAmount != null ? Math.max(0, bill.nextDueAmount - pay) : bill.nextDueAmount,
-    },
-    include: { flat: true },
+    const alreadyPaid = effectivePaid(bill);
+    const total = (bill.amount || 0) + lateFee;
+    const balance = Math.max(0, total - alreadyPaid);
+    // Default to clearing the full balance; never accept more than what's owed.
+    let pay = amount === undefined || amount === null ? balance : Number(amount);
+    if (!(pay > 0)) throw new Error("Payment amount must be greater than zero");
+    pay = Math.min(pay, balance);
+
+    await tx.payment.create({
+      data: { billId: bill.id, amount: pay, mode, ref, collectedBy, collectorPhone },
+    });
+
+    // Recompute paid from the ledger sum (self-healing). Guard with alreadyPaid+pay
+    // in case any legacy bill has a paidAmount not backed by ledger rows.
+    const agg = await tx.payment.aggregate({ where: { billId: bill.id }, _sum: { amount: true } });
+    const newPaid = Math.max(agg._sum.amount || 0, alreadyPaid + pay);
+    const fullyPaid = newPaid >= total - 0.01;
+
+    const updated = await tx.bill.update({
+      where: { id: bill.id },
+      data: {
+        paidAmount: newPaid,
+        lateFee,
+        status: fullyPaid ? "paid" : "partial",
+        paidAt: fullyPaid ? new Date() : bill.paidAt,
+        paymentMode: mode,
+        paymentRef: ref || bill.paymentRef,
+        collectedBy: collectedBy ?? bill.collectedBy,
+        collectorPhone: collectorPhone ?? bill.collectorPhone,
+        // Consume any pre-set installment target as it gets paid down.
+        nextDueAmount:
+          bill.nextDueAmount != null ? Math.max(0, bill.nextDueAmount - pay) : bill.nextDueAmount,
+      },
+      include: { flat: true },
+    });
+    return { bill: updated, paid: pay, fullyPaid };
   });
 
-  await prisma.payment.create({
-    data: { billId: bill.id, amount: pay, mode, ref, collectedBy, collectorPhone },
-  });
-
-  if (fullyPaid) onBillPaid(bill.id);
-  return { bill: updated, paid: pay, fullyPaid };
+  if (result.fullyPaid && !result.duplicate) onBillPaid(result.bill.id);
+  return result;
 }
 
 // Full audit ledger for a single flat: EVERY bill (all periods, oldest first)

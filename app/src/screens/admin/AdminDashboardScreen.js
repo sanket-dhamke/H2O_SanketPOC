@@ -19,6 +19,7 @@ import { useAuth } from "../../lib/auth";
 import { labelsFor, isPreschool } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
 import MonthField from "../../components/MonthField";
+import WingedFlats from "../../components/WingedFlats";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
@@ -170,25 +171,17 @@ export default function AdminDashboardScreen() {
       </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>{L.unit}-wise status</Text>
-      <Text style={styles.sectionHint}>Tap a {L.unit.toLowerCase()} to see its full bill & payment history.</Text>
-      {(data?.perFlat || []).map((f) => (
-        <TouchableOpacity
-          key={f.flatId}
-          style={styles.flatRow}
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate("FlatLedger", { flat: { id: f.flatId, flatNo: f.flatNo } })}
-        >
-          <Text style={styles.flatNo}>{f.flatNo}</Text>
-          <Text style={styles.flatPaid}>Paid {money(f.paid)}</Text>
-          <Text style={[styles.flatPending, f.pending > 0 && { color: "#C2571A" }]}>
-            {f.pending > 0 ? `Due ${money(f.pending)}` : "Clear"}
-          </Text>
-          <Ionicons name="chevron-forward" size={16} color="#B7C2C9" style={{ marginLeft: 8 }} />
-        </TouchableOpacity>
-      ))}
-      {data && data.dueList?.length === 0 && (
-        <Text style={styles.allClear}>All {L.units.toLowerCase()} are up to date.</Text>
-      )}
+      <Text style={styles.sectionHint}>Tap a wing to expand, then a {L.unit.toLowerCase()} for its full history.</Text>
+      <WingedFlats
+        flats={(data?.perFlat || []).map((f) => ({
+          id: f.flatId,
+          flatNo: f.flatNo,
+          block: f.block,
+          paid: f.paid,
+          pending: f.pending,
+        }))}
+        onSelect={(f) => navigation.navigate("FlatLedger", { flat: { id: f.id, flatNo: f.flatNo } })}
+      />
       </ScrollView>
 
       <GenerateBillsModal
@@ -335,12 +328,21 @@ function GenerateBillsModal({ visible, onClose, onDone }) {
         ? { period: period.trim(), useHeads: true }
         : { period: period.trim(), amount: Number(amount) };
       const res = await api.adminGenerateBills(payload);
-      Alert.alert("Done", `Created ${res.created} new bill(s).`);
+      const total = res.total ?? res.created;
+      let msg;
+      if (res.created === 0) {
+        msg = `Every flat already has a bill for ${period.trim()} — nothing new to create.`;
+      } else if (res.skipped) {
+        msg = `Applied bills to ${res.created} flat(s) for ${period.trim()}. ${res.skipped} already had one (skipped).`;
+      } else {
+        msg = `Monthly bills for ${period.trim()} applied to all ${res.created} flat(s).`;
+      }
       setPeriod("");
       setAmount("");
       setUseHeads(false);
       onClose();
       onDone();
+      Alert.alert("Bills generated", msg);
     } catch (e) {
       Alert.alert("Error", e.message);
     } finally {

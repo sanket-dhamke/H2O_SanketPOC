@@ -16,6 +16,7 @@ import TextInput from "../components/AppTextInput";
 import { useAuth } from "../lib/auth";
 import { getBaseUrl, setBaseUrl, clearOrgMode, api } from "../lib/api";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
+import RegisterModal from "../components/RegisterModal";
 
 // Extracts a tenant slug from a branded link / deep link, supporting both
 // ?t=<slug> query form and /t/<slug> path form.
@@ -64,6 +65,7 @@ export default function LoginScreen() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [serverUrl, setServerUrl] = useState("");
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
   const [orgMode, setOrgMode] = useState("neutral"); // "neutral" | "society" | "preschool"
   const [tenantName, setTenantName] = useState(null);
   const passwordRef = useRef(null);
@@ -196,6 +198,10 @@ export default function LoginScreen() {
           <Text style={styles.forgot}>Forgot password?</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity onPress={() => setRegisterOpen(true)}>
+          <Text style={styles.register}>New resident? Register with a join code</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity onPress={() => setShowAdvanced((v) => !v)}>
           <Text style={styles.advancedToggle}>
             {showAdvanced ? "Hide" : "Advanced"} server settings
@@ -228,6 +234,7 @@ export default function LoginScreen() {
         onClose={() => setForgotOpen(false)}
         initialEmail={email.trim()}
       />
+      <RegisterModal visible={registerOpen} onClose={() => setRegisterOpen(false)} />
     </ImageBackground>
   );
 }
@@ -296,6 +303,7 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   forgot: { color: "#0B6E8F", fontWeight: "700", fontSize: 13, textAlign: "center", marginTop: 14 },
+  register: { color: "#0B6E8F", fontWeight: "700", fontSize: 13, textAlign: "center", marginTop: 12 },
   advancedToggle: { color: "#0B6E8F", fontWeight: "600", fontSize: 13, textAlign: "center", marginTop: 16 },
   hint: { color: "#8895A0", fontSize: 12, textAlign: "center", marginTop: 16, lineHeight: 18 },
 });

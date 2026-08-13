@@ -9,10 +9,10 @@ import {
   RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import TextInput from "../components/AppTextInput";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import ScreenHeader from "../components/ScreenHeader";
+import WingedFlats from "../components/WingedFlats";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
@@ -45,7 +45,6 @@ export default function FlatLedgerScreen({ navigation, route }) {
 
   const [flats, setFlats] = useState([]);
   const [loadingFlats, setLoadingFlats] = useState(true);
-  const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(directFlat); // { id, flatNo }
   const [ledger, setLedger] = useState(null);
   const [loadingLedger, setLoadingLedger] = useState(false);
@@ -118,11 +117,6 @@ export default function FlatLedgerScreen({ navigation, route }) {
     }
   };
 
-  const q = query.trim().toLowerCase();
-  const filtered = q
-    ? flats.filter((f) => String(f.flatNo || "").toLowerCase().includes(q) || String(f.block || "").toLowerCase().includes(q))
-    : flats;
-
   const headerTitle = selected ? String(selected.flatNo) : "Payment audit";
   const headerSub = selected
     ? "Complete bill & payment history"
@@ -137,45 +131,11 @@ export default function FlatLedgerScreen({ navigation, route }) {
         keyboardShouldPersistTaps="handled"
       >
         {!selected ? (
-          <>
-            <View style={styles.searchRow}>
-              <Ionicons name="search-outline" size={18} color="#6B7B85" />
-              <TextInput
-                style={styles.searchInput}
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Search unit or block"
-                autoCapitalize="none"
-              />
-              {query.length > 0 && (
-                <TouchableOpacity onPress={() => setQuery("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="close-circle" size={18} color="#B7C2C9" />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {loadingFlats ? (
-              <ActivityIndicator color="#0B6E8F" style={{ marginTop: 30 }} />
-            ) : filtered.length === 0 ? (
-              <Text style={styles.empty}>No units found.</Text>
-            ) : (
-              filtered.map((f) => (
-                <TouchableOpacity key={f.id} style={styles.flatRow} onPress={() => openFlat(f)} activeOpacity={0.8}>
-                  <View style={styles.flatIcon}>
-                    <Ionicons name="home-outline" size={18} color="#0B6E8F" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.flatNo}>{f.flatNo}{f.block ? `  ·  ${f.block}` : ""}</Text>
-                    <Text style={styles.flatMeta}>
-                      Paid <Text style={{ color: "#2E9E52", fontWeight: "700" }}>{money(f.paid)}</Text>
-                      {"   "}Due <Text style={{ color: f.pending > 0 ? "#C2571A" : "#6B7B85", fontWeight: "700" }}>{money(f.pending)}</Text>
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#B7C2C9" />
-                </TouchableOpacity>
-              ))
-            )}
-          </>
+          loadingFlats ? (
+            <ActivityIndicator color="#0B6E8F" style={{ marginTop: 30 }} />
+          ) : (
+            <WingedFlats flats={flats} onSelect={openFlat} />
+          )
         ) : loadingLedger ? (
           <ActivityIndicator color="#0B6E8F" style={{ marginTop: 40 }} />
         ) : !ledger ? (

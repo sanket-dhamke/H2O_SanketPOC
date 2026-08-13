@@ -147,6 +147,10 @@ export default function CommunityScreen() {
             <Ionicons name="people" size={20} color="#0B6E8F" />
             <Text style={styles.shortcutText}>Directory</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Services")}>
+            <Ionicons name="construct" size={20} color="#7A5AF8" />
+            <Text style={styles.shortcutText}>Services & help</Text>
+          </TouchableOpacity>
         </View>
         {tab === "announcements" ? (
           <>
@@ -370,8 +374,8 @@ const styles = StyleSheet.create({
   segText: { color: "#6B7B85", fontWeight: "700", fontSize: 13 },
   segTextActive: { color: "#fff" },
   empty: { color: "#6B7B85", textAlign: "center", marginTop: 30 },
-  shortcutRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
-  shortcut: { flex: 1, backgroundColor: "#fff", borderRadius: 12, paddingVertical: 14, alignItems: "center", gap: 6 },
+  shortcutRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 14 },
+  shortcut: { minWidth: "47%", flexGrow: 1, backgroundColor: "#fff", borderRadius: 12, paddingVertical: 14, alignItems: "center", gap: 6 },
   shortcutText: { color: "#334", fontWeight: "700", fontSize: 12 },
   card: { backgroundColor: "#fff", borderRadius: 14, padding: 16, marginBottom: 12 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },

@@ -102,6 +102,9 @@ export const api = {
   tenantBranding: (slug) => request(`/api/tenant/${encodeURIComponent(slug)}`),
   login: (email, password) =>
     request("/api/auth/login", { method: "POST", body: { email, password } }),
+  // Public self-registration with a society join code (admin approves after).
+  register: (payload) =>
+    request("/api/auth/register", { method: "POST", body: payload }),
   forgotPassword: (email) =>
     request("/api/auth/forgot-password", { method: "POST", body: { email } }),
   resetPassword: (email, otp, newPassword) =>
@@ -149,6 +152,11 @@ export const api = {
     request(`/api/admin/users/${id}`, { method: "PATCH", body: payload }),
   adminDeleteUser: (id) =>
     request(`/api/admin/users/${id}`, { method: "DELETE" }),
+  adminApproveUser: (id) =>
+    request(`/api/admin/users/${id}/approve`, { method: "POST" }),
+  adminJoinCode: () => request("/api/admin/join-code"),
+  adminRotateJoinCode: () =>
+    request("/api/admin/join-code/rotate", { method: "POST" }),
   adminListFlats: () => request("/api/admin/flats"),
   adminCreateFlat: (payload) =>
     request("/api/admin/flats", { method: "POST", body: payload }),
@@ -300,6 +308,12 @@ export const api = {
     request(`/api/helpdesk/tickets/${id}/comments`, { method: "POST", body: { body } }),
   updateTicket: (id, payload) =>
     request(`/api/helpdesk/tickets/${id}`, { method: "PATCH", body: payload }),
+
+  // Services & helplines catalog (daily help, trades, medical, utilities…)
+  services: () => request("/api/services"),
+  createService: (payload) => request("/api/services", { method: "POST", body: payload }),
+  updateService: (id, payload) => request(`/api/services/${id}`, { method: "PATCH", body: payload }),
+  deleteService: (id) => request(`/api/services/${id}`, { method: "DELETE" }),
 
   // Gate passes / MyGate-style pre-approval
   gatePasses: () => request("/api/gate-passes"),

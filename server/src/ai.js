@@ -228,27 +228,76 @@ export async function transcribeAudio(buffer, filename = "audio.m4a") {
 }
 
 // Extracts structured visitor fields from a free-text (spoken) description.
+// Tries the LLM first; if that fails for any reason (provider quirk, no JSON
+// support, timeout), falls back to a simple regex/keyword parser so the guard
+// still gets the form prefilled from a clean transcript.
 export async function parseVisitorFromText(text, knownFlats = []) {
-  const completion = await openai.chat.completions.create({
-    model: CHAT_MODEL,
-    temperature: 0,
-    response_format: { type: "json_object" },
-    messages: [
-      {
-        role: "system",
-        content:
-          "Extract visitor gate-entry details from the guard's spoken text. " +
-          "Return JSON with keys: name (string), phone (string), vehicleNo (string), " +
-          "flatNo (string, match one of the known flats if possible), purpose (one of Guest, Delivery, Cab, Service, Other). " +
-          "Use empty string for anything not mentioned. " +
-          `Known flats: ${JSON.stringify(knownFlats)}.`,
-      },
-      { role: "user", content: text },
-    ],
-  });
   try {
-    return JSON.parse(completion.choices[0]?.message?.content || "{}");
-  } catch {
-    return {};
+    const completion = await openai.chat.completions.create({
+      model: CHAT_MODEL,
+      temperature: 0,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "Extract visitor gate-entry details from the guard's spoken text. " +
+            "Return JSON with keys: name (string), phone (string), vehicleNo (string), " +
+            "flatNo (string, match one of the known flats if possible), purpose (one of Guest, Delivery, Cab, Service, Other). " +
+            "Use empty string for anything not mentioned. " +
+            `Known flats: ${JSON.stringify(knownFlats)}.`,
+        },
+        { role: "user", content: text },
+      ],
+    });
+    const parsed = JSON.parse(completion.choices[0]?.message?.content || "{}");
+    // If the model returned nothing useful, still try the heuristic parser.
+    if (parsed && (parsed.name || parsed.flatNo)) return parsed;
+    return { ...fallbackParseVisitor(text, knownFlats), ...parsed };
+  } catch (err) {
+    console.error("parseVisitorFromText LLM step failed, using fallback:", err.message);
+    return fallbackParseVisitor(text, knownFlats);
   }
+}
+
+// Dependency-free heuristic parser: pulls a flat number, phone and a likely name
+// out of a short spoken sentence like "Sanket Joshi, A-1002" or "Ramesh 9876543210
+// flat B-204 delivery". Best-effort only — the LLM path is preferred.
+export function fallbackParseVisitor(text, knownFlats = []) {
+  const raw = String(text || "").trim();
+  const out = { name: "", phone: "", vehicleNo: "", flatNo: "", purpose: "" };
+  if (!raw) return out;
+
+  // Flat: match a known flat first (case/space/hyphen-insensitive), else a
+  // generic "<letter>-<digits>" or "flat 1002" pattern.
+  const norm = (s) => s.replace(/[\s-]/g, "").toLowerCase();
+  const known = knownFlats.find((f) => norm(raw).includes(norm(f)));
+  if (known) {
+    out.flatNo = known;
+  } else {
+    const m = raw.match(/\b([A-Za-z]\s?-?\s?\d{2,4})\b/) || raw.match(/\bflat\s+([A-Za-z0-9-]+)/i);
+    if (m) out.flatNo = m[1].replace(/\s+/g, "").toUpperCase();
+  }
+
+  // Phone: first 10+ digit run.
+  const phone = raw.match(/\b(\d[\d\s-]{8,}\d)\b/);
+  if (phone) out.phone = phone[1].replace(/[\s-]/g, "");
+
+  // Vehicle: Indian plate-ish token (e.g. MH12AB1234).
+  const veh = raw.match(/\b([A-Z]{2}\s?\d{1,2}\s?[A-Z]{1,3}\s?\d{3,4})\b/i);
+  if (veh) out.vehicleNo = veh[1].replace(/\s+/g, "").toUpperCase();
+
+  // Purpose keyword.
+  const p = raw.toLowerCase();
+  for (const [key, val] of [["deliver", "Delivery"], ["cab", "Cab"], ["taxi", "Cab"], ["service", "Service"], ["guest", "Guest"], ["visit", "Guest"]]) {
+    if (p.includes(key)) { out.purpose = val; break; }
+  }
+
+  // Name: take the leading words before the first digit/comma/flat token.
+  let namePart = raw.split(/[,\d]/)[0].trim();
+  if (out.flatNo) namePart = namePart.replace(new RegExp(out.flatNo, "i"), "").trim();
+  namePart = namePart.replace(/\b(flat|delivery|cab|taxi|service|guest|visitor)\b/gi, "").trim();
+  if (namePart && namePart.length <= 40) out.name = namePart.replace(/\s+/g, " ");
+
+  return out;
 }

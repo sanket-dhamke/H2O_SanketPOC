@@ -29,6 +29,10 @@ model Society {
   // URL-friendly unique handle (e.g. "little-millennium"). Used for per-tenant
   // branded login links / QR codes: <app>/?t=<slug> or h2o://?t=<slug>.
   slug          String?          @unique
+  // Short human-friendly code (e.g. "GM7K2Q") residents type to self-register
+  // into THIS tenant. Admin can rotate it. Self-registered users land in a
+  // pending-approval state until an admin approves them.
+  joinCode      String?          @unique
   // Tenant type: "society" (default, unchanged behavior) or "preschool"
   // (school-flavored labels + entry/exit & staff attendance features).
   orgType       String           @default("society")
@@ -147,6 +151,9 @@ model User {
   flatId        String?
   expoPushToken String?
   active        Boolean   @default(true)
+  // Set when a resident self-registers with the society join code. They cannot
+  // log in until an admin approves them (flips this back to false).
+  pendingApproval Boolean @default(false)
   // Whether this user wants push notifications (visitor alerts, reminders, etc.).
   notifyEnabled Boolean   @default(true)
   // Whether this resident agrees to show their phone in the society member
@@ -698,4 +705,37 @@ model VehicleEntry {
   // Anti-passback / clone detection reads the vehicle's most recent open on
   // every scan — index by (vehicleId, at) so that lookup stays O(1)-ish.
   @@index([vehicleId, at])
+}
+
+// Daily-help & helpline directory (maid, electrician, doctor, ambulance, MSEB…).
+// Three layers, distinguished by `scope`:
+//   "platform" : GateMate-curated, societyId = null, visible to EVERY society.
+//   "society"  : added by a society admin, visible to that society's residents.
+//   "personal" : added by a resident (ownerId set), visible only to that owner
+//                UNLESS suggested to the society (status = "suggested" until an
+//                admin approves it, which flips it to a published society entry).
+// Kept relation-less (plain scalar ids) so lists filter by societyId/ownerId
+// without joins; suggestedByName is denormalized to render approval cards.
+model ServiceContact {
+  id            String   @id @default(uuid())
+  scope         String   @default("society") // platform | society | personal
+  societyId     String?                       // null for platform-curated
+  ownerId       String?                       // set for personal / suggested entries
+  category      String                        // helpers|trades|medical|utilities|emergency|lifestyle
+  subtype       String?                       // free label e.g. "Maid","Electrician","Ambulance"
+  name          String
+  phone         String?
+  altPhone      String?
+  note          String?
+  featured      Boolean  @default(false)      // sponsored / pinned to top
+  status        String   @default("published")// published | suggested | hidden
+  suggestedById String?                       // resident who suggested a society entry
+  suggestedByName String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([societyId, category])
+  @@index([scope, category])
+  @@index([ownerId])
+  @@index([societyId, status])
 }

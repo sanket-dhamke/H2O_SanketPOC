@@ -18,14 +18,14 @@
     },
     "android": {
       "package": "com.h2o.society",
-      "versionCode": 27,
+      "versionCode": 28,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon-fg.png",
         "backgroundImage": "./assets/adaptive-icon-bg.png",
         "backgroundColor": "#0C4A8C"
       },
       "permissions": [
-        "android.permission.NOTIFICATIONS",
+        "android.permission.POST_NOTIFICATIONS",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
@@ -34,7 +34,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "color": "#0B6E8F"
+        }
+      ],
       "expo-status-bar",
       [
         "expo-image-picker",

@@ -19,6 +19,7 @@ export function publicUser(u) {
     notifyEnabled: u.notifyEnabled ?? true,
     sharePhone: u.sharePhone ?? true,
     active: u.active,
+    pendingApproval: u.pendingApproval ?? false,
     // Subscription plan of the user's society (so the app can gate premium perks).
     societyPlan: u.society?.plan || null,
     societyPlanExpiresAt: u.society?.planExpiresAt || null,

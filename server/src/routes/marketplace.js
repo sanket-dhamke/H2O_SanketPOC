@@ -118,17 +118,24 @@ marketplaceRouter.post("/listings", authRequired, roleRequired("resident", "admi
   const cat = CATEGORIES.includes(category) ? category : "others";
   const vis = visibility === "society" ? "society" : "all";
 
-  // Upload any base64 images (max 4) and keep their public URLs.
-  const urls = [];
-  const incoming = Array.isArray(images) ? images.slice(0, 4) : [];
-  for (let i = 0; i < incoming.length; i++) {
-    if (typeof incoming[i] === "string" && incoming[i].startsWith("http")) {
-      urls.push(incoming[i]);
-      continue;
-    }
-    const url = await uploadDocument(incoming[i], `listing-${Date.now()}-${i}`, "listings");
-    if (url) urls.push(url);
-  }
+  // Upload base64 images and keep their public URLs. Uploads run in PARALLEL so
+  // a multi-photo post isn't slowed by doing them one-at-a-time (important when
+  // many residents post at once). Oversized images are skipped to bound memory
+  // and DB size. If object storage isn't configured (or an upload fails), we
+  // fall back to embedding the data URL so the photo is still visible.
+  const MAX_IMG_CHARS = 4_000_000; // ~3 MB decoded per image
+  const incoming = Array.isArray(images) ? images.slice(0, 10) : [];
+  const stamp = Date.now();
+  const uploaded = await Promise.all(
+    incoming.map(async (img, i) => {
+      if (typeof img !== "string" || !img) return null;
+      if (img.startsWith("http")) return img;
+      if (img.length > MAX_IMG_CHARS) return null;
+      const url = await uploadDocument(img, `listing-${stamp}-${i}`, "listings");
+      return url || (img.startsWith("data:") ? img : null);
+    })
+  );
+  const finalUrls = uploaded.filter(Boolean);
 
   const listing = await prisma.listing.create({
     data: {
@@ -140,7 +147,7 @@ marketplaceRouter.post("/listings", authRequired, roleRequired("resident", "admi
       category: cat,
       visibility: vis,
       location: location ? String(location).trim() : null,
-      images: urls,
+      images: finalUrls,
       status: "active",
     },
     include: { author: { include: { flat: true } }, society: true, _count: { select: { messages: true } } },

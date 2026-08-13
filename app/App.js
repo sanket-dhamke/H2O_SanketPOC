@@ -20,6 +20,7 @@ import CommunityScreen from "./src/screens/CommunityScreen";
 import HelpdeskScreen from "./src/screens/HelpdeskScreen";
 import TicketDetailScreen from "./src/screens/TicketDetailScreen";
 import DirectoryScreen from "./src/screens/DirectoryScreen";
+import ServicesScreen from "./src/screens/ServicesScreen";
 import MarketplaceScreen from "./src/screens/MarketplaceScreen";
 import ListingDetailScreen from "./src/screens/ListingDetailScreen";
 import GatePassScreen from "./src/screens/GatePassScreen";
@@ -157,6 +158,7 @@ function CommunityStackScreen() {
       <CommunityStack.Screen name="Helpdesk" component={HelpdeskScreen} />
       <CommunityStack.Screen name="TicketDetail" component={TicketDetailScreen} />
       <CommunityStack.Screen name="Directory" component={DirectoryScreen} />
+      <CommunityStack.Screen name="Services" component={ServicesScreen} />
       <CommunityStack.Screen name="Marketplace" component={MarketplaceScreen} />
       <CommunityStack.Screen name="ListingDetail" component={ListingDetailScreen} />
     </CommunityStack.Navigator>
@@ -182,6 +184,7 @@ function SocietiesStackScreen() {
       <SocietiesStack.Screen name="SocietiesHome" component={SocietiesScreen} />
       <SocietiesStack.Screen name="FlatLedger" component={FlatLedgerScreen} />
       <SocietiesStack.Screen name="BackupRecovery" component={BackupRecoveryScreen} />
+      <SocietiesStack.Screen name="Services" component={ServicesScreen} />
     </SocietiesStack.Navigator>
   );
 }

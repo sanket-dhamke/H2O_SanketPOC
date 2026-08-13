@@ -8,6 +8,8 @@ import {
   Alert,
 } from "react-native";
 import TextInput from "../../components/AppTextInput";
+import PasswordInput from "../../components/PasswordInput";
+import FlatPicker from "../../components/FlatPicker";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -33,6 +35,7 @@ export default function CreateAccountScreen({ navigation, route }) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [flats, setFlats] = useState([]);
   const [flatId, setFlatId] = useState(presetFlatId);
   const [error, setError] = useState("");
@@ -49,6 +52,10 @@ export default function CreateAccountScreen({ navigation, route }) {
     setError("");
     if (!name.trim() || !email.trim() || !password) {
       setError("Name, email and password are required.");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Passwords do not match.");
       return;
     }
     if (role === "resident" && !flatId) {
@@ -115,24 +122,28 @@ export default function CreateAccountScreen({ navigation, route }) {
       <TextInput style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="Optional" />
 
       <Text style={styles.label}>Temporary password</Text>
-      <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry placeholder="Min 8 chars, upper, lower, number" />
+      <PasswordInput value={password} onChangeText={setPassword} placeholder="Min 8 chars, upper, lower, number" />
       <Text style={styles.hint}>Must be 8+ chars with an uppercase, lowercase and a number.</Text>
+
+      <Text style={styles.label}>Confirm password</Text>
+      <PasswordInput value={confirm} onChangeText={setConfirm} placeholder="Re-enter the password" />
+      {!!confirm && confirm !== password && (
+        <Text style={[styles.hint, { color: "#C0392B" }]}>Passwords don't match yet.</Text>
+      )}
 
       {role === "resident" && (
         <>
           <Text style={styles.label}>{L.unit}</Text>
-          <View style={styles.chips}>
-            {flats.map((f) => (
-              <TouchableOpacity
-                key={f.id}
-                style={[styles.chip, flatId === f.id && styles.chipActive]}
-                onPress={() => setFlatId(f.id)}
-              >
-                <Text style={[styles.chipText, flatId === f.id && styles.chipTextActive]}>{f.flatNo}</Text>
-              </TouchableOpacity>
-            ))}
-            {flats.length === 0 && <Text style={styles.hint}>No {L.units.toLowerCase()} yet. Add one under {L.units}.</Text>}
-          </View>
+          {flats.length === 0 ? (
+            <Text style={styles.hint}>No {L.units.toLowerCase()} yet. Add one under {L.units}.</Text>
+          ) : (
+            <FlatPicker
+              flats={flats}
+              value={flatId}
+              onChange={setFlatId}
+              placeholder={`Select a ${L.unit.toLowerCase()}`}
+            />
+          )}
         </>
       )}
 

@@ -191,15 +191,37 @@ function CreateListingModal({ visible, onClose, onDone }) {
     setImages([]);
   };
 
-  const pickImage = async () => {
-    if (images.length >= 4) {
-      Alert.alert("Limit reached", "You can add up to 4 photos.");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.5, base64: true, allowsEditing: true, aspect: [4, 3] });
-    if (!result.canceled && result.assets?.[0]?.base64) {
-      setImages((im) => [...im, `data:image/jpeg;base64,${result.assets[0].base64}`]);
-    }
+  const MAX_PHOTOS = 10;
+
+  const addAssets = (assets) => {
+    const next = (assets || [])
+      .filter((a) => a?.base64)
+      .map((a) => `data:image/jpeg;base64,${a.base64}`);
+    if (!next.length) return;
+    setImages((im) => [...im, ...next].slice(0, MAX_PHOTOS));
+  };
+
+  const remaining = () => MAX_PHOTOS - images.length;
+
+  const pickFromLibrary = async () => {
+    if (remaining() <= 0) return Alert.alert("Limit reached", `You can add up to ${MAX_PHOTOS} photos.`);
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return Alert.alert("Permission needed", "Allow photo access to add pictures.");
+    const result = await ImagePicker.launchImageLibraryAsync({
+      quality: 0.5,
+      base64: true,
+      allowsMultipleSelection: true,
+      selectionLimit: remaining(),
+    });
+    if (!result.canceled) addAssets(result.assets);
+  };
+
+  const takePhoto = async () => {
+    if (remaining() <= 0) return Alert.alert("Limit reached", `You can add up to ${MAX_PHOTOS} photos.`);
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) return Alert.alert("Permission needed", "Allow camera access to take a photo.");
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.5, base64: true, allowsEditing: true });
+    if (!result.canceled) addAssets(result.assets);
   };
 
   const submit = async () => {
@@ -239,7 +261,7 @@ function CreateListingModal({ visible, onClose, onDone }) {
             <Text style={styles.modalTitle}>List an item</Text>
           </LinearGradient>
           <ScrollView style={{ maxHeight: 540 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
-            <Label>Photos (up to 4)</Label>
+            <Label>Photos {images.length ? `(${images.length}/${MAX_PHOTOS})` : ""}</Label>
             <View style={styles.imgRow}>
               {images.map((uri, i) => (
                 <View key={i} style={styles.imgThumbWrap}>
@@ -249,10 +271,17 @@ function CreateListingModal({ visible, onClose, onDone }) {
                   </TouchableOpacity>
                 </View>
               ))}
-              {images.length < 4 && (
-                <TouchableOpacity style={styles.imgAdd} onPress={pickImage}>
-                  <Ionicons name="camera-outline" size={22} color="#0B6E8F" />
-                </TouchableOpacity>
+              {images.length < MAX_PHOTOS && (
+                <>
+                  <TouchableOpacity style={styles.imgAdd} onPress={takePhoto}>
+                    <Ionicons name="camera-outline" size={22} color="#0B6E8F" />
+                    <Text style={styles.imgAddText}>Camera</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.imgAdd} onPress={pickFromLibrary}>
+                    <Ionicons name="images-outline" size={22} color="#0B6E8F" />
+                    <Text style={styles.imgAddText}>Gallery</Text>
+                  </TouchableOpacity>
+                </>
               )}
             </View>
             <Label>Category</Label>
@@ -339,7 +368,8 @@ const styles = StyleSheet.create({
   imgThumbWrap: { position: "relative" },
   imgThumb: { width: 64, height: 64, borderRadius: 10 },
   imgRemove: { position: "absolute", right: -6, top: -6, backgroundColor: "#B44", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" },
-  imgAdd: { width: 64, height: 64, borderRadius: 10, borderWidth: 1, borderColor: "#CFE0E6", borderStyle: "dashed", alignItems: "center", justifyContent: "center", backgroundColor: "#F8FAFB" },
+  imgAdd: { width: 64, height: 64, borderRadius: 10, borderWidth: 1, borderColor: "#CFE0E6", borderStyle: "dashed", alignItems: "center", justifyContent: "center", backgroundColor: "#F8FAFB", gap: 2 },
+  imgAddText: { color: "#0B6E8F", fontSize: 10, fontWeight: "700" },
   catPick: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   catOpt: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: "#CFE0E6", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
   catOptActive: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },

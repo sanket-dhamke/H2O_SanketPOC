@@ -6,6 +6,7 @@ import { signToken, authRequired } from "../auth.js";
 import { publicUser } from "../serializers.js";
 import { validatePassword } from "../passwordPolicy.js";
 import { sendEmail } from "../email.js";
+import { sendPush } from "../push.js";
 
 export const authRouter = Router();
 
@@ -23,7 +24,78 @@ authRouter.post("/auth/login", async (req, res) => {
   if (user.role !== "superadmin" && user.society && !user.society.active) {
     return res.status(403).json({ message: "This society is currently inactive. Contact GateMate support." });
   }
+  // Self-registered residents wait for an admin to approve them.
+  if (user.pendingApproval) {
+    return res.status(403).json({ message: "Your account is awaiting admin approval. You'll be able to sign in once your admin approves it." });
+  }
   res.json({ token: signToken(user), user: publicUser(user) });
+});
+
+// PUBLIC self-registration. A resident enters the society join code + their
+// flat number and sets their own name/email/password. They land in a
+// pending-approval state (cannot log in) until an admin approves them — so an
+// admin never has to hand-create 500 logins.
+authRouter.post("/auth/register", async (req, res) => {
+  const { joinCode, flatNo, name, email, phone, password } = req.body || {};
+  if (!joinCode || !flatNo || !name || !email || !password) {
+    return res.status(400).json({ message: "Join code, flat, name, email and password are required." });
+  }
+  const society = await prisma.society.findUnique({
+    where: { joinCode: String(joinCode).trim().toUpperCase() },
+  });
+  if (!society || !society.active) {
+    return res.status(404).json({ message: "Invalid join code. Please check it with your admin." });
+  }
+  const flat = await prisma.flat.findFirst({
+    where: { societyId: society.id, flatNo: String(flatNo).trim() },
+  });
+  if (!flat) {
+    return res.status(404).json({ message: `Flat "${String(flatNo).trim()}" was not found in ${society.name}. Check the exact flat number with your admin.` });
+  }
+  const policyError = validatePassword(password);
+  if (policyError) return res.status(400).json({ message: policyError });
+
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  if (existing) return res.status(409).json({ message: "An account with this email already exists. Try signing in or reset your password." });
+
+  await prisma.user.create({
+    data: {
+      name: String(name).trim(),
+      email: normalizedEmail,
+      phone: phone ? String(phone).trim() : null,
+      role: "resident",
+      societyId: society.id,
+      flatId: flat.id,
+      passwordHash: bcrypt.hashSync(password, 10),
+      pendingApproval: true,
+    },
+  });
+
+  // Notify society admins (push) so they can approve quickly.
+  try {
+    const admins = await prisma.user.findMany({
+      where: { societyId: society.id, role: "admin", active: true, expoPushToken: { not: null } },
+      select: { expoPushToken: true },
+    });
+    for (const a of admins) {
+      await sendPush(
+        a.expoPushToken,
+        "New resident request",
+        `${String(name).trim()} (${flat.flatNo}) is waiting for approval.`,
+        { type: "resident-approval" }
+      );
+    }
+  } catch (e) {
+    console.error("resident-approval push failed:", e.message);
+  }
+
+  res.status(201).json({
+    ok: true,
+    pending: true,
+    societyName: society.name,
+    message: `Request sent to ${society.name}. You'll be able to sign in once an admin approves your account.`,
+  });
 });
 
 authRouter.get("/me", authRequired, async (req, res) => {

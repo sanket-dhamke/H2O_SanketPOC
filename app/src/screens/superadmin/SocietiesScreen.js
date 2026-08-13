@@ -13,6 +13,7 @@ import {
   Platform,
 } from "react-native";
 import TextInput from "../../components/AppTextInput";
+import PasswordInput from "../../components/PasswordInput";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -141,6 +142,16 @@ export default function SocietiesScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         keyboardShouldPersistTaps="handled"
       >
+        <TouchableOpacity style={styles.manageRow} onPress={() => navigation.navigate("Services")}>
+          <View style={styles.manageIcon}>
+            <Ionicons name="construct" size={18} color="#7A5AF8" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.manageTitle}>Helplines & services</Text>
+            <Text style={styles.manageSub}>Curate numbers pushed to every society</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#B7C2C9" />
+        </TouchableOpacity>
         {societies.length > 5 && (
           <View style={styles.searchRow}>
             <Ionicons name="search-outline" size={18} color="#6B7B85" />
@@ -520,12 +531,10 @@ function ResetPasswordModal({ visible, onClose }) {
             {!!selected && (
               <>
                 <Label>New password for {selected.email}</Label>
-                <TextInput
-                  style={styles.input}
+                <PasswordInput
                   value={newPassword}
                   onChangeText={setNewPassword}
                   placeholder="At least 8 chars, 1 upper, 1 lower, 1 number"
-                  autoCapitalize="none"
                 />
               </>
             )}
@@ -556,6 +565,7 @@ function Chip({ icon, text }) {
 
 function CreateSocietyModal({ visible, onClose, onDone }) {
   const [f, setF] = useState({ name: "", city: "", address: "", logoUrl: "", adminName: "", adminEmail: "", adminPassword: "" });
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [orgType, setOrgType] = useState("society");
   const [busy, setBusy] = useState(false);
   const set = (k) => (v) => setF((p) => ({ ...p, [k]: v }));
@@ -564,6 +574,10 @@ function CreateSocietyModal({ visible, onClose, onDone }) {
   const submit = async () => {
     if (!f.name.trim()) {
       Alert.alert("Missing info", `Enter a ${preschool ? "preschool" : "society"} name.`);
+      return;
+    }
+    if (f.adminPassword && f.adminPassword !== confirmPassword) {
+      Alert.alert("Passwords don't match", "The admin password and confirmation are different.");
       return;
     }
     setBusy(true);
@@ -580,6 +594,7 @@ function CreateSocietyModal({ visible, onClose, onDone }) {
       });
       Alert.alert(`${preschool ? "Preschool" : "Society"} created`, f.adminName ? "The admin can now log in." : "Add an admin from the list.");
       setF({ name: "", city: "", address: "", logoUrl: "", adminName: "", adminEmail: "", adminPassword: "" });
+      setConfirmPassword("");
       setOrgType("society");
       onClose();
       onDone();
@@ -617,19 +632,33 @@ function CreateSocietyModal({ visible, onClose, onDone }) {
       <Label>Admin email</Label>
       <TextInput style={styles.input} value={f.adminEmail} onChangeText={set("adminEmail")} placeholder="admin@society.com" autoCapitalize="none" keyboardType="email-address" />
       <Label>Admin password</Label>
-      <TextInput style={styles.input} value={f.adminPassword} onChangeText={set("adminPassword")} placeholder="At least 8 chars, 1 letter + 1 number" secureTextEntry />
+      <PasswordInput value={f.adminPassword} onChangeText={set("adminPassword")} placeholder="At least 8 chars, 1 letter + 1 number" />
+      {!!f.adminPassword && (
+        <>
+          <Label>Confirm admin password</Label>
+          <PasswordInput value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter admin password" />
+          {confirmPassword !== f.adminPassword && (
+            <Text style={styles.mismatchHint}>Passwords don't match yet.</Text>
+          )}
+        </>
+      )}
     </FormModal>
   );
 }
 
 function AddAdminModal({ society, onClose, onDone }) {
   const [f, setF] = useState({ name: "", email: "", phone: "", password: "" });
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const set = (k) => (v) => setF((p) => ({ ...p, [k]: v }));
 
   const submit = async () => {
     if (!f.name.trim() || !f.email.trim() || !f.password) {
       Alert.alert("Missing info", "Name, email and password are required.");
+      return;
+    }
+    if (f.password !== confirmPassword) {
+      Alert.alert("Passwords don't match", "The password and confirmation are different.");
       return;
     }
     setBusy(true);
@@ -642,6 +671,7 @@ function AddAdminModal({ society, onClose, onDone }) {
       });
       Alert.alert("Admin added", `${f.email.trim()} can now manage ${society.name}.`);
       setF({ name: "", email: "", phone: "", password: "" });
+      setConfirmPassword("");
       onClose();
       onDone();
     } catch (e) {
@@ -667,7 +697,12 @@ function AddAdminModal({ society, onClose, onDone }) {
       <Label>Phone</Label>
       <TextInput style={styles.input} value={f.phone} onChangeText={set("phone")} placeholder="Optional" keyboardType="phone-pad" />
       <Label>Password</Label>
-      <TextInput style={styles.input} value={f.password} onChangeText={set("password")} placeholder="At least 8 chars, 1 letter + 1 number" secureTextEntry />
+      <PasswordInput value={f.password} onChangeText={set("password")} placeholder="At least 8 chars, 1 letter + 1 number" />
+      <Label>Confirm password</Label>
+      <PasswordInput value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter password" />
+      {!!confirmPassword && confirmPassword !== f.password && (
+        <Text style={styles.mismatchHint}>Passwords don't match yet.</Text>
+      )}
     </FormModal>
   );
 }
@@ -860,6 +895,10 @@ const Label = ({ children }) => <Text style={styles.label}>{children}</Text>;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
   addBtn: { width: 34, height: 34, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
+  manageRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", borderRadius: 14, padding: 14, marginBottom: 14 },
+  manageIcon: { width: 40, height: 40, borderRadius: 11, backgroundColor: "#F1EEFF", alignItems: "center", justifyContent: "center" },
+  manageTitle: { fontSize: 15, fontWeight: "800", color: "#1B2B33" },
+  manageSub: { color: "#6B7B85", fontSize: 12.5, marginTop: 2 },
   empty: { color: "#6B7B85", textAlign: "center", marginTop: 24 },
   card: { backgroundColor: "#fff", borderRadius: 16, padding: 16, marginBottom: 14 },
   cardTop: { flexDirection: "row", alignItems: "flex-start" },
@@ -906,6 +945,7 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 17, fontWeight: "800", color: "#fff", flex: 1 },
   modalBody: { padding: 20, paddingTop: 16 },
   divider: { marginTop: 18, marginBottom: 2, fontSize: 13, fontWeight: "800", color: "#0B6E8F" },
+  mismatchHint: { color: "#C0392B", fontSize: 12, marginTop: 6 },
   label: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 6, marginTop: 12 },
   input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, backgroundColor: "#F8FAFB", color: "#1B2B33", marginBottom: 6 },
   helpText: { color: "#8895A0", fontSize: 12, marginTop: 4 },

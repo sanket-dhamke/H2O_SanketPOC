@@ -18,6 +18,7 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { downloadReceipt } from "../lib/receipt";
 import ScreenHeader from "../components/ScreenHeader";
+import FlatPicker from "../components/FlatPicker";
 
 const TYPES = [
   { id: "car", label: "Car", icon: "car-sport-outline" },
@@ -349,19 +350,7 @@ function VehicleEditorModal({ state, flats, isAdmin, onClose, onDone }) {
             {isAdmin && (
               <>
                 <Label>Flat</Label>
-                <View style={styles.chipWrap}>
-                  {flats.map((f) => (
-                    <TouchableOpacity
-                      key={f.id}
-                      style={[styles.chip, flatId === f.id && styles.chipActive]}
-                      onPress={() => setFlatId(f.id)}
-                    >
-                      <Text style={[styles.chipText, flatId === f.id && { color: "#fff" }]}>
-                        {f.block ? `${f.block}-` : ""}{f.flatNo}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                <FlatPicker flats={flats} value={flatId} onChange={setFlatId} placeholder="Select a flat" />
               </>
             )}
             <View style={styles.modalActions}>

@@ -14,6 +14,8 @@ import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorp
 import { recordPayment, effectivePaid, billBalance, buildFlatLedger, refreshLateFees } from "../billing.js";
 import { sendFeeReminder, whatsappEnabled, WHATSAPP_BUSINESS_NUMBER } from "../whatsapp.js";
 import { runFeeReminders } from "../feeReminders.js";
+import { ensureJoinCode, generateUniqueJoinCode } from "../joinCode.js";
+import { cacheWrap } from "../cache.js";
 
 export const adminRouter = Router();
 
@@ -118,6 +120,33 @@ adminRouter.delete("/users/:id", async (req, res) => {
   if (!target) return res.status(404).json({ message: "User not found" });
   await prisma.user.delete({ where: { id: target.id } });
   res.json({ ok: true });
+});
+
+// Approve a self-registered resident (who signed up with the join code) so they
+// can sign in. Reject = just delete via DELETE /users/:id.
+adminRouter.post("/users/:id/approve", async (req, res) => {
+  const target = await prisma.user.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
+  if (!target) return res.status(404).json({ message: "User not found" });
+  const user = await prisma.user.update({
+    where: { id: target.id },
+    data: { pendingApproval: false, active: true },
+    include: { flat: true },
+  });
+  res.json({ user: publicUser(user) });
+});
+
+/* ------------------------- Self-registration join code ------------------- */
+// The society's join code lets residents self-register (then admin approves),
+// so admins don't hand-create hundreds of logins.
+adminRouter.get("/join-code", async (req, res) => {
+  const joinCode = await ensureJoinCode(sid(req));
+  res.json({ joinCode });
+});
+
+adminRouter.post("/join-code/rotate", async (req, res) => {
+  const joinCode = await generateUniqueJoinCode();
+  await prisma.society.update({ where: { id: sid(req) }, data: { joinCode } });
+  res.json({ joinCode });
 });
 
 /* ------------------------------- Flats ----------------------------------- */
@@ -296,8 +325,9 @@ adminRouter.put("/billing-settings", async (req, res) => {
     update: data,
     create: { societyId: sid(req), ...data },
   });
-  // Re-apply immediately so balances reflect the new policy.
-  await refreshLateFees(sid(req)).catch(() => {});
+  // Re-apply immediately so balances reflect the new policy (bypass the
+  // read-path throttle — the policy just changed).
+  await refreshLateFees(sid(req), { force: true }).catch(() => {});
   res.json({ settings: serializeBillingSetting(s) });
 });
 
@@ -372,16 +402,28 @@ adminRouter.get("/finance", async (req, res) => {
     prisma.expense.findMany({ where: { societyId: sid(req) } }),
   ]);
 
-  const totalCollected = bills.reduce((s, b) => s + effectivePaid(b), 0);
-  const totalPending = bills.reduce((s, b) => s + billBalance(b), 0);
+  // Aggregate paid/pending per flat in a SINGLE pass over bills (Map lookup),
+  // instead of filtering the full bill list once per flat — that was O(flats ×
+  // bills) and became a CPU/event-loop bottleneck for large societies.
+  const agg = new Map(); // flatId -> { paid, pending }
+  let totalCollected = 0;
+  let totalPending = 0;
+  for (const b of bills) {
+    const paid = effectivePaid(b);
+    const pending = billBalance(b);
+    totalCollected += paid;
+    totalPending += pending;
+    const row = agg.get(b.flatId) || { paid: 0, pending: 0 };
+    row.paid += paid;
+    row.pending += pending;
+    agg.set(b.flatId, row);
+  }
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
   const balance = totalCollected - totalExpenses;
 
   const perFlat = flats.map((f) => {
-    const flatBills = bills.filter((b) => b.flatId === f.id);
-    const paid = flatBills.reduce((s, b) => s + effectivePaid(b), 0);
-    const pending = flatBills.reduce((s, b) => s + billBalance(b), 0);
-    return { flatId: f.id, flatNo: f.flatNo, paid, pending };
+    const row = agg.get(f.id) || { paid: 0, pending: 0 };
+    return { flatId: f.id, flatNo: f.flatNo, block: f.block || null, paid: row.paid, pending: row.pending };
   });
 
   const dueList = perFlat.filter((f) => f.pending > 0);
@@ -440,28 +482,38 @@ adminRouter.post("/bills", async (req, res) => {
     baseAmount = Number(amount);
   }
 
-  const flats = await prisma.flat.findMany({ where: { societyId: sid(req) } });
-  let created = 0;
+  // Fast path for large societies: fetch flats + the period's existing bills in
+  // just two queries, then insert all new bills in ONE createMany (instead of
+  // 2 queries per flat, which timed out at ~1000 flats).
+  const [flats, existingBills] = await Promise.all([
+    prisma.flat.findMany({ where: { societyId: sid(req) } }),
+    prisma.bill.findMany({
+      where: { period, flat: { societyId: sid(req) } },
+      select: { flatId: true },
+    }),
+  ]);
+  const alreadyBilled = new Set(existingBills.map((b) => b.flatId));
+
+  const due = dueDate || `${period}-10`;
+  const toCreate = [];
   for (const flat of flats) {
-    const existing = await prisma.bill.findFirst({ where: { flatId: flat.id, period } });
-    if (existing) continue;
+    if (alreadyBilled.has(flat.id)) continue;
     // Rented flats with an override are billed their own maintenance amount
     // (the head breakdown doesn't apply to that override).
     const overridden = flat.occupancy === "rented" && flat.rentMaintenanceAmount != null;
-    const flatAmount = overridden ? flat.rentMaintenanceAmount : baseAmount;
-    await prisma.bill.create({
-      data: {
-        flatId: flat.id,
-        period,
-        amount: flatAmount,
-        dueDate: dueDate || `${period}-10`,
-        status: "pending",
-        breakdown: overridden ? null : breakdown || undefined,
-      },
-    });
-    created++;
+    const row = {
+      flatId: flat.id,
+      period,
+      amount: overridden ? flat.rentMaintenanceAmount : baseAmount,
+      dueDate: due,
+      status: "pending",
+    };
+    if (!overridden && breakdown) row.breakdown = breakdown;
+    toCreate.push(row);
   }
-  res.json({ ok: true, created });
+
+  if (toCreate.length) await prisma.bill.createMany({ data: toCreate });
+  res.json({ ok: true, created: toCreate.length, total: flats.length, skipped: flats.length - toCreate.length });
 });
 
 // Record a CASH payment for a bill (collected offline by a society member).
@@ -713,9 +765,15 @@ adminRouter.get("/blocks", async (req, res) => {
 });
 
 // Wing-wise (block) report data. ?block=B  (omit or __all__ for whole society)
+// Cached briefly per society+block: reports are point-in-time snapshots, so a
+// short TTL massively cuts DB load when several admins export at once without a
+// meaningful staleness cost.
 adminRouter.get("/report", async (req, res) => {
   try {
-    const report = await buildWingReport(sid(req), { block: req.query.block });
+    const block = req.query.block || "__all__";
+    const report = await cacheWrap(`report:wing:${sid(req)}:${block}`, 30, () =>
+      buildWingReport(sid(req), { block })
+    );
     res.json({ report });
   } catch (e) {
     res.status(400).json({ message: e.message });

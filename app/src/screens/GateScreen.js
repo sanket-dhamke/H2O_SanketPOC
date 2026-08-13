@@ -13,6 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import TextInput from "../components/AppTextInput";
+import FlatPicker from "../components/FlatPicker";
 import * as ImagePicker from "expo-image-picker";
 import { useAudioRecorder, AudioModule, RecordingPresets, setAudioModeAsync } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
@@ -211,43 +212,24 @@ export default function GateScreen({ navigation }) {
       <TextInput style={styles.input} value={vehicleNo} onChangeText={setVehicleNo} autoCapitalize="characters" placeholder="Optional (e.g. MH12AB1234)" />
 
       <Text style={styles.label}>{L.unit} *</Text>
-      <View style={styles.chips}>
-        {flats.map((f) => {
+      <FlatPicker
+        flats={flats.map((f) => {
           // In societies a flat with no resident account can't receive a visitor
-          // to approve, so block it here (clear reason) instead of failing on submit.
+          // to approve, so mark it unavailable (clear reason) instead of failing on submit.
           const noResident = !preschool && (f.residentCount ?? 1) === 0;
-          return (
-            <TouchableOpacity
-              key={f.id}
-              style={[styles.chip, flatId === f.id && styles.chipActive, noResident && styles.chipDisabled]}
-              onPress={() =>
-                noResident
-                  ? Alert.alert(
-                      `No ${L.payer.toLowerCase()} yet`,
-                      `${f.flatNo} has no ${L.payer.toLowerCase()} account yet, so nobody can approve the visitor. Ask the admin to add a ${L.payer.toLowerCase()} for ${f.flatNo}.`
-                    )
-                  : setFlatId(f.id)
-              }
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  flatId === f.id && styles.chipTextActive,
-                  noResident && styles.chipTextDisabled,
-                ]}
-              >
-                {f.flatNo}
-              </Text>
-            </TouchableOpacity>
-          );
+          return { ...f, disabled: noResident, disabledReason: `no ${L.payer.toLowerCase()} yet` };
         })}
-        {flats.length === 0 && <Text style={styles.hint}>Loading {L.units.toLowerCase()}...</Text>}
-      </View>
-      {!preschool && flats.some((f) => (f.residentCount ?? 1) === 0) && (
-        <Text style={styles.hint}>
-          Greyed {L.units.toLowerCase()} have no resident account yet — ask the admin to add one.
-        </Text>
-      )}
+        value={flatId}
+        onChange={setFlatId}
+        placeholder={`Search & select a ${L.unit.toLowerCase()}`}
+        onDisabledPress={(f) =>
+          Alert.alert(
+            `No ${L.payer.toLowerCase()} yet`,
+            `${f.flatNo} has no ${L.payer.toLowerCase()} account yet, so nobody can approve the visitor. Ask the admin to add a ${L.payer.toLowerCase()} for ${f.flatNo}.`
+          )
+        }
+      />
+      <Text style={styles.hint}>Type the flat number (e.g. A-1002) to jump straight to it.</Text>
 
       <Text style={styles.label}>Purpose</Text>
       <View style={styles.chips}>

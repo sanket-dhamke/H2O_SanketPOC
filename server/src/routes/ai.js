@@ -60,11 +60,15 @@ aiRouter.post("/voice-visitor", authRequired, roleRequired("guard", "admin"), as
     if (!text.trim()) {
       return res.status(400).json({ message: "No speech detected. Please try again." });
     }
-    const flats = await prisma.flat.findMany({ select: { flatNo: true } });
+    // Only match against flats in the caller's society (not every tenant's).
+    const societyId = req.user.societyId || "__none__";
+    const flats = await prisma.flat.findMany({ where: { societyId }, select: { flatNo: true } });
     const fields = await parseVisitorFromText(text, flats.map((f) => f.flatNo));
     res.json({ transcript: text, fields });
   } catch (err) {
     console.error("AI voice-visitor failed:", err.message);
-    res.status(502).json({ message: "Could not process the voice input." });
+    // Surface the real reason so guards/admins can act (e.g. transcription
+    // provider rejected the audio) instead of a vague "could not process".
+    res.status(502).json({ message: `Could not process the voice input: ${err.message}` });
   }
 });
