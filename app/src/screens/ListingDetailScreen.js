@@ -19,7 +19,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import ScreenHeader from "../components/ScreenHeader";
-import { catMeta } from "./MarketplaceScreen";
+import { catMeta, kindMeta } from "./MarketplaceScreen";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 const { width } = Dimensions.get("window");
@@ -30,7 +30,9 @@ export default function ListingDetailScreen({ navigation, route }) {
   const id = route?.params?.id;
   const [listing, setListing] = useState(null);
   const [messages, setMessages] = useState(null);
+  const [participants, setParticipants] = useState(null);
   const [msgModal, setMsgModal] = useState(false);
+  const [joining, setJoining] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -39,11 +41,28 @@ export default function ListingDetailScreen({ navigation, route }) {
       if (listing.isOwner) {
         const { messages } = await api.listingMessages(id).catch(() => ({ messages: [] }));
         setMessages(messages || []);
+        if (listing.kind === "group_buy" || listing.kind === "borrow") {
+          const { participants } = await api.listingParticipants(id).catch(() => ({ participants: [] }));
+          setParticipants(participants || []);
+        }
       }
     } catch (e) {
       Alert.alert("Error", e.message);
     }
   }, [id]);
+
+  const toggleJoin = async () => {
+    setJoining(true);
+    try {
+      if (listing.joinedByMe) await api.leaveListing(id);
+      else await api.joinListing(id);
+      await load();
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    } finally {
+      setJoining(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -131,6 +150,43 @@ export default function ListingDetailScreen({ navigation, route }) {
             </View>
           )}
 
+          {listing.kind && listing.kind !== "sale" && (
+            <View style={styles.kindBanner}>
+              <Ionicons name={kindMeta(listing.kind).icon} size={16} color="#6D3BD1" />
+              <Text style={styles.kindBannerText}>
+                {listing.kind === "group_buy"
+                  ? "Group buy — join to unlock the bulk deal"
+                  : listing.kind === "skill"
+                  ? "Skill exchange"
+                  : listing.lendMode === "free"
+                  ? "Free to a good home"
+                  : listing.lendMode === "borrow"
+                  ? "Neighbour looking to borrow"
+                  : "Available to borrow / lend"}
+              </Text>
+            </View>
+          )}
+
+          {listing.kind === "group_buy" && (
+            <View style={styles.gbCard}>
+              <View style={styles.gbRow}>
+                <Text style={styles.gbCount}>
+                  {listing.joinCount || 0}
+                  {listing.targetCount ? ` / ${listing.targetCount}` : ""} joined
+                </Text>
+                {listing.unitPrice != null && <Text style={styles.gbPrice}>{money(listing.unitPrice)}/member</Text>}
+              </View>
+              {listing.targetCount ? (
+                <View style={styles.gbBarBg}>
+                  <View style={[styles.gbBarFill, { width: `${Math.min(100, Math.round(((listing.joinCount || 0) / listing.targetCount) * 100))}%` }]} />
+                </View>
+              ) : null}
+              {listing.targetCount && (listing.joinCount || 0) >= listing.targetCount && (
+                <Text style={styles.gbReady}>Target reached — the organiser can place the order.</Text>
+              )}
+            </View>
+          )}
+
           <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.desc}>{listing.description}</Text>
 
@@ -155,6 +211,27 @@ export default function ListingDetailScreen({ navigation, route }) {
                 </TouchableOpacity>
               </View>
 
+              {(listing.kind === "group_buy" || listing.kind === "borrow") && (
+                <>
+                  <Text style={styles.sectionTitle}>Joined {participants?.length ? `(${participants.length})` : ""}</Text>
+                  {participants === null && <ActivityIndicator color="#0B6E8F" />}
+                  {participants?.length === 0 && <Text style={styles.muted}>No one has joined yet.</Text>}
+                  {participants?.map((p) => (
+                    <View key={p.id} style={styles.enquiry}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.enquiryFrom}>{p.name}{p.flatNo ? ` · ${p.flatNo}` : ""}{p.qty > 1 ? ` · x${p.qty}` : ""}</Text>
+                        <Text style={styles.enquiryTime}>{fmt(p.createdAt)}</Text>
+                      </View>
+                      {p.phone ? (
+                        <TouchableOpacity style={styles.callBtn} onPress={() => call(p.phone)}>
+                          <Ionicons name="call" size={16} color="#0B6E8F" />
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  ))}
+                </>
+              )}
+
               <Text style={styles.sectionTitle}>Enquiries {messages?.length ? `(${messages.length})` : ""}</Text>
               {messages === null && <ActivityIndicator color="#0B6E8F" />}
               {messages?.length === 0 && <Text style={styles.muted}>No enquiries yet.</Text>}
@@ -175,17 +252,31 @@ export default function ListingDetailScreen({ navigation, route }) {
             </>
           ) : (
             listing.status === "active" && (
-              <View style={styles.buyerActions}>
-                <TouchableOpacity style={styles.msgBtn} onPress={() => setMsgModal(true)}>
-                  <Ionicons name="chatbubble-ellipses" size={18} color="#1B2B33" />
-                  <Text style={styles.msgBtnText}>Message owner</Text>
-                </TouchableOpacity>
-                {listing.authorPhone && (
-                  <TouchableOpacity style={styles.waBtn} onPress={() => whatsapp(listing.authorPhone, listing.title)}>
-                    <Ionicons name="logo-whatsapp" size={20} color="#fff" />
+              <>
+                {(listing.kind === "group_buy" || listing.kind === "borrow") && (
+                  <TouchableOpacity
+                    style={[styles.joinBtn, listing.joinedByMe && styles.joinBtnLeave, joining && { opacity: 0.6 }]}
+                    onPress={toggleJoin}
+                    disabled={joining}
+                  >
+                    <Ionicons name={listing.joinedByMe ? "checkmark-circle" : "add-circle-outline"} size={18} color="#fff" />
+                    <Text style={styles.joinBtnText}>
+                      {joining ? "…" : listing.joinedByMe ? "You're in — tap to leave" : listing.kind === "group_buy" ? "Join this group buy" : "I'm interested"}
+                    </Text>
                   </TouchableOpacity>
                 )}
-              </View>
+                <View style={styles.buyerActions}>
+                  <TouchableOpacity style={styles.msgBtn} onPress={() => setMsgModal(true)}>
+                    <Ionicons name="chatbubble-ellipses" size={18} color="#1B2B33" />
+                    <Text style={styles.msgBtnText}>Message {listing.kind === "group_buy" ? "organiser" : "owner"}</Text>
+                  </TouchableOpacity>
+                  {listing.authorPhone && (
+                    <TouchableOpacity style={styles.waBtn} onPress={() => whatsapp(listing.authorPhone, listing.title)}>
+                      <Ionicons name="logo-whatsapp" size={20} color="#fff" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </>
             )
           )}
         </View>
@@ -277,7 +368,19 @@ const styles = StyleSheet.create({
   enquiryBody: { color: "#48606B", marginTop: 3, fontSize: 13.5 },
   enquiryTime: { color: "#9AA7AF", fontSize: 11, marginTop: 4 },
   callBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: "#EAF4F7", alignItems: "center", justifyContent: "center" },
-  buyerActions: { flexDirection: "row", gap: 12, marginTop: 22 },
+  kindBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#F5F0FE", borderRadius: 10, padding: 10, marginTop: 12 },
+  kindBannerText: { color: "#6D3BD1", fontWeight: "700", fontSize: 12.5, flex: 1 },
+  gbCard: { backgroundColor: "#fff", borderRadius: 12, padding: 14, marginTop: 12 },
+  gbRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  gbCount: { fontWeight: "800", color: "#1B2B33", fontSize: 15 },
+  gbPrice: { fontWeight: "800", color: "#6D3BD1", fontSize: 14 },
+  gbBarBg: { height: 8, borderRadius: 4, backgroundColor: "#EDE7FB", overflow: "hidden" },
+  gbBarFill: { height: 8, borderRadius: 4, backgroundColor: "#6D3BD1" },
+  gbReady: { color: "#1E7A3D", fontWeight: "700", fontSize: 12.5, marginTop: 8 },
+  joinBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#6D3BD1", borderRadius: 12, paddingVertical: 15, marginTop: 22 },
+  joinBtnLeave: { backgroundColor: "#2E9E52" },
+  joinBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
+  buyerActions: { flexDirection: "row", gap: 12, marginTop: 12 },
   msgBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#FFD54A", borderRadius: 12, paddingVertical: 15 },
   msgBtnText: { color: "#1B2B33", fontWeight: "800", fontSize: 15 },
   waBtn: { width: 54, borderRadius: 12, backgroundColor: "#25A366", alignItems: "center", justifyContent: "center" },

@@ -365,10 +365,11 @@ export const api = {
   admitGatePass: (id) => request(`/api/gate-passes/${id}/admit`, { method: "POST" }),
 
   // Buy & Sell marketplace
-  listings: ({ category, mine } = {}) => {
+  listings: ({ category, mine, kind } = {}) => {
     const qs = new URLSearchParams();
     if (category) qs.set("category", category);
     if (mine) qs.set("mine", "1");
+    if (kind) qs.set("kind", kind);
     const q = qs.toString();
     return request(`/api/listings${q ? `?${q}` : ""}`);
   },
@@ -380,6 +381,9 @@ export const api = {
   messageListingOwner: (id, body) =>
     request(`/api/listings/${id}/messages`, { method: "POST", body: { body } }),
   listingMessages: (id) => request(`/api/listings/${id}/messages`),
+  joinListing: (id, qty) => request(`/api/listings/${id}/join`, { method: "POST", body: { qty } }),
+  leaveListing: (id) => request(`/api/listings/${id}/join`, { method: "DELETE" }),
+  listingParticipants: (id) => request(`/api/listings/${id}/participants`),
   // Superadmin moderation of Buy & Sell posts (all societies)
   moderationListings: (q) =>
     request(`/api/moderation/listings${q ? `?q=${encodeURIComponent(q)}` : ""}`),

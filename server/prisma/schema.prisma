@@ -183,6 +183,7 @@ model User {
   // Buy & Sell listings authored + messages sent about others' listings.
   listings      Listing[]  @relation("ListingAuthor")
   listingMessages ListingMessage[] @relation("ListingMsgFrom")
+  listingJoins  ListingJoin[] @relation("ListingJoinUser")
 
   // societyId+role: directory & admin/guard lookups. flatId: fast push targeting
   // (notify a flat's residents) and "residents of this flat" reads.
@@ -606,18 +607,42 @@ model Listing {
   price       Float?
   // furniture | electronics | vehicles | home_decor | kids | food | services | others
   category    String           @default("others")
+  // sale | borrow | skill | group_buy  — the "circular economy" listing types.
+  kind        String           @default("sale")
+  lendMode    String?          // borrow kind: lend | borrow | free
+  targetCount Int?             // group_buy: participants needed to unlock the deal
+  unitPrice   Float?           // group_buy: price per unit at the target
+  deadline    DateTime?        // group_buy: join-by date
   images      Json?            // array of image URLs
   location    String?          // free-text (society/area) shown on the card
   visibility  String           @default("all") // all | society
-  // active | sold | removed
+  // active | sold | removed | fulfilled
   status      String           @default("active")
   messages    ListingMessage[]
+  joins       ListingJoin[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
   @@index([status, visibility])
+  @@index([kind, status])
   @@index([societyId])
   @@index([authorId])
+}
+
+// A resident joining a group-buy (or expressing interest in a borrow/lend).
+model ListingJoin {
+  id        String   @id @default(uuid())
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId String
+  user      User     @relation("ListingJoinUser", fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  name      String?
+  flatNo    String?
+  qty       Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@unique([listingId, userId])
+  @@index([listingId])
 }
 
 // Audit log of platform / society backups (for the superadmin's Backup &

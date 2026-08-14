@@ -36,11 +36,22 @@ export const LISTING_CATEGORIES = [
 ];
 export const catMeta = (id) => LISTING_CATEGORIES.find((c) => c.id === id) || LISTING_CATEGORIES[7];
 
+// Circular-economy listing types shown as top-level sections.
+export const LISTING_KINDS = [
+  { id: null, label: "All", icon: "grid-outline" },
+  { id: "sale", label: "Buy & Sell", icon: "pricetag-outline" },
+  { id: "borrow", label: "Borrow / Lend", icon: "swap-horizontal-outline" },
+  { id: "skill", label: "Skills", icon: "school-outline" },
+  { id: "group_buy", label: "Group buy", icon: "people-outline" },
+];
+export const kindMeta = (id) => LISTING_KINDS.find((k) => k.id === id) || LISTING_KINDS[1];
+
 export default function MarketplaceScreen() {
   const navigation = useNavigation();
   const [listings, setListings] = useState([]);
   const [counts, setCounts] = useState({});
   const [category, setCategory] = useState(null);
+  const [kind, setKind] = useState(null);
   const [mine, setMine] = useState(false);
   const [query, setQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -49,7 +60,7 @@ export default function MarketplaceScreen() {
   const load = useCallback(async () => {
     try {
       const [l, c] = await Promise.all([
-        api.listings({ category, mine }),
+        api.listings({ category, mine, kind }),
         api.listingCategories().catch(() => ({ counts: {} })),
       ]);
       setListings(l.listings || []);
@@ -57,7 +68,7 @@ export default function MarketplaceScreen() {
     } catch (e) {
       Alert.alert("Error", e.message);
     }
-  }, [category, mine]);
+  }, [category, mine, kind]);
 
   useFocusEffect(
     useCallback(() => {
@@ -89,8 +100,8 @@ export default function MarketplaceScreen() {
     <View style={styles.container}>
       <ScreenHeader
         icon="pricetags"
-        title="Buy & Sell"
-        subtitle="Buy, sell & discover nearby"
+        title="Community market"
+        subtitle="Buy, sell, borrow, share skills & group-buy"
         onBack={() => navigation.goBack()}
         right={addBtn}
       />
@@ -107,6 +118,21 @@ export default function MarketplaceScreen() {
           <Text style={[styles.toggleText, mine && styles.toggleTextActive]}>My listings</Text>
         </TouchableOpacity>
       </View>
+
+      {!mine && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
+          {LISTING_KINDS.map((k) => (
+            <TouchableOpacity
+              key={k.id || "all"}
+              style={[styles.kindChip, kind === k.id && styles.kindChipActive]}
+              onPress={() => setKind(k.id)}
+            >
+              <Ionicons name={k.icon} size={14} color={kind === k.id ? "#fff" : "#6D3BD1"} />
+              <Text style={[styles.kindChipText, kind === k.id && { color: "#fff" }]}>{k.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
 
       {!mine && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
@@ -148,14 +174,30 @@ export default function MarketplaceScreen() {
                   <Ionicons name={catMeta(item.category).icon} size={30} color="#B7C2C9" />
                 </View>
               )}
-              {item.price != null && (
+              {item.kind === "group_buy" ? (
+                <View style={styles.priceTag}>
+                  <Text style={styles.priceTagText}>
+                    {item.joinCount || 0}{item.targetCount ? `/${item.targetCount}` : ""} joined
+                  </Text>
+                </View>
+              ) : item.price != null ? (
                 <View style={styles.priceTag}>
                   <Text style={styles.priceTagText}>{money(item.price)}</Text>
+                </View>
+              ) : item.kind === "borrow" && item.lendMode === "free" ? (
+                <View style={styles.priceTag}>
+                  <Text style={styles.priceTagText}>FREE</Text>
+                </View>
+              ) : null}
+              {item.kind && item.kind !== "sale" && (
+                <View style={styles.kindTag}>
+                  <Ionicons name={kindMeta(item.kind).icon} size={11} color="#fff" />
+                  <Text style={styles.kindTagText}>{kindMeta(item.kind).label}</Text>
                 </View>
               )}
               {item.status !== "active" && (
                 <View style={styles.soldTag}>
-                  <Text style={styles.soldTagText}>{item.status === "sold" ? "SOLD" : "REMOVED"}</Text>
+                  <Text style={styles.soldTagText}>{item.status === "sold" ? "SOLD" : item.status === "fulfilled" ? "DONE" : "REMOVED"}</Text>
                 </View>
               )}
             </View>
@@ -180,6 +222,10 @@ function CreateListingModal({ visible, onClose, onDone }) {
   const [location, setLocation] = useState("");
   const [visibility, setVisibility] = useState("all");
   const [images, setImages] = useState([]); // base64 data URLs
+  const [kind, setKind] = useState("sale");
+  const [lendMode, setLendMode] = useState("lend");
+  const [targetCount, setTargetCount] = useState("");
+  const [unitPrice, setUnitPrice] = useState("");
   const [busy, setBusy] = useState(false);
 
   const reset = () => {
@@ -190,6 +236,10 @@ function CreateListingModal({ visible, onClose, onDone }) {
     setLocation("");
     setVisibility("all");
     setImages([]);
+    setKind("sale");
+    setLendMode("lend");
+    setTargetCount("");
+    setUnitPrice("");
   };
 
   const MAX_PHOTOS = 10;
@@ -235,11 +285,15 @@ function CreateListingModal({ visible, onClose, onDone }) {
       await api.createListing({
         title: title.trim(),
         description: description.trim(),
-        price: price ? Number(price) : undefined,
+        price: kind === "group_buy" ? undefined : price ? Number(price) : undefined,
         category,
         location: location.trim() || undefined,
         visibility,
         images,
+        kind,
+        lendMode: kind === "borrow" ? lendMode : undefined,
+        targetCount: kind === "group_buy" && targetCount ? Number(targetCount) : undefined,
+        unitPrice: kind === "group_buy" && unitPrice ? Number(unitPrice) : undefined,
       });
       reset();
       onClose();
@@ -285,6 +339,29 @@ function CreateListingModal({ visible, onClose, onDone }) {
                 </>
               )}
             </View>
+            <Label>Type of listing</Label>
+            <View style={styles.catPick}>
+              {LISTING_KINDS.filter((k) => k.id).map((k) => (
+                <TouchableOpacity key={k.id} style={[styles.catOpt, kind === k.id && styles.kindOptActive]} onPress={() => setKind(k.id)}>
+                  <Ionicons name={k.icon} size={14} color={kind === k.id ? "#fff" : "#6D3BD1"} />
+                  <Text style={[styles.catOptText, { color: kind === k.id ? "#fff" : "#6D3BD1" }]}>{k.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {kind === "borrow" && (
+              <>
+                <Label>Are you lending or looking to borrow?</Label>
+                <View style={styles.visRow}>
+                  {[["lend", "I'm lending"], ["borrow", "Looking to borrow"], ["free", "Giving free"]].map(([id, lbl]) => (
+                    <TouchableOpacity key={id} style={[styles.visOpt, lendMode === id && styles.visActive]} onPress={() => setLendMode(id)}>
+                      <Text style={[styles.visText, lendMode === id && { color: "#fff" }]}>{lbl}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+
             <Label>Category</Label>
             <View style={styles.catPick}>
               {LISTING_CATEGORIES.map((c) => (
@@ -295,11 +372,22 @@ function CreateListingModal({ visible, onClose, onDone }) {
               ))}
             </View>
             <Label>Title</Label>
-            <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="e.g. Sofa set 3+2 seating" />
-            <Label>Price (Rs., optional)</Label>
-            <TextInput style={styles.input} value={price} onChangeText={setPrice} placeholder="15000" keyboardType="numeric" />
+            <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder={kind === "skill" ? "e.g. Weekend maths tuition" : kind === "group_buy" ? "e.g. Bulk RO service — 20% off" : "e.g. Sofa set 3+2 seating"} />
+            {kind === "group_buy" ? (
+              <>
+                <Label>Members needed to unlock the deal</Label>
+                <TextInput style={styles.input} value={targetCount} onChangeText={setTargetCount} placeholder="10" keyboardType="numeric" />
+                <Label>Price per member at target (Rs., optional)</Label>
+                <TextInput style={styles.input} value={unitPrice} onChangeText={setUnitPrice} placeholder="1200" keyboardType="numeric" />
+              </>
+            ) : kind === "borrow" && lendMode === "free" ? null : (
+              <>
+                <Label>{kind === "skill" ? "Fee / rate (Rs., optional)" : kind === "borrow" ? "Deposit / rent (Rs., optional)" : "Price (Rs., optional)"}</Label>
+                <TextInput style={styles.input} value={price} onChangeText={setPrice} placeholder="15000" keyboardType="numeric" />
+              </>
+            )}
             <Label>Description</Label>
-            <TextInput style={[styles.input, styles.multiline]} value={description} onChangeText={setDescription} placeholder="Condition, age, reason for selling…" multiline />
+            <TextInput style={[styles.input, styles.multiline]} value={description} onChangeText={setDescription} placeholder={kind === "group_buy" ? "What's the deal, vendor, and by when?" : kind === "skill" ? "What you offer, timings, experience…" : "Condition, age, reason…"} multiline />
             <Label>Location (optional)</Label>
             <TextInput style={styles.input} value={location} onChangeText={setLocation} placeholder="e.g. Tower B, Wing 2" />
             <Label>Who can see this?</Label>
@@ -344,6 +432,12 @@ const styles = StyleSheet.create({
   catChip: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: "#CFE0E6", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: "#fff", height: 36 },
   catChipActive: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },
   catChipText: { color: "#0B6E8F", fontSize: 12.5, fontWeight: "700" },
+  kindChip: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: "#DDD0F2", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: "#F5F0FE", height: 36 },
+  kindChipActive: { backgroundColor: "#6D3BD1", borderColor: "#6D3BD1" },
+  kindChipText: { color: "#6D3BD1", fontSize: 12.5, fontWeight: "700" },
+  kindTag: { position: "absolute", left: 8, top: 8, flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(109,59,209,0.92)", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
+  kindTagText: { color: "#fff", fontWeight: "800", fontSize: 10 },
+  kindOptActive: { backgroundColor: "#6D3BD1", borderColor: "#6D3BD1" },
   empty: { alignItems: "center", paddingVertical: 48, gap: 10, width: "100%" },
   emptyText: { color: "#8895A0", fontSize: 14, fontWeight: "600", textAlign: "center", paddingHorizontal: 24 },
   card: { flex: 1, backgroundColor: "#fff", borderRadius: 14, overflow: "hidden", marginBottom: 0 },
