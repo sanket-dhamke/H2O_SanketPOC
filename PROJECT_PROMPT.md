@@ -300,6 +300,32 @@ CONVENTIONS & GOTCHAS
   background cron reminder jobs still call sendPush/sendEmail directly (already off the request path).
 
 ================================================================================
+DIFFERENTIATOR FEATURES (competitive moat vs MyGate/ADDA)
+================================================================================
+- Proactive AI Society/School Manager: deterministic insights engine (insights.js) flags anomalies
+  (spend spikes, chronic defaulters, odd-hour gate activity) and AI drafts monthly notices, dues
+  reminders and "where your money went" summaries (ai.js: draftManagerText). Admin ManagerScreen.
+- Portable Helper & Vendor Trust Passport: cross-society worker identity (Worker/WorkerRating/
+  WorkerAttendance) with one QR + network-wide ratings and gate attendance. routes/workers.js.
+- Tamper-evident finances + Transparency Score: hash-chained per-society ledger (ledger.js,
+  LedgerEntry) over payments/expenses; resident-facing score + money-flow. TransparencyScreen.
+- Preschool pickup-safety: parent-authorised pickup QR verified at the gate + live child updates
+  (PickupAuthorization/PickupEvent/ChildUpdate). routes/preschool.js, ChildScreen/PickupScreen.
+- SOS neighbour mesh: panic button alerts guards/admins/opted-in responders + one-tap ambulance
+  (SosAlert/SosResponse, User.isResponder/responderSkill). routes/sos.js, SosScreen.
+- Offline-first gate: /gate/whitelist carries a version fingerprint (skip re-download when unchanged)
+  + embedded anti-passback policy; /gate/offline-sync batch-ingests reads logged while offline.
+- Vernacular voice + spoken notices + IVR fallback: Whisper multilingual guard entry (Devanagari
+  digits), /api/ai/translate + expo-speech "Listen" on announcements (mr/hi/en), and a stubbed
+  Twilio/Exotel IVR visitor-approval flow (ivr.js, routes/ivr.js; enable purely via env).
+- Hyperlocal circular economy: Listing.kind = sale|borrow|skill|group_buy; group buys track
+  participants vs a target with auto-notify + organiser roster (ListingJoin). routes/marketplace.js.
+- Tier-3 quick wins: Asset & AMC tracker with warranty/service alerts (Asset/AssetLog, routes/
+  assets.js), Digital AGM e-voting + quorum + AI minutes (Meeting/Motion/Vote, routes/agm.js),
+  Rental compliance loop (RentalCompliance, routes/rental.js), Sustainability green score + per-flat
+  water metering (WaterReading, routes/sustainability.js).
+
+================================================================================
 YOUR TASK
 ================================================================================
 Recreate and/or extend this app faithfully. Preserve strict multi-tenant isolation, keep society
