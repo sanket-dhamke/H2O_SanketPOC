@@ -314,16 +314,55 @@ export async function summarizeMinutes(context) {
   }
 }
 
+// Candidate transcription models to try, in order. We start with whatever is
+// configured, then fall back to the ones the ACTIVE provider actually has. This
+// makes voice entry self-heal from a common misconfig — e.g. AI_TRANSCRIBE_MODEL
+// left as Groq's "whisper-large-v3" while the key/base-url point at OpenAI (which
+// only has "whisper-1"), which returns a 404 "model does not exist".
+function transcriptionCandidates() {
+  const isGroq = /groq/i.test(BASE_URL);
+  const providerDefaults = isGroq
+    ? ["whisper-large-v3-turbo", "whisper-large-v3"]
+    : ["whisper-1", "gpt-4o-mini-transcribe", "gpt-4o-transcribe"];
+  // Configured model first, then provider defaults, de-duplicated.
+  return [...new Set([TRANSCRIBE_MODEL, ...providerDefaults])];
+}
+
+// Remember the first model that worked so we don't re-try dead ones every time.
+let workingTranscribeModel = null;
+
+const isModelMissing = (err) => {
+  const msg = String(err?.message || "").toLowerCase();
+  return err?.status === 404 || err?.code === "model_not_found" || msg.includes("does not exist") || msg.includes("not found");
+};
+
 // Transcribes an audio buffer to text using Whisper. Whisper auto-detects the
 // spoken language, so Marathi/Hindi/English (and code-mixed "Hinglish") all
 // transcribe without any extra configuration.
 export async function transcribeAudio(buffer, filename = "audio.m4a") {
-  const file = await OpenAI.toFile(buffer, filename);
-  const result = await openai.audio.transcriptions.create({
-    model: TRANSCRIBE_MODEL,
-    file,
-  });
-  return result.text || "";
+  const models = workingTranscribeModel
+    ? [workingTranscribeModel, ...transcriptionCandidates().filter((m) => m !== workingTranscribeModel)]
+    : transcriptionCandidates();
+
+  let lastErr = null;
+  for (const model of models) {
+    try {
+      // Recreate the upload each attempt — a File/stream can only be read once.
+      const file = await OpenAI.toFile(buffer, filename);
+      const result = await openai.audio.transcriptions.create({ model, file });
+      workingTranscribeModel = model; // cache the winner
+      if (model !== TRANSCRIBE_MODEL) {
+        console.warn(`transcribeAudio: configured model "${TRANSCRIBE_MODEL}" unavailable, using "${model}". Set AI_TRANSCRIBE_MODEL=${model} to silence this.`);
+      }
+      return result.text || "";
+    } catch (err) {
+      lastErr = err;
+      // Only fall through for "model missing"; real errors (auth, audio) rethrow.
+      if (!isModelMissing(err)) throw err;
+      console.warn(`transcribeAudio: model "${model}" not available on this provider, trying next…`);
+    }
+  }
+  throw lastErr || new Error("No transcription model available");
 }
 
 // Human language names for the codes the app offers.
