@@ -744,6 +744,64 @@ model ServiceContact {
   @@index([workerId])
 }
 
+// ---- Preschool pickup-safety + live child updates ----
+// A person a parent authorizes to pick up their child. Each carries a QR `code`
+// the guard scans at the gate; only an authorized person (within any validity
+// window) may collect the child, and every pickup is logged.
+model PickupAuthorization {
+  id          String    @id @default(uuid())
+  societyId   String
+  flatId      String    // the "student" (Flat) this authorization is for
+  name        String
+  phone       String?
+  relation    String?   // Parent | Grandparent | Driver | Relative | Other
+  photoUrl    String?
+  code        String    @unique
+  active      Boolean   @default(true)
+  validFrom   DateTime?
+  validUntil  DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  @@index([societyId, flatId])
+}
+
+// A logged child pickup (or drop) at the gate.
+model PickupEvent {
+  id              String   @id @default(uuid())
+  societyId       String
+  flatId          String
+  authorizationId String?
+  personName      String
+  personPhone     String?
+  relation        String?
+  kind            String   @default("pickup") // pickup | drop
+  photoUrl        String?
+  byGuardId       String?
+  byGuardName     String?
+  at              DateTime @default(now())
+
+  @@index([societyId, at])
+  @@index([flatId, at])
+}
+
+// A live update a teacher/admin posts about a child (meal, nap, mood, activity,
+// note). Parents see their own child's timeline.
+model ChildUpdate {
+  id        String   @id @default(uuid())
+  societyId String
+  flatId    String
+  type      String   @default("note") // meal | nap | mood | activity | note | health
+  mood      String?                    // happy | okay | upset (optional)
+  text      String
+  byId      String?
+  byName    String?
+  at        DateTime @default(now())
+
+  @@index([societyId, at])
+  @@index([flatId, at])
+}
+
 // Tamper-evident financial audit chain (one hash-linked log per society). Every
 // money event (payment in, expense out) is appended with a running SHA-256 that
 // includes the previous entry's hash — so any silent edit/delete of history

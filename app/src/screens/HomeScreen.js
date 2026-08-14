@@ -164,6 +164,16 @@ export default function HomeScreen({ navigation }) {
 
 function getActions(role, L, preschool) {
   if (role === "resident") {
+    if (preschool) {
+      return [
+        { label: "My child", subtitle: "Today's updates & pickup passes", icon: "happy-outline", tint: "#6D3BD1", route: "Community", params: { screen: "Child" } },
+        { label: `Pay ${L.feesShort.toLowerCase()}`, subtitle: "View bills & download receipts", icon: "card-outline", tint: "#0B6E8F", route: "Maintenance" },
+        { label: "Transparency", subtitle: `See where ${L.fees.toLowerCase()} money goes`, icon: "shield-checkmark-outline", tint: "#1E7A3D", route: "Maintenance", params: { screen: "Transparency" } },
+        { label: "Helpdesk", subtitle: "Raise a request or call the office", icon: "help-buoy-outline", tint: "#1E7A3D", route: "Community", params: { screen: "Helpdesk" } },
+        { label: "Trusted helpers", subtitle: "Rated tutors, nannies & services", icon: "ribbon-outline", tint: "#0B6E8F", route: "Community", params: { screen: "Workers" } },
+        { label: "Ask the assistant", subtitle: "Fees, attendance & school info", icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant", feature: "assistant" },
+      ];
+    }
     return [
       { label: `Pay ${L.feesShort.toLowerCase()}`, subtitle: "View bills & download receipts", icon: "card-outline", tint: "#0B6E8F", route: "Maintenance" },
       { label: "Visitors at gate", subtitle: "Approve, deny or leave at gate", icon: "people-outline", tint: "#C2571A", route: "Visitors" },
@@ -194,6 +204,7 @@ function getActions(role, L, preschool) {
         params: { screen: "StudentFees" },
       });
       admin.splice(3, 0, { label: "Staff attendance", subtitle: "Teacher & staff check-in/out", icon: "id-card-outline", tint: "#7A5AC2", route: "Staff" });
+      admin.splice(1, 0, { label: "Pickups & updates", subtitle: "Post updates, manage pickup passes", icon: "happy-outline", tint: "#6D3BD1", route: "Community", params: { screen: "Child" } });
     }
     admin.push({
       label: "Helpdesk",
@@ -227,7 +238,8 @@ function getActions(role, L, preschool) {
     { label: "Ask the assistant", subtitle: "Voice & AI help at the gate", icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant", feature: "assistant" },
   ];
   if (preschool) {
-    guard.splice(2, 0, { label: "Staff attendance", subtitle: "Teacher & staff check-in/out", icon: "id-card-outline", tint: "#7A5AC2", route: "Staff" });
+    guard.splice(1, 0, { label: "Child pickup", subtitle: "Scan pass & log pickup/drop", icon: "qr-code-outline", tint: "#6D3BD1", route: "Community", params: { screen: "Pickup" } });
+    guard.splice(3, 0, { label: "Staff attendance", subtitle: "Teacher & staff check-in/out", icon: "id-card-outline", tint: "#7A5AC2", route: "Staff" });
   }
   return guard;
 }

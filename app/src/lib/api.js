@@ -135,6 +135,17 @@ export const api = {
   markVisitorExit: (id) =>
     request(`/api/visitors/${id}/exit`, { method: "POST" }),
 
+  // Preschool: pickup-safety + live child updates
+  pickupAuthorizations: (flatId) => request(`/api/pickup/authorizations${qs({ flatId })}`),
+  createPickupAuthorization: (payload) => request("/api/pickup/authorizations", { method: "POST", body: payload }),
+  deletePickupAuthorization: (id) => request(`/api/pickup/authorizations/${id}`, { method: "DELETE" }),
+  verifyPickup: (code) => request(`/api/pickup/verify/${encodeURIComponent(code)}`),
+  logPickup: (payload) => request("/api/pickup/events", { method: "POST", body: payload }),
+  pickupEvents: (flatId) => request(`/api/pickup/events${qs({ flatId })}`),
+  childUpdates: (flatId) => request(`/api/child-updates${qs({ flatId })}`),
+  createChildUpdate: (payload) => request("/api/child-updates", { method: "POST", body: payload }),
+  deleteChildUpdate: (id) => request(`/api/child-updates/${id}`, { method: "DELETE" }),
+
   // Staff/teacher gate attendance (preschool)
   staffAttendance: (date) => request(`/api/staff-attendance${qs({ date })}`),
   staffCheckIn: (payload) =>
