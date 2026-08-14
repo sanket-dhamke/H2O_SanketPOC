@@ -214,6 +214,18 @@ export default function ManagerScreen() {
           </View>
         </View>
 
+        {/* Transparency shortcut */}
+        <TouchableOpacity style={styles.transRow} onPress={() => navigation.navigate("Transparency")}>
+          <View style={styles.transIcon}>
+            <Ionicons name="shield-checkmark" size={18} color="#1E7A3D" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.transTitle}>Transparency Score</Text>
+            <Text style={styles.transSub}>Tamper-proof ledger & money-flow residents can see</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#B7C2C9" />
+        </TouchableOpacity>
+
         {/* Defaulters */}
         {defaulters.length > 0 && (
           <>
@@ -333,6 +345,11 @@ const styles = StyleSheet.create({
   defBadgeText: { color: "#B42318", fontWeight: "800", fontSize: 12 },
   defFlat: { flex: 1, fontWeight: "700", color: "#1B2B33", fontSize: 14 },
   defAmt: { fontWeight: "800", color: "#B26B00", fontSize: 14 },
+
+  transRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", borderRadius: 14, padding: 14, marginTop: 14 },
+  transIcon: { width: 40, height: 40, borderRadius: 11, backgroundColor: "#EAF7EF", alignItems: "center", justifyContent: "center" },
+  transTitle: { fontSize: 14.5, fontWeight: "800", color: "#1B2B33" },
+  transSub: { color: "#6B7B85", fontSize: 12.5, marginTop: 2 },
 
   aiOff: { color: "#8895A0", fontSize: 12.5, marginBottom: 10 },
   draftRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },

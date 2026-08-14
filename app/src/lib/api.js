@@ -208,6 +208,12 @@ export const api = {
   adminAddExpense: (payload) =>
     request("/api/admin/expenses", { method: "POST", body: payload }),
 
+  // Transparency Score + tamper-evident ledger
+  transparency: () => request("/api/transparency"),
+  adminTransparency: () => request("/api/admin/transparency"),
+  adminRebuildLedger: () => request("/api/admin/ledger/rebuild", { method: "POST" }),
+  adminVerifyLedger: () => request("/api/admin/ledger/verify"),
+
   // Admin: proactive AI Society Manager (insights + AI drafts)
   adminInsights: () => request("/api/admin/insights"),
   adminAiDraft: (kind) => request("/api/admin/ai/draft", { method: "POST", body: { kind } }),

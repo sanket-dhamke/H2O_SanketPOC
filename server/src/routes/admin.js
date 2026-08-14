@@ -18,6 +18,7 @@ import { ensureJoinCode, generateUniqueJoinCode } from "../joinCode.js";
 import { cacheWrap } from "../cache.js";
 import { computeSocietyInsights } from "../insights.js";
 import { aiEnabled, draftManagerText } from "../ai.js";
+import { computeTransparency, rebuildLedger, verifyLedger } from "../ledger.js";
 
 export const adminRouter = Router();
 
@@ -757,6 +758,8 @@ adminRouter.post("/expenses", async (req, res) => {
       societyId: req.user.societyId,
     },
   });
+  // Append to the society's tamper-evident chain (money out).
+  appendLedger(req.user.societyId, { type: "expense", direction: "out", amount: expense.amount, label: expense.label, at: expense.date, refId: expense.id });
   res.status(201).json({ expense });
 });
 
@@ -774,6 +777,36 @@ adminRouter.get("/insights", async (req, res) => {
   try {
     const insights = await cacheWrap(`insights:${sid(req)}`, 60, () => computeSocietyInsights(sid(req)));
     res.json({ insights, aiEnabled });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+/* ---------------- Tamper-evident finances & Transparency Score ----------- */
+// Transparency Score + money-flow + integrity, for the admin panel.
+adminRouter.get("/transparency", async (req, res) => {
+  try {
+    const data = await cacheWrap(`transparency:${sid(req)}`, 60, () => computeTransparency(sid(req)));
+    res.json({ transparency: data });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// (Re)build the hash chain baseline from existing payments/expenses.
+adminRouter.post("/ledger/rebuild", async (req, res) => {
+  try {
+    const r = await rebuildLedger(sid(req));
+    res.json({ ok: true, ...r });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Verify the chain (detects any tampering with financial history).
+adminRouter.get("/ledger/verify", async (req, res) => {
+  try {
+    res.json(await verifyLedger(sid(req)));
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

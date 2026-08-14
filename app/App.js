@@ -35,6 +35,7 @@ import FlatLedgerScreen from "./src/screens/FlatLedgerScreen";
 import { isPreschool, labelsFor } from "./src/lib/org";
 import AdminDashboardScreen from "./src/screens/admin/AdminDashboardScreen";
 import ManagerScreen from "./src/screens/admin/ManagerScreen";
+import TransparencyScreen from "./src/screens/TransparencyScreen";
 import ManageUsersScreen from "./src/screens/admin/ManageUsersScreen";
 import CreateAccountScreen from "./src/screens/admin/CreateAccountScreen";
 import ManageFlatsScreen from "./src/screens/admin/ManageFlatsScreen";
@@ -133,6 +134,7 @@ function MaintenanceStackScreen() {
     <MaintenanceStack.Navigator screenOptions={{ headerShown: false }}>
       <MaintenanceStack.Screen name="MaintenanceHome" component={MaintenanceScreen} />
       <MaintenanceStack.Screen name="RentAgreements" component={RentAgreementsScreen} />
+      <MaintenanceStack.Screen name="Transparency" component={TransparencyScreen} />
     </MaintenanceStack.Navigator>
   );
 }
@@ -142,6 +144,7 @@ function FinanceStackScreen() {
     <FinanceStack.Navigator screenOptions={{ headerShown: false }}>
       <FinanceStack.Screen name="FinanceHome" component={AdminDashboardScreen} />
       <FinanceStack.Screen name="Manager" component={ManagerScreen} />
+      <FinanceStack.Screen name="Transparency" component={TransparencyScreen} />
       <FinanceStack.Screen name="Collections" component={MaintenanceScreen} />
       <FinanceStack.Screen name="StudentFees" component={AdminFeesScreen} />
       <FinanceStack.Screen name="Amenities" component={AmenitiesScreen} />

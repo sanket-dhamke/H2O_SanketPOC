@@ -2,6 +2,7 @@ import { prisma } from "./prisma.js";
 import { onBillPaid } from "./paymentNotify.js";
 import { serializeBill } from "./serializers.js";
 import { cacheGet, cacheSet } from "./cache.js";
+import { appendLedger } from "./ledger.js";
 
 // The amount effectively collected for a bill (handles legacy fully-paid bills
 // that predate partial-payment tracking, where paidAmount may be 0).
@@ -193,6 +194,16 @@ export async function recordPayment(
   });
 
   if (result.fullyPaid && !result.duplicate) onBillPaid(result.bill.id);
+  // Append this payment to the society's tamper-evident chain (best-effort, and
+  // only for a real new payment — never for an idempotent duplicate).
+  if (!result.duplicate && result.paid > 0 && result.bill?.flat?.societyId) {
+    appendLedger(result.bill.flat.societyId, {
+      type: "payment",
+      direction: "in",
+      amount: result.paid,
+      label: `${mode === "cash" ? "Cash" : "Online"} · ${result.bill.flat.flatNo || ""} ${result.bill.period || ""}`.trim(),
+    });
+  }
   return result;
 }
 

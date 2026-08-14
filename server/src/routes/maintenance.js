@@ -5,8 +5,22 @@ import { authRequired } from "../auth.js";
 import { serializeBill } from "../serializers.js";
 import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorpay.js";
 import { recordPayment, effectivePaid, billBalance, refreshLateFees, refreshBillLateFee } from "../billing.js";
+import { computeTransparency } from "../ledger.js";
+import { cacheWrap } from "../cache.js";
 
 export const maintenanceRouter = Router();
+
+// Resident-facing Transparency Score + monthly money-flow for their society.
+// Read-only trust view (no per-flat data). Any member of the society can see it.
+maintenanceRouter.get("/transparency", authRequired, async (req, res) => {
+  const societyId = req.user.societyId || "__none__";
+  try {
+    const data = await cacheWrap(`transparency:${societyId}`, 60, () => computeTransparency(societyId));
+    res.json({ transparency: data });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
 
 // Resolves the flatId for the current resident (null for guard/admin).
 async function currentFlatId(userId) {

@@ -744,6 +744,31 @@ model ServiceContact {
   @@index([workerId])
 }
 
+// Tamper-evident financial audit chain (one hash-linked log per society). Every
+// money event (payment in, expense out) is appended with a running SHA-256 that
+// includes the previous entry's hash — so any silent edit/delete of history
+// breaks the chain and is detectable. Powers the resident-facing Transparency
+// Score. Entries are append-only; `seq` is a per-society monotonically
+// increasing counter.
+model LedgerEntry {
+  id        String   @id @default(uuid())
+  societyId String
+  seq       Int
+  type      String   // payment | expense | adjustment
+  refId     String?  // Payment.id / Expense.id it snapshots
+  direction String   // in | out
+  amount    Float    @default(0)
+  label     String?
+  at        DateTime @default(now())
+  prevHash  String   @default("")
+  hash      String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@unique([societyId, seq])
+  @@index([societyId, at])
+}
+
 // ---- Portable Helper & Vendor "Trust Passport" (cross-society reputation) ----
 // A worker (maid, cook, electrician, tiffin vendor…) is a NETWORK-WIDE identity
 // (no societyId) so their rating & attendance travel across every GateMate
