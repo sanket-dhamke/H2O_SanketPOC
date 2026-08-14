@@ -408,6 +408,7 @@ export const api = {
   deleteGateDevice: (id) =>
     request(`/api/gate/devices/${id}`, { method: "DELETE" }),
   gateEntries: () => request("/api/gate/entries"),
+  gateWhitelistStatus: () => request("/api/gate/whitelist/status"),
 
   // Amenities & bookings (clubhouse booking engine)
   amenities: () => request("/api/amenities"),

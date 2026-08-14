@@ -30,6 +30,24 @@ const genDeviceKey = () => "gd_" + crypto.randomBytes(24).toString("hex");
 // Normalise a plate for matching (uppercase, strip spaces/hyphens).
 const normPlate = (p) => String(p || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
+// A short, stable fingerprint of a whitelist so a gate device can tell whether
+// its cached copy is still current and skip re-downloading when nothing changed.
+function whitelistVersion(rows) {
+  const basis = rows
+    .map((v) => `${v.code}:${normPlate(v.plate)}`)
+    .sort()
+    .join("|");
+  return crypto.createHash("sha256").update(basis).digest("hex").slice(0, 16);
+}
+
+// The anti-passback / anomaly windows the device should enforce while OFFLINE,
+// so its local decisions match the server's online ones.
+const OFFLINE_POLICY = {
+  reopenGraceSec: REOPEN_GRACE_SEC,
+  impossibleTravelSec: IMPOSSIBLE_TRAVEL_SEC,
+  sameDirWindowSec: SAME_DIR_WINDOW_SEC,
+};
+
 async function loadSociety(societyId) {
   if (!societyId) return null;
   // Cached briefly: the gate verify path reads this on every single scan, but a
@@ -377,22 +395,87 @@ gateRouter.post("/gate/verify", async (req, res) => {
   });
 });
 
-// The device pulls the society's active whitelist to match locally (works even
-// if the internet drops at the moment of entry).
+// The device pulls the society's active whitelist to cache and match LOCALLY,
+// so QR/plate entry keeps working when the internet drops. The device passes its
+// last-known `?version=`; if nothing changed we return {changed:false} (a tiny
+// response) so it keeps using its cache — bandwidth-friendly polling.
 gateRouter.get("/gate/whitelist", async (req, res) => {
   const device = await authDevice(req);
   if (!device) return res.status(401).json({ message: "invalid_device" });
   await prisma.gateDevice.update({ where: { id: device.id }, data: { lastSeenAt: new Date() } }).catch(() => {});
 
-  if (!isPlatinum(device.society)) return res.json({ vehicles: [], codes: [], plates: [] });
+  if (!isPlatinum(device.society)) return res.json({ vehicles: [], codes: [], plates: [], version: "none", policy: OFFLINE_POLICY });
   const vehicles = await prisma.vehicle.findMany({
     where: { societyId: device.societyId, active: true },
     include: { flat: true },
   });
+  const version = whitelistVersion(vehicles);
+  const known = String(req.query.version || req.headers["x-whitelist-version"] || "");
+  if (known && known === version) {
+    return res.json({ changed: false, version, updatedAt: new Date().toISOString(), policy: OFFLINE_POLICY });
+  }
   res.json({
+    changed: true,
+    version,
     updatedAt: new Date().toISOString(),
+    policy: OFFLINE_POLICY,
     vehicles: vehicles.map((v) => ({ code: v.code, plate: v.plate, flatNo: v.flat?.flatNo || null })),
     codes: vehicles.map((v) => v.code),
     plates: vehicles.map((v) => normPlate(v.plate)),
+  });
+});
+
+// Batch-upload of entries the device decided LOCALLY while offline. Sent when
+// connectivity returns so the gate log stays complete. Idempotent per device
+// (skips an entry that already exists at the same instant for the same code).
+gateRouter.post("/gate/offline-sync", async (req, res) => {
+  const device = await authDevice(req);
+  if (!device) return res.status(401).json({ message: "invalid_device" });
+  await prisma.gateDevice.update({ where: { id: device.id }, data: { lastSeenAt: new Date() } }).catch(() => {});
+
+  const entries = Array.isArray(req.body?.entries) ? req.body.entries.slice(0, 500) : [];
+  let saved = 0;
+  for (const e of entries) {
+    const at = e.at ? new Date(e.at) : new Date();
+    if (isNaN(at.getTime())) continue;
+    const code = e.code ? String(e.code) : null;
+    const plate = e.plate ? normPlate(e.plate) : null;
+    // De-dupe: same device + code + timestamp already recorded → skip.
+    const dup = await prisma.vehicleEntry.findFirst({ where: { deviceId: device.id, code, at } });
+    if (dup) continue;
+    let vehicleId = null;
+    if (code) vehicleId = (await prisma.vehicle.findUnique({ where: { code }, select: { id: true } }))?.id || null;
+    await prisma.vehicleEntry.create({
+      data: {
+        societyId: device.societyId,
+        vehicleId,
+        deviceId: device.id,
+        plate,
+        code,
+        direction: e.direction === "out" ? "out" : e.direction === "in" ? "in" : null,
+        decision: e.decision === "open" ? "open" : "deny",
+        reason: `offline:${e.reason || (e.decision === "open" ? "ok" : "unknown")}`,
+        at,
+      },
+    });
+    saved++;
+  }
+  res.json({ ok: true, received: entries.length, saved });
+});
+
+// Admin: offline-readiness status for the gate devices (whitelist version/size
+// + when each device last synced). Powers the "works offline" panel in the app.
+gateRouter.get("/gate/whitelist/status", authRequired, roleRequired("admin"), async (req, res) => {
+  const society = await loadSociety(req.user.societyId);
+  if (!isPlatinum(society)) return res.status(403).json({ message: "Vehicle gate is a Platinum feature" });
+  const [vehicles, devices] = await Promise.all([
+    prisma.vehicle.findMany({ where: { societyId: req.user.societyId, active: true }, select: { code: true, plate: true } }),
+    prisma.gateDevice.findMany({ where: { societyId: req.user.societyId }, select: { name: true, lastSeenAt: true, active: true } }),
+  ]);
+  res.json({
+    version: whitelistVersion(vehicles),
+    vehicleCount: vehicles.length,
+    devices: devices.map((d) => ({ name: d.name, active: d.active, lastSeenAt: d.lastSeenAt || null })),
+    policy: OFFLINE_POLICY,
   });
 });

@@ -27,11 +27,16 @@ export default function GateDevicesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [modal, setModal] = useState(false);
   const [detail, setDetail] = useState(null);
+  const [offline, setOffline] = useState(null);
 
   const load = useCallback(async () => {
     try {
-      const { devices } = await api.gateDevices();
+      const [{ devices }, status] = await Promise.all([
+        api.gateDevices(),
+        api.gateWhitelistStatus().catch(() => null),
+      ]);
       setDevices(devices || []);
+      setOffline(status);
     } catch (e) {
       Alert.alert("Error", e.message);
     }
@@ -101,6 +106,19 @@ export default function GateDevicesScreen() {
             scanner posts each scanned QR to GateMate and opens the barrier when we return “open”.
           </Text>
         </View>
+
+        {offline && (
+          <View style={styles.offlineBox}>
+            <View style={styles.offlineTop}>
+              <Ionicons name="cloud-offline-outline" size={18} color="#1E7A3D" />
+              <Text style={styles.offlineTitle}>Works even when the internet is down</Text>
+            </View>
+            <Text style={styles.offlineText}>
+              Each scanner caches {offline.vehicleCount} whitelisted vehicle{offline.vehicleCount === 1 ? "" : "s"} locally and keeps admitting known QRs/plates during an outage, then syncs the log when the connection returns.
+            </Text>
+            <Text style={styles.offlineMeta}>Whitelist version {offline.version} · last device sync {fmt(offline.devices?.[0]?.lastSeenAt)}</Text>
+          </View>
+        )}
 
         <TouchableOpacity style={styles.cta} onPress={() => setModal(true)}>
           <Ionicons name="add-circle" size={20} color="#fff" />
@@ -280,6 +298,11 @@ const styles = StyleSheet.create({
   cta: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#0B6E8F", borderRadius: 12, paddingVertical: 14 },
   ctaText: { color: "#fff", fontWeight: "800", fontSize: 15 },
   empty: { color: "#6B7B85", textAlign: "center", marginTop: 24 },
+  offlineBox: { backgroundColor: "#EAF7EF", borderRadius: 14, padding: 14, marginBottom: 14 },
+  offlineTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
+  offlineTitle: { fontWeight: "800", color: "#1E7A3D", fontSize: 14 },
+  offlineText: { color: "#3B5A47", fontSize: 12.5, lineHeight: 18 },
+  offlineMeta: { color: "#6B7B85", fontSize: 11.5, marginTop: 8 },
   card: { backgroundColor: "#fff", borderRadius: 14, padding: 16, marginTop: 12 },
   cardInactive: { opacity: 0.7 },
   cardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
