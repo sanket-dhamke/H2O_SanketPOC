@@ -17,6 +17,7 @@ function isExempt(req) {
     p === "/api/razorpay/webhook" ||
     p.startsWith("/api/cron/") ||
     p.startsWith("/api/gate/") ||
+    p.startsWith("/api/ivr/") || // telephony provider webhooks (signed by token)
     p === "/api/verify" || // gate device verify (mounted under /api)
     p === "/api/whitelist"
   );

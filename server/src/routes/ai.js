@@ -7,6 +7,7 @@ import {
   assistantAnswer,
   transcribeAudio,
   parseVisitorFromText,
+  translateText,
 } from "../ai.js";
 
 export const aiRouter = Router();
@@ -70,5 +71,20 @@ aiRouter.post("/voice-visitor", authRequired, roleRequired("guard", "admin"), as
     // Surface the real reason so guards/admins can act (e.g. transcription
     // provider rejected the audio) instead of a vague "could not process".
     res.status(502).json({ message: `Could not process the voice input: ${err.message}` });
+  }
+});
+
+// Translate a notice/announcement so it can be shown and read aloud in the
+// resident's language (Marathi/Hindi/English). Falls back to the original text
+// when AI is off, so the "Listen" button always has something to speak.
+aiRouter.post("/translate", authRequired, async (req, res) => {
+  const { text, lang } = req.body || {};
+  if (!text || !String(text).trim()) return res.status(400).json({ message: "text is required" });
+  try {
+    const translated = await translateText(String(text).trim(), lang || "hi");
+    res.json({ text: translated, lang: lang || "hi", enabled: aiEnabled });
+  } catch (err) {
+    console.error("AI translate failed:", err.message);
+    res.json({ text: String(text).trim(), lang: lang || "hi", enabled: false });
   }
 });

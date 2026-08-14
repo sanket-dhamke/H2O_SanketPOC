@@ -409,6 +409,7 @@ export const api = {
     request(`/api/gate/devices/${id}`, { method: "DELETE" }),
   gateEntries: () => request("/api/gate/entries"),
   gateWhitelistStatus: () => request("/api/gate/whitelist/status"),
+  translate: (text, lang) => request("/api/ai/translate", { method: "POST", body: { text, lang } }),
 
   // Amenities & bookings (clubhouse booking engine)
   amenities: () => request("/api/amenities"),

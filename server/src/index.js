@@ -24,6 +24,7 @@ import { servicesRouter, ensureDefaultHelplines } from "./routes/services.js";
 import { workersRouter } from "./routes/workers.js";
 import { preschoolRouter } from "./routes/preschool.js";
 import { sosRouter } from "./routes/sos.js";
+import { ivrRouter } from "./routes/ivr.js";
 import { aiRouter } from "./routes/ai.js";
 import { globalLimiter, authLimiter, aiLimiter } from "./rateLimit.js";
 import { startQueueWorkers, queueBackend } from "./queue.js";
@@ -77,6 +78,8 @@ app.post("/api/razorpay/webhook", express.raw({ type: "*/*" }), async (req, res)
 
 // Visitor photos are sent as base64, so allow a larger JSON body.
 app.use(express.json({ limit: "12mb" }));
+// Telephony webhooks (IVR visitor approval) post form-encoded bodies.
+app.use(express.urlencoded({ extended: false }));
 
 // Rate limiting: broad per-IP limiter across the API, with tighter limits on
 // credential and AI endpoints. Exemptions (health, cron, webhook, gate device)
@@ -115,6 +118,7 @@ app.use("/api", servicesRouter);
 app.use("/api", workersRouter);
 app.use("/api", preschoolRouter);
 app.use("/api", sosRouter);
+app.use("/api", ivrRouter);
 app.use("/api/ai", aiRouter);
 
 // Secure endpoint to trigger the monthly backup from an EXTERNAL scheduler

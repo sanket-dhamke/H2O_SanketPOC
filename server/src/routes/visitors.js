@@ -6,6 +6,7 @@ import { serializeVisitor } from "../serializers.js";
 import { enqueuePush } from "../queue.js";
 import { parsePaging } from "../paging.js";
 import { uploadVisitorPhoto, placeholderPhoto } from "../storage.js";
+import { placeApprovalCall } from "../ivr.js";
 
 export const visitorsRouter = Router();
 
@@ -95,6 +96,15 @@ visitorsRouter.post("/visitors", authRequired, roleRequired("guard", "admin"), a
           { type: "visitor", visitorId: visitor.id }
         )
       );
+
+    // IVR fallback: for residents with a phone but no app device (typically the
+    // elderly), place an automated approval call. Best-effort and non-blocking.
+    const callable = residents.find((r) => !r.expoPushToken && r.phone);
+    if (callable) {
+      placeApprovalCall({ visitor, toPhone: callable.phone }).catch((e) =>
+        console.error("IVR approval call failed:", e?.message)
+      );
+    }
   }
 
   res.status(201).json({ visitor: serializeVisitor(visitor) });

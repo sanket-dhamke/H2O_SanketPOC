@@ -18,6 +18,7 @@ import { useAuth } from "../lib/auth";
 import { isPreschool } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
 import KeyboardAvoider from "../components/KeyboardAvoider";
+import { translateAndSpeak, stopSpeaking, speechSupported } from "../lib/speak";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 const timeAgo = (iso) => {
@@ -179,6 +180,7 @@ export default function CommunityScreen() {
                 <Text style={styles.title}>{a.title}</Text>
                 <Text style={styles.body}>{a.body}</Text>
                 {!!a.authorName && <Text style={styles.author}>— {a.authorName}</Text>}
+                <ListenBar text={`${a.title}. ${a.body}`} />
               </View>
             ))}
           </>
@@ -340,6 +342,41 @@ function PostModal({ visible, onClose, onDone }) {
   );
 }
 
+// "Listen" bar: reads a notice aloud in English / Hindi / Marathi. The server
+// translates on the fly; the phone speaks it (expo-speech). Hidden if the build
+// doesn't support speech yet.
+function ListenBar({ text }) {
+  const [busy, setBusy] = useState(null);
+  if (!speechSupported()) return null;
+  const langs = [
+    { id: "en", label: "English" },
+    { id: "hi", label: "हिंदी" },
+    { id: "mr", label: "मराठी" },
+  ];
+  const play = async (id) => {
+    setBusy(id);
+    try {
+      await translateAndSpeak(text, id);
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <View style={styles.listenBar}>
+      <Ionicons name="volume-medium-outline" size={15} color="#0B6E8F" />
+      <Text style={styles.listenLabel}>Listen</Text>
+      {langs.map((l) => (
+        <TouchableOpacity key={l.id} style={styles.listenChip} onPress={() => play(l.id)}>
+          <Text style={styles.listenChipText}>{busy === l.id ? "…" : l.label}</Text>
+        </TouchableOpacity>
+      ))}
+      <TouchableOpacity style={styles.listenStop} onPress={stopSpeaking} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Ionicons name="stop-circle-outline" size={18} color="#B44" />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 function FormModal({ visible, onClose, title, icon, children, busy, onSubmit }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -394,6 +431,11 @@ const styles = StyleSheet.create({
   price: { fontSize: 16, fontWeight: "800", color: "#2E9E52" },
   body: { color: "#48606B", marginTop: 6, lineHeight: 20 },
   author: { color: "#9AA7AF", fontSize: 12, marginTop: 10, fontWeight: "600" },
+  listenBar: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12, flexWrap: "wrap" },
+  listenLabel: { color: "#0B6E8F", fontSize: 12, fontWeight: "700", marginRight: 2 },
+  listenChip: { backgroundColor: "#E7F3F7", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
+  listenChipText: { color: "#0B6E8F", fontSize: 12, fontWeight: "700" },
+  listenStop: { marginLeft: "auto" },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 24 },
   modalCard: { backgroundColor: "#fff", borderRadius: 18, overflow: "hidden" },
   modalHeader: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingVertical: 16 },

@@ -287,7 +287,9 @@ export async function answerCommunityQuery(user, question) {
   return completion.choices[0]?.message?.content?.trim() || "I'm not sure — please check with the office.";
 }
 
-// Transcribes an audio buffer to text using Whisper.
+// Transcribes an audio buffer to text using Whisper. Whisper auto-detects the
+// spoken language, so Marathi/Hindi/English (and code-mixed "Hinglish") all
+// transcribe without any extra configuration.
 export async function transcribeAudio(buffer, filename = "audio.m4a") {
   const file = await OpenAI.toFile(buffer, filename);
   const result = await openai.audio.transcriptions.create({
@@ -295,6 +297,40 @@ export async function transcribeAudio(buffer, filename = "audio.m4a") {
     file,
   });
   return result.text || "";
+}
+
+// Human language names for the codes the app offers.
+const LANG_NAMES = { en: "English", hi: "Hindi (Devanagari)", mr: "Marathi (Devanagari)" };
+
+// Translates arbitrary text to a target language (en/hi/mr) for spoken notices
+// and vernacular announcements. Returns the original text unchanged if AI is off
+// or the target is English-and-already-English-ish (best-effort, never throws).
+export async function translateText(text, target = "hi") {
+  const src = String(text || "").trim();
+  if (!src) return "";
+  const lang = LANG_NAMES[target] ? target : "hi";
+  if (!aiEnabled) return src;
+  try {
+    const completion = await openai.chat.completions.create({
+      model: CHAT_MODEL,
+      temperature: 0.2,
+      messages: [
+        {
+          role: "system",
+          content:
+            `Translate the user's message into ${LANG_NAMES[lang]}. ` +
+            "Keep it natural and simple enough to be read aloud to residents. " +
+            "Preserve names, flat numbers, amounts and dates exactly. " +
+            "Return ONLY the translation with no preamble.",
+        },
+        { role: "user", content: src },
+      ],
+    });
+    return completion.choices[0]?.message?.content?.trim() || src;
+  } catch (err) {
+    console.error("translateText failed:", err.message);
+    return src;
+  }
 }
 
 // Extracts structured visitor fields from a free-text (spoken) description.
@@ -312,8 +348,11 @@ export async function parseVisitorFromText(text, knownFlats = []) {
           role: "system",
           content:
             "Extract visitor gate-entry details from the guard's spoken text. " +
-            "Return JSON with keys: name (string), phone (string), vehicleNo (string), " +
-            "flatNo (string, match one of the known flats if possible), purpose (one of Guest, Delivery, Cab, Service, Other). " +
+            "The guard may speak in English, Hindi, Marathi or a mix (including numbers " +
+            "spoken as words or in Devanagari). Understand all of these. " +
+            "Return JSON with keys: name (string, in Latin/English script), phone (string, digits only), " +
+            "vehicleNo (string), flatNo (string, match one of the known flats if possible), " +
+            "purpose (one of Guest, Delivery, Cab, Service, Other). " +
             "Use empty string for anything not mentioned. " +
             `Known flats: ${JSON.stringify(knownFlats)}.`,
         },
@@ -334,7 +373,11 @@ export async function parseVisitorFromText(text, knownFlats = []) {
 // out of a short spoken sentence like "Sanket Joshi, A-1002" or "Ramesh 9876543210
 // flat B-204 delivery". Best-effort only — the LLM path is preferred.
 export function fallbackParseVisitor(text, knownFlats = []) {
-  const raw = String(text || "").trim();
+  // Normalise Devanagari digits (०-९) to ASCII so Hindi/Marathi speech that was
+  // transcribed in Devanagari still yields flat/phone numbers.
+  const raw = String(text || "")
+    .replace(/[\u0966-\u096F]/g, (d) => String("०१२३४५६७८९".indexOf(d)))
+    .trim();
   const out = { name: "", phone: "", vehicleNo: "", flatNo: "", purpose: "" };
   if (!raw) return out;
 
@@ -359,7 +402,7 @@ export function fallbackParseVisitor(text, knownFlats = []) {
 
   // Purpose keyword.
   const p = raw.toLowerCase();
-  for (const [key, val] of [["deliver", "Delivery"], ["cab", "Cab"], ["taxi", "Cab"], ["service", "Service"], ["guest", "Guest"], ["visit", "Guest"]]) {
+  for (const [key, val] of [["deliver", "Delivery"], ["डिलिव", "Delivery"], ["पार्सल", "Delivery"], ["cab", "Cab"], ["taxi", "Cab"], ["service", "Service"], ["guest", "Guest"], ["मेहमान", "Guest"], ["पाहुणे", "Guest"], ["visit", "Guest"]]) {
     if (p.includes(key)) { out.purpose = val; break; }
   }
 
