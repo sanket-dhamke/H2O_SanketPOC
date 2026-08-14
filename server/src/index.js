@@ -23,6 +23,7 @@ import { gateRouter } from "./routes/gate.js";
 import { servicesRouter, ensureDefaultHelplines } from "./routes/services.js";
 import { workersRouter } from "./routes/workers.js";
 import { preschoolRouter } from "./routes/preschool.js";
+import { sosRouter } from "./routes/sos.js";
 import { aiRouter } from "./routes/ai.js";
 import { globalLimiter, authLimiter, aiLimiter } from "./rateLimit.js";
 import { startQueueWorkers, queueBackend } from "./queue.js";
@@ -113,6 +114,7 @@ app.use("/api", gateRouter);
 app.use("/api", servicesRouter);
 app.use("/api", workersRouter);
 app.use("/api", preschoolRouter);
+app.use("/api", sosRouter);
 app.use("/api/ai", aiRouter);
 
 // Secure endpoint to trigger the monthly backup from an EXTERNAL scheduler

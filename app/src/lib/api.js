@@ -135,6 +135,16 @@ export const api = {
   markVisitorExit: (id) =>
     request(`/api/visitors/${id}/exit`, { method: "POST" }),
 
+  // SOS neighbour mesh (panic button + responder network)
+  raiseSos: (payload) => request("/api/sos", { method: "POST", body: payload }),
+  activeSos: () => request("/api/sos/active"),
+  sos: (id) => request(`/api/sos/${id}`),
+  respondSos: (id, message) => request(`/api/sos/${id}/respond`, { method: "POST", body: { message } }),
+  resolveSos: (id, cancel) => request(`/api/sos/${id}/resolve`, { method: "POST", body: { cancel: !!cancel } }),
+  sosHelpline: () => request("/api/sos/config/helpline"),
+  sosResponderSettings: () => request("/api/sos/config/me"),
+  setSosResponder: (payload) => request("/api/sos/responder", { method: "POST", body: payload }),
+
   // Preschool: pickup-safety + live child updates
   pickupAuthorizations: (flatId) => request(`/api/pickup/authorizations${qs({ flatId })}`),
   createPickupAuthorization: (payload) => request("/api/pickup/authorizations", { method: "POST", body: payload }),

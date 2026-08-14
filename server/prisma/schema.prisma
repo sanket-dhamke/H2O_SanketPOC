@@ -159,6 +159,12 @@ model User {
   // Whether this resident agrees to show their phone in the society member
   // directory. Residents can opt out from their profile. Defaults to visible.
   sharePhone    Boolean   @default(true)
+  // SOS "neighbour mesh": residents can opt in as an emergency responder (e.g. a
+  // doctor/nurse/first-aider) so a panic alert also reaches them, and choose to
+  // share their in-society location when they respond.
+  isResponder    Boolean  @default(false)
+  responderSkill String?           // doctor | nurse | first_aid | security | other
+  shareLocation  Boolean  @default(false)
   createdAt     DateTime  @default(now())
   // Self-service password reset via emailed OTP.
   resetOtpHash      String?
@@ -742,6 +748,43 @@ model ServiceContact {
   // society contact card can surface the worker's network-wide rating.
   workerId      String?
   @@index([workerId])
+}
+
+// ---- SOS "neighbour mesh" (panic button + responder network) ----
+// A resident's panic alert. Reaches guards, admins and opted-in responders; any
+// nearby responder can acknowledge ("I'm coming"). One-tap ambulance pulls the
+// number from the emergency helplines catalog.
+model SosAlert {
+  id           String        @id @default(uuid())
+  societyId    String
+  raisedById   String
+  raiserName   String?
+  raiserFlatNo String?
+  type         String        @default("medical") // medical | security | fire | other
+  note         String?
+  lat          Float?
+  lng          Float?
+  status       String        @default("active")  // active | resolved | cancelled
+  resolvedById String?
+  resolvedAt   DateTime?
+  createdAt    DateTime      @default(now())
+  responses    SosResponse[]
+
+  @@index([societyId, status])
+}
+
+// A responder's acknowledgement of an SOS alert.
+model SosResponse {
+  id            String   @id @default(uuid())
+  alert         SosAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  alertId       String
+  responderId   String
+  responderName String?
+  skill         String?
+  message       String?
+  createdAt     DateTime @default(now())
+
+  @@index([alertId])
 }
 
 // ---- Preschool pickup-safety + live child updates ----

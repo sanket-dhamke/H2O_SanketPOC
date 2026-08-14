@@ -166,6 +166,7 @@ function getActions(role, L, preschool) {
   if (role === "resident") {
     if (preschool) {
       return [
+        { label: "Emergency SOS", subtitle: "Alert staff & nearby parents", icon: "alert-circle-outline", tint: "#B42318", route: "Community", params: { screen: "Sos" } },
         { label: "My child", subtitle: "Today's updates & pickup passes", icon: "happy-outline", tint: "#6D3BD1", route: "Community", params: { screen: "Child" } },
         { label: `Pay ${L.feesShort.toLowerCase()}`, subtitle: "View bills & download receipts", icon: "card-outline", tint: "#0B6E8F", route: "Maintenance" },
         { label: "Transparency", subtitle: `See where ${L.fees.toLowerCase()} money goes`, icon: "shield-checkmark-outline", tint: "#1E7A3D", route: "Maintenance", params: { screen: "Transparency" } },
@@ -175,6 +176,7 @@ function getActions(role, L, preschool) {
       ];
     }
     return [
+      { label: "Emergency SOS", subtitle: "Alert guards & nearby neighbours", icon: "alert-circle-outline", tint: "#B42318", route: "Community", params: { screen: "Sos" } },
       { label: `Pay ${L.feesShort.toLowerCase()}`, subtitle: "View bills & download receipts", icon: "card-outline", tint: "#0B6E8F", route: "Maintenance" },
       { label: "Visitors at gate", subtitle: "Approve, deny or leave at gate", icon: "people-outline", tint: "#C2571A", route: "Visitors" },
       { label: "Gate pass", subtitle: "Pre-approve guests & deliveries", icon: "qr-code-outline", tint: "#7A5AF8", route: "Visitors", params: { screen: "GatePass" }, feature: "gatepass" },
@@ -230,9 +232,11 @@ function getActions(role, L, preschool) {
       route: "Members",
       params: { screen: "Plans" },
     });
+    admin.push({ label: "Emergency SOS", subtitle: "See & manage active alerts", icon: "alert-circle-outline", tint: "#B42318", route: "Community", params: { screen: "Sos" } });
     return admin;
   }
   const guard = [
+    { label: "Emergency SOS", subtitle: "Respond to active alerts", icon: "alert-circle-outline", tint: "#B42318", route: "Community", params: { screen: "Sos" } },
     { label: "Log a new visitor", subtitle: `Photo, ${L.unit.toLowerCase()} & purpose in seconds`, icon: "person-add-outline", tint: "#0B6E8F", route: "Gate" },
     { label: "View gate log", subtitle: "Today's entries & their status", icon: "list-outline", tint: "#C2571A", route: "Visitors" },
     { label: "Ask the assistant", subtitle: "Voice & AI help at the gate", icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant", feature: "assistant" },

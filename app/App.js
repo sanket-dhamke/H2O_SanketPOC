@@ -25,6 +25,7 @@ import WorkersScreen from "./src/screens/WorkersScreen";
 import WorkerPassportScreen from "./src/screens/WorkerPassportScreen";
 import ChildScreen from "./src/screens/ChildScreen";
 import PickupScreen from "./src/screens/PickupScreen";
+import SosScreen from "./src/screens/SosScreen";
 import MarketplaceScreen from "./src/screens/MarketplaceScreen";
 import ListingDetailScreen from "./src/screens/ListingDetailScreen";
 import GatePassScreen from "./src/screens/GatePassScreen";
@@ -172,6 +173,7 @@ function CommunityStackScreen() {
       <CommunityStack.Screen name="WorkerPassport" component={WorkerPassportScreen} />
       <CommunityStack.Screen name="Child" component={ChildScreen} />
       <CommunityStack.Screen name="Pickup" component={PickupScreen} />
+      <CommunityStack.Screen name="Sos" component={SosScreen} />
       <CommunityStack.Screen name="Marketplace" component={MarketplaceScreen} />
       <CommunityStack.Screen name="ListingDetail" component={ListingDetailScreen} />
     </CommunityStack.Navigator>
