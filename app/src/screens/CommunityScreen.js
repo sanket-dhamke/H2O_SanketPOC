@@ -152,6 +152,10 @@ export default function CommunityScreen() {
             <Ionicons name="construct" size={20} color="#7A5AF8" />
             <Text style={styles.shortcutText}>Services & help</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Workers")}>
+            <Ionicons name="ribbon" size={20} color="#0B6E8F" />
+            <Text style={styles.shortcutText}>Trusted helpers</Text>
+          </TouchableOpacity>
         </View>
         {tab === "announcements" ? (
           <>

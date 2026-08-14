@@ -314,6 +314,16 @@ export const api = {
   updateTicket: (id, payload) =>
     request(`/api/helpdesk/tickets/${id}`, { method: "PATCH", body: payload }),
 
+  // Trust Passport: portable, cross-society worker ratings & attendance
+  workers: ({ query, category } = {}) => request(`/api/workers${qs({ query, category })}`),
+  worker: (id) => request(`/api/workers/${id}`),
+  workerByCode: (code) => request(`/api/workers/code/${encodeURIComponent(code)}`),
+  registerWorker: (payload) => request("/api/workers", { method: "POST", body: payload }),
+  rateWorker: (id, payload) => request(`/api/workers/${id}/ratings`, { method: "POST", body: payload }),
+  workerAttendance: (id) => request(`/api/workers/${id}/attendance`),
+  workerCheckIn: (id, payload) => request(`/api/workers/${id}/attendance/checkin`, { method: "POST", body: payload || {} }),
+  workerCheckOut: (attendanceId) => request(`/api/workers/attendance/${attendanceId}/checkout`, { method: "POST" }),
+
   // Services & helplines catalog (daily help, trades, medical, utilities…)
   services: () => request("/api/services"),
   createService: (payload) => request("/api/services", { method: "POST", body: payload }),

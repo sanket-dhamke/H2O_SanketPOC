@@ -171,6 +171,7 @@ function getActions(role, L, preschool) {
       { label: "Vehicle passes", subtitle: "Register vehicles & print gate QR", icon: "car-sport-outline", tint: "#0B6E8F", route: "Visitors", params: { screen: "Vehicles" }, feature: "vehicleqr" },
       { label: "Helpdesk", subtitle: "Raise a ticket, call security or office", icon: "help-buoy-outline", tint: "#1E7A3D", route: "Community", params: { screen: "Helpdesk" } },
       { label: "Buy & Sell", subtitle: "Buy, sell & discover nearby", icon: "pricetags-outline", tint: "#C99000", route: "Community", params: { screen: "Marketplace" }, feature: "marketplace" },
+      { label: "Trusted helpers", subtitle: "Rated maids, vendors & services", icon: "ribbon-outline", tint: "#0B6E8F", route: "Community", params: { screen: "Workers" } },
       { label: "Ask the assistant", subtitle: `Get instant answers about your ${L.unit.toLowerCase()}`, icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant", feature: "assistant" },
     ];
   }

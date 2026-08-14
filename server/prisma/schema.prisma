@@ -738,4 +738,68 @@ model ServiceContact {
   @@index([scope, category])
   @@index([ownerId])
   @@index([societyId, status])
+  // Optional link to a portable Worker identity (Trust Passport). When set, the
+  // society contact card can surface the worker's network-wide rating.
+  workerId      String?
+  @@index([workerId])
+}
+
+// ---- Portable Helper & Vendor "Trust Passport" (cross-society reputation) ----
+// A worker (maid, cook, electrician, tiffin vendor…) is a NETWORK-WIDE identity
+// (no societyId) so their rating & attendance travel across every GateMate
+// society. Identity key is the phone number; `code` is encoded into a QR the
+// worker carries and any gate can scan.
+model Worker {
+  id         String   @id @default(uuid())
+  name       String
+  phone      String   @unique              // identity key across societies
+  category   String   @default("helpers")  // helpers|trades|medical|utilities|lifestyle
+  subtype    String?                        // "Maid","Electrician","Tiffin"…
+  photoUrl   String?
+  idProof    String?                        // free note e.g. "Aadhaar verified by A-wing"
+  code       String   @unique               // opaque code encoded in the passport QR
+  active     Boolean  @default(true)
+  createdById String?                        // who first registered them
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  ratings    WorkerRating[]
+  attendance WorkerAttendance[]
+
+  @@index([category])
+}
+
+// One review of a worker, left by a resident/admin of ANY society. Aggregated on
+// read into a portable star rating. One row per (worker, author) — updated in place.
+model WorkerRating {
+  id        String   @id @default(uuid())
+  worker    Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  workerId  String
+  societyId String?                         // where the reviewer lives (for "served N societies")
+  byUserId  String
+  byName    String?
+  stars     Int      @default(5)            // 1..5
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([workerId, byUserId])
+  @@index([workerId])
+}
+
+// A worker's gate check-in/out at a society (portable attendance log). Lets a
+// guard log the same maid across the societies she serves.
+model WorkerAttendance {
+  id        String    @id @default(uuid())
+  worker    Worker    @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  workerId  String
+  societyId String
+  flatId    String?
+  date      String    // "YYYY-MM-DD"
+  inAt      DateTime  @default(now())
+  outAt     DateTime?
+  markedBy  String?
+  createdAt DateTime  @default(now())
+
+  @@index([workerId, date])
+  @@index([societyId, date])
 }
