@@ -954,3 +954,136 @@ model WorkerAttendance {
   @@index([workerId, date])
   @@index([societyId, date])
 }
+
+// ---- Tier 3: Asset & AMC tracker (lifts, pumps, DG, fire gear …) -------------
+model Asset {
+  id               String    @id @default(uuid())
+  societyId        String
+  name             String
+  category         String    @default("other") // lift | pump | dg | fire | water | electrical | other
+  location         String?
+  vendorName       String?
+  vendorPhone      String?
+  workerId         String?   // optional link to a rated Trust-Passport vendor
+  purchaseDate     DateTime?
+  warrantyUntil    DateTime?
+  amcVendor        String?
+  amcUntil         DateTime?
+  serviceEveryDays Int?      // predictive service cadence
+  lastServicedAt   DateTime?
+  nextServiceAt    DateTime?
+  notes            String?
+  active           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  logs             AssetLog[]
+
+  @@index([societyId, category])
+}
+
+model AssetLog {
+  id        String   @id @default(uuid())
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  assetId   String
+  kind      String   @default("service") // service | repair | inspection | note
+  cost      Float?
+  note      String?
+  byId      String?
+  byName    String?
+  at        DateTime @default(now())
+
+  @@index([assetId, at])
+}
+
+// ---- Tier 3: Digital AGM (e-voting, quorum, AI-summarised minutes) -----------
+model Meeting {
+  id          String    @id @default(uuid())
+  societyId   String
+  title       String
+  agenda      String?
+  scheduledAt DateTime?
+  quorumPct   Int       @default(50)
+  status      String    @default("draft") // draft | open | closed
+  minutes     String?   // AI-summarised minutes (audit trail)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  closedAt    DateTime?
+  motions     Motion[]
+  attendance  MeetingAttendance[]
+
+  @@index([societyId, status])
+}
+
+model Motion {
+  id        String   @id @default(uuid())
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  meetingId String
+  title     String
+  detail    String?
+  order     Int      @default(0)
+  result    String?  // passed | rejected | tie
+  votes     Vote[]
+
+  @@index([meetingId])
+}
+
+model Vote {
+  id        String   @id @default(uuid())
+  motion    Motion   @relation(fields: [motionId], references: [id], onDelete: Cascade)
+  motionId  String
+  flatId    String
+  userId    String?
+  choice    String   // yes | no | abstain
+  createdAt DateTime @default(now())
+
+  @@unique([motionId, flatId])
+  @@index([motionId])
+}
+
+model MeetingAttendance {
+  id        String   @id @default(uuid())
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  meetingId String
+  flatId    String
+  userId    String?
+  at        DateTime @default(now())
+
+  @@unique([meetingId, flatId])
+  @@index([meetingId])
+}
+
+// ---- Tier 3: Rental compliance loop (verification + checklists + deposit) ----
+model RentalCompliance {
+  id             String    @id @default(uuid())
+  societyId      String
+  flatId         String
+  agreementId    String?
+  policeVerified Boolean   @default(false)
+  policeRef      String?
+  moveInAt       DateTime?
+  moveOutAt      DateTime?
+  moveInChecks   Json?     // [{label, done}]
+  moveOutChecks  Json?
+  depositAmount  Float?
+  depositStatus  String    @default("held") // held | partially_returned | returned | forfeited
+  depositNote    String?
+  createdById    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([societyId, flatId])
+}
+
+// ---- Tier 3: Sustainability dashboard (per-flat water metering + green score) -
+model WaterReading {
+  id        String   @id @default(uuid())
+  societyId String
+  flatId    String
+  period    String   // "YYYY-MM"
+  litres    Float    @default(0)
+  byId      String?
+  createdAt DateTime @default(now())
+
+  @@unique([flatId, period])
+  @@index([societyId, period])
+}

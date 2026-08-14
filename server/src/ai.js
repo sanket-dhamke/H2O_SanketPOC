@@ -287,6 +287,33 @@ export async function answerCommunityQuery(user, question) {
   return completion.choices[0]?.message?.content?.trim() || "I'm not sure — please check with the office.";
 }
 
+// Summarises AGM discussion + motion results into concise, neutral minutes for
+// the audit trail. Returns a plain-text summary; falls back to the raw notes.
+export async function summarizeMinutes(context) {
+  const raw = String(context || "").trim();
+  if (!raw) return "";
+  if (!aiEnabled) return raw;
+  try {
+    const completion = await openai.chat.completions.create({
+      model: CHAT_MODEL,
+      temperature: 0.3,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are the secretary of a housing society. Write concise, neutral AGM minutes from the provided agenda, discussion notes and motion outcomes. " +
+            "Use short sections and bullet points. State each motion's result and the vote tally. Do not invent facts.",
+        },
+        { role: "user", content: raw },
+      ],
+    });
+    return completion.choices[0]?.message?.content?.trim() || raw;
+  } catch (err) {
+    console.error("summarizeMinutes failed:", err.message);
+    return raw;
+  }
+}
+
 // Transcribes an audio buffer to text using Whisper. Whisper auto-detects the
 // spoken language, so Marathi/Hindi/English (and code-mixed "Hinglish") all
 // transcribe without any extra configuration.

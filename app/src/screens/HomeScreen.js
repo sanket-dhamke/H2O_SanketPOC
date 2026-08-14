@@ -185,6 +185,8 @@ function getActions(role, L, preschool) {
       { label: "Community market", subtitle: "Buy, sell, borrow, skills & group-buy", icon: "pricetags-outline", tint: "#C99000", route: "Community", params: { screen: "Marketplace" }, feature: "marketplace" },
       { label: "Trusted helpers", subtitle: "Rated maids, vendors & services", icon: "ribbon-outline", tint: "#0B6E8F", route: "Community", params: { screen: "Workers" } },
       { label: "Transparency", subtitle: `See where ${L.fees.toLowerCase()} money goes`, icon: "shield-checkmark-outline", tint: "#1E7A3D", route: "Maintenance", params: { screen: "Transparency" } },
+      { label: "AGM & voting", subtitle: "Vote on motions & read minutes", icon: "people-outline", tint: "#6D3BD1", route: "Community", params: { screen: "Agm" } },
+      { label: "Sustainability", subtitle: "Your green score & water use", icon: "leaf-outline", tint: "#1E7A3D", route: "Maintenance", params: { screen: "Sustainability" } },
       { label: "Ask the assistant", subtitle: `Get instant answers about your ${L.unit.toLowerCase()}`, icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant", feature: "assistant" },
     ];
   }
@@ -232,6 +234,12 @@ function getActions(role, L, preschool) {
       route: "Members",
       params: { screen: "Plans" },
     });
+    admin.push({ label: "Assets & AMC", subtitle: "Lifts, pumps, DG, fire & service due", icon: "build-outline", tint: "#0B6E8F", route: "Finance", params: { screen: "Assets" } });
+    if (!preschool) {
+      admin.push({ label: "AGM & voting", subtitle: "Motions, e-voting & AI minutes", icon: "people-outline", tint: "#6D3BD1", route: "Finance", params: { screen: "Agm" } });
+      admin.push({ label: "Rental compliance", subtitle: "Verification, checklists & deposits", icon: "document-text-outline", tint: "#B4620A", route: "Finance", params: { screen: "RentalCompliance" } });
+      admin.push({ label: "Sustainability", subtitle: "Green score & water metering", icon: "leaf-outline", tint: "#1E7A3D", route: "Finance", params: { screen: "Sustainability" } });
+    }
     admin.push({ label: "Emergency SOS", subtitle: "See & manage active alerts", icon: "alert-circle-outline", tint: "#B42318", route: "Community", params: { screen: "Sos" } });
     return admin;
   }

@@ -39,6 +39,10 @@ import { isPreschool, labelsFor } from "./src/lib/org";
 import AdminDashboardScreen from "./src/screens/admin/AdminDashboardScreen";
 import ManagerScreen from "./src/screens/admin/ManagerScreen";
 import TransparencyScreen from "./src/screens/TransparencyScreen";
+import AssetsScreen from "./src/screens/AssetsScreen";
+import AgmScreen from "./src/screens/AgmScreen";
+import RentalComplianceScreen from "./src/screens/RentalComplianceScreen";
+import SustainabilityScreen from "./src/screens/SustainabilityScreen";
 import ManageUsersScreen from "./src/screens/admin/ManageUsersScreen";
 import CreateAccountScreen from "./src/screens/admin/CreateAccountScreen";
 import ManageFlatsScreen from "./src/screens/admin/ManageFlatsScreen";
@@ -138,6 +142,7 @@ function MaintenanceStackScreen() {
       <MaintenanceStack.Screen name="MaintenanceHome" component={MaintenanceScreen} />
       <MaintenanceStack.Screen name="RentAgreements" component={RentAgreementsScreen} />
       <MaintenanceStack.Screen name="Transparency" component={TransparencyScreen} />
+      <MaintenanceStack.Screen name="Sustainability" component={SustainabilityScreen} />
     </MaintenanceStack.Navigator>
   );
 }
@@ -155,6 +160,10 @@ function FinanceStackScreen() {
       <FinanceStack.Screen name="VenueMarketplace" component={VenueMarketplaceScreen} />
       <FinanceStack.Screen name="PayToH2O" component={PayToH2OScreen} />
       <FinanceStack.Screen name="FlatLedger" component={FlatLedgerScreen} />
+      <FinanceStack.Screen name="Assets" component={AssetsScreen} />
+      <FinanceStack.Screen name="Agm" component={AgmScreen} />
+      <FinanceStack.Screen name="RentalCompliance" component={RentalComplianceScreen} />
+      <FinanceStack.Screen name="Sustainability" component={SustainabilityScreen} />
     </FinanceStack.Navigator>
   );
 }
@@ -176,6 +185,9 @@ function CommunityStackScreen() {
       <CommunityStack.Screen name="Sos" component={SosScreen} />
       <CommunityStack.Screen name="Marketplace" component={MarketplaceScreen} />
       <CommunityStack.Screen name="ListingDetail" component={ListingDetailScreen} />
+      <CommunityStack.Screen name="Assets" component={AssetsScreen} />
+      <CommunityStack.Screen name="Agm" component={AgmScreen} />
+      <CommunityStack.Screen name="Sustainability" component={SustainabilityScreen} />
     </CommunityStack.Navigator>
   );
 }

@@ -415,6 +415,31 @@ export const api = {
   gateWhitelistStatus: () => request("/api/gate/whitelist/status"),
   translate: (text, lang) => request("/api/ai/translate", { method: "POST", body: { text, lang } }),
 
+  // Tier 3: Asset & AMC tracker
+  assets: () => request("/api/assets"),
+  assetAlerts: () => request("/api/assets/alerts"),
+  createAsset: (payload) => request("/api/assets", { method: "POST", body: payload }),
+  updateAsset: (id, payload) => request(`/api/assets/${id}`, { method: "PATCH", body: payload }),
+  deleteAsset: (id) => request(`/api/assets/${id}`, { method: "DELETE" }),
+  addAssetLog: (id, payload) => request(`/api/assets/${id}/logs`, { method: "POST", body: payload }),
+
+  // Tier 3: Digital AGM (e-voting + minutes)
+  meetings: () => request("/api/meetings"),
+  meeting: (id) => request(`/api/meetings/${id}`),
+  createMeeting: (payload) => request("/api/meetings", { method: "POST", body: payload }),
+  setMeetingStatus: (id, status) => request(`/api/meetings/${id}/status`, { method: "POST", body: { status } }),
+  voteMotion: (id, choice) => request(`/api/motions/${id}/vote`, { method: "POST", body: { choice } }),
+
+  // Tier 3: Rental compliance loop
+  rentalCompliance: () => request("/api/rental"),
+  flatCompliance: (flatId) => request(`/api/rental/${flatId}`),
+  saveCompliance: (flatId, payload) => request(`/api/rental/${flatId}`, { method: "POST", body: payload }),
+
+  // Tier 3: Sustainability dashboard
+  sustainability: (period) => request(`/api/sustainability${period ? `?period=${period}` : ""}`),
+  saveWaterReading: (payload) => request("/api/sustainability/readings", { method: "POST", body: payload }),
+  importWaterReadings: (payload) => request("/api/sustainability/import", { method: "POST", body: payload }),
+
   // Amenities & bookings (clubhouse booking engine)
   amenities: () => request("/api/amenities"),
   bookings: () => request("/api/bookings"),

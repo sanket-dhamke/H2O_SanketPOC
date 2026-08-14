@@ -25,6 +25,10 @@ import { workersRouter } from "./routes/workers.js";
 import { preschoolRouter } from "./routes/preschool.js";
 import { sosRouter } from "./routes/sos.js";
 import { ivrRouter } from "./routes/ivr.js";
+import { assetsRouter } from "./routes/assets.js";
+import { agmRouter } from "./routes/agm.js";
+import { rentalRouter } from "./routes/rental.js";
+import { sustainabilityRouter } from "./routes/sustainability.js";
 import { aiRouter } from "./routes/ai.js";
 import { globalLimiter, authLimiter, aiLimiter } from "./rateLimit.js";
 import { startQueueWorkers, queueBackend } from "./queue.js";
@@ -119,6 +123,10 @@ app.use("/api", workersRouter);
 app.use("/api", preschoolRouter);
 app.use("/api", sosRouter);
 app.use("/api", ivrRouter);
+app.use("/api", assetsRouter);
+app.use("/api", agmRouter);
+app.use("/api", rentalRouter);
+app.use("/api", sustainabilityRouter);
 app.use("/api/ai", aiRouter);
 
 // Secure endpoint to trigger the monthly backup from an EXTERNAL scheduler
