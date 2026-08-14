@@ -176,6 +176,7 @@ function getActions(role, L, preschool) {
   }
   if (role === "admin") {
     const admin = [
+      { label: preschool ? "School manager" : "Society manager", subtitle: "AI insights, alerts & draft notices", icon: "bulb-outline", tint: "#6D3BD1", route: "Finance", params: { screen: "Manager" } },
       { label: "Finances & dues", subtitle: "Balance, collections & reminders", icon: "stats-chart-outline", tint: "#0B6E8F", route: "Finance" },
       { label: L.manageTile, subtitle: L.manageTileSub, icon: "people-circle-outline", tint: "#2E9E52", route: "Members" },
       { label: "Gate log", subtitle: L.gateAdminSub, icon: "shield-checkmark-outline", tint: "#C2571A", route: "Visitors" },

@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { prisma } from "./prisma.js";
+import { computeSocietyInsights } from "./insights.js";
 
 // Provider-agnostic AI config. The OpenAI SDK talks to any OpenAI-compatible
 // endpoint, so this works with OpenAI, Groq (free, open-source Llama + Whisper),
@@ -215,6 +216,75 @@ export async function assistantAnswer(user, question) {
     ],
   });
   return completion.choices[0]?.message?.content?.trim() || "Sorry, I couldn't find an answer.";
+}
+
+// ---- Proactive "Society Manager": turn computed insights into polished prose ----
+// The facts come from the deterministic insights engine; the LLM only writes the
+// human-friendly notice / reminder / summary. Returns { title, body }.
+const DRAFT_KINDS = {
+  monthly_notice: "a short monthly community notice from the managing committee",
+  defaulter_reminder: "a firm-but-polite payment reminder addressed to residents with outstanding dues (do NOT name individuals; speak to 'residents with pending dues')",
+  money_summary: "a plain-language 'where your money went this month' summary that builds trust",
+};
+
+export async function draftManagerText(societyId, kind) {
+  const type = DRAFT_KINDS[kind] ? kind : "monthly_notice";
+  const insights = await computeSocietyInsights(societyId);
+  const v = VOCAB[insights.orgType === "preschool" ? "preschool" : "society"];
+  const orgLabel = insights.societyName || `the ${v.org}`;
+
+  const sys =
+    `You are the ${v.org} manager for GateMate writing ${DRAFT_KINDS[type]}. ` +
+    (insights.orgType === "preschool"
+      ? "This is a PRESCHOOL — use 'school', 'students', 'parents/guardians' and 'fees'; NEVER 'society/flat/maintenance'. "
+      : "Use 'society', 'residents', 'flats' and 'maintenance'. ") +
+    "Write in clear, warm, professional Indian English. Keep it concise (a title + 4–8 short sentences or a few bullets). " +
+    "Use ₹ with Indian digit grouping for money. Base EVERYTHING strictly on the DATA — never invent figures. " +
+    "Return JSON: { \"title\": string, \"body\": string }. The body may use simple line breaks / '•' bullets, no markdown headers.";
+
+  const completion = await openai.chat.completions.create({
+    model: CHAT_MODEL,
+    temperature: 0.4,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: sys },
+      { role: "user", content: `ORG: ${orgLabel}\nMONTH: ${insights.currentPeriod}\nDATA:\n${JSON.stringify(insights)}` },
+    ],
+  });
+  let out = {};
+  try { out = JSON.parse(completion.choices[0]?.message?.content || "{}"); } catch { /* ignore */ }
+  const title = (out.title || "").trim() || (type === "money_summary" ? "This month's finances" : type === "defaulter_reminder" ? "Maintenance dues reminder" : "Monthly notice");
+  const body = (out.body || "").trim();
+  if (!body) throw new Error("AI returned an empty draft");
+  return { title, body, kind: type };
+}
+
+// Suggests a helpful reply to a resident's community question, grounded ONLY in
+// the society's own facts (amenities, timings, contacts, recent announcements).
+export async function answerCommunityQuery(user, question) {
+  const societyId = user.societyId || "__none__";
+  const [society, amenities, contacts, announcements] = await Promise.all([
+    prisma.society.findUnique({ where: { id: societyId }, select: { name: true, orgType: true } }),
+    prisma.amenity.findMany({ where: { societyId, enabled: true }, include: { slots: { where: { active: true } } } }),
+    prisma.user.findMany({ where: { societyId, role: { in: ["admin", "guard"] }, active: true }, select: { name: true, role: true, phone: true } }),
+    prisma.announcement.findMany({ where: { societyId }, orderBy: { createdAt: "desc" }, take: 10, select: { title: true, body: true } }),
+  ]);
+  const v = VOCAB[society?.orgType === "preschool" ? "preschool" : "society"];
+  const ctx = {
+    society: society?.name,
+    amenities: amenities.map((a) => ({ name: a.name, slots: a.slots.map((s) => ({ label: s.label, time: [s.startTime, s.endTime].filter(Boolean).join("-"), price: s.price })) })),
+    contacts: contacts.map((c) => ({ name: c.name, role: c.role, phone: c.phone || null })),
+    announcements,
+  };
+  const completion = await openai.chat.completions.create({
+    model: CHAT_MODEL,
+    temperature: 0.3,
+    messages: [
+      { role: "system", content: `You are GateMate helping answer a resident's question in the ${v.org} community feed. Answer ONLY from DATA (amenities/timings/prices, staff contacts, recent announcements). Be brief and friendly (1–3 sentences). If DATA doesn't contain the answer, say you're not sure and suggest asking the ${v.org} office. Never invent facts.` },
+      { role: "user", content: `DATA:\n${JSON.stringify(ctx)}\n\nQUESTION: ${question}` },
+    ],
+  });
+  return completion.choices[0]?.message?.content?.trim() || "I'm not sure — please check with the office.";
 }
 
 // Transcribes an audio buffer to text using Whisper.

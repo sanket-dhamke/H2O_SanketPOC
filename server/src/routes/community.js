@@ -3,6 +3,7 @@ import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
 import { serializeAnnouncement, serializePost } from "../serializers.js";
 import { parsePaging } from "../paging.js";
+import { aiEnabled, answerCommunityQuery } from "../ai.js";
 
 // Society community features: admin announcements + a resident posts board.
 // Everything is scoped to the caller's society.
@@ -81,6 +82,23 @@ communityRouter.post("/posts", authRequired, roleRequired("resident", "admin"), 
     include: { author: { include: { flat: true } } },
   });
   res.status(201).json({ post: serializePost(post) });
+});
+
+// AI-suggested answer to a community question, grounded in the society's own
+// facts (amenities/timings, staff contacts, recent announcements). Returns a
+// draft reply the admin/author can post — it does NOT post automatically.
+communityRouter.post("/posts/:id/suggest-reply", authRequired, async (req, res) => {
+  if (!aiEnabled) return res.status(503).json({ message: "AI is not configured on the server." });
+  const post = await prisma.post.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
+  if (!post) return res.status(404).json({ message: "Post not found" });
+  try {
+    const question = [post.title, post.body].filter(Boolean).join(" — ");
+    const reply = await answerCommunityQuery(req.user, question);
+    res.json({ reply });
+  } catch (e) {
+    console.error("suggest-reply failed:", e.message);
+    res.status(502).json({ message: "Couldn't draft a reply right now." });
+  }
 });
 
 // Author can delete their own post; admins can delete any post in their society.

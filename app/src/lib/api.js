@@ -208,6 +208,11 @@ export const api = {
   adminAddExpense: (payload) =>
     request("/api/admin/expenses", { method: "POST", body: payload }),
 
+  // Admin: proactive AI Society Manager (insights + AI drafts)
+  adminInsights: () => request("/api/admin/insights"),
+  adminAiDraft: (kind) => request("/api/admin/ai/draft", { method: "POST", body: { kind } }),
+  suggestPostReply: (id) => request(`/api/posts/${id}/suggest-reply`, { method: "POST" }),
+
   // Admin: reports & backup
   adminBlocks: () => request("/api/admin/blocks"),
   adminReport: (block) => request(`/api/admin/report${qs({ block })}`),

@@ -16,6 +16,8 @@ import { sendFeeReminder, whatsappEnabled, WHATSAPP_BUSINESS_NUMBER } from "../w
 import { runFeeReminders } from "../feeReminders.js";
 import { ensureJoinCode, generateUniqueJoinCode } from "../joinCode.js";
 import { cacheWrap } from "../cache.js";
+import { computeSocietyInsights } from "../insights.js";
+import { aiEnabled, draftManagerText } from "../ai.js";
 
 export const adminRouter = Router();
 
@@ -762,6 +764,35 @@ adminRouter.post("/expenses", async (req, res) => {
 // Distinct wings/blocks for the admin's society (for the report picker).
 adminRouter.get("/blocks", async (req, res) => {
   res.json({ blocks: await listBlocks(sid(req)) });
+});
+
+/* --------------------- Proactive AI Society Manager ---------------------- */
+// Deterministic health snapshot (finance deltas, defaulters, security/ops
+// anomalies). Cached briefly so several admins / dashboard refreshes don't each
+// recompute. Works even when AI is disabled — AI only drafts the prose below.
+adminRouter.get("/insights", async (req, res) => {
+  try {
+    const insights = await cacheWrap(`insights:${sid(req)}`, 60, () => computeSocietyInsights(sid(req)));
+    res.json({ insights, aiEnabled });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// AI-drafts a notice / reminder / money summary from the computed insights.
+// The admin reviews & edits, then can post it as an announcement.
+adminRouter.post("/ai/draft", async (req, res) => {
+  if (!aiEnabled) {
+    return res.status(503).json({ message: "AI is not configured on the server. Set AI_API_KEY to enable drafting." });
+  }
+  const { kind } = req.body || {};
+  try {
+    const draft = await draftManagerText(sid(req), String(kind || "monthly_notice"));
+    res.json({ draft });
+  } catch (e) {
+    console.error("AI draft failed:", e.message);
+    res.status(502).json({ message: "Couldn't generate a draft right now. Please try again." });
+  }
 });
 
 // Wing-wise (block) report data. ?block=B  (omit or __all__ for whole society)
