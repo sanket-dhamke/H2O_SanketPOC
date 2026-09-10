@@ -18,6 +18,7 @@ import {
 } from "../importCsv.js";
 import { isPremium } from "../plan.js";
 import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorpay.js";
+import { brand } from "../brand.js";
 import { recordPayment, effectivePaid, billBalance, buildFlatLedger, refreshLateFees } from "../billing.js";
 import { sendFeeReminder, whatsappEnabled, WHATSAPP_BUSINESS_NUMBER } from "../whatsapp.js";
 import { runFeeReminders } from "../feeReminders.js";
@@ -1391,7 +1392,7 @@ adminRouter.post("/subscription/create-order", async (req, res) => {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      name: "GATEZO Platform",
+      name: brand.name,
       description: `GATEZO subscription - ${society.name}`,
       prefill: {
         name: req.user.name || "",

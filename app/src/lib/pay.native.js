@@ -1,6 +1,25 @@
 import RazorpayCheckout from "react-native-razorpay";
 import { api } from "./api";
 import { checkoutOptions } from "./razorpayCheckout";
+import { pickPayMethod } from "./paySheet";
+
+async function openCheckout(order) {
+  const choice = await pickPayMethod({
+    amountPaise: order.amount,
+    description: order.description,
+  });
+  if (!choice) return { cancelled: true };
+  const options = checkoutOptions(order, choice);
+  try {
+    const result = await RazorpayCheckout.open(options);
+    return { result };
+  } catch (err) {
+    if (err?.code === 0 || /cancel/i.test(err?.description || "")) {
+      return { cancelled: true };
+    }
+    throw new Error(err?.description || "Payment failed");
+  }
+}
 
 // Runs the full payment flow on a real device (iOS/Android dev build):
 // 1) ask backend to create an order, 2) open the native Razorpay sheet,
@@ -14,18 +33,9 @@ export async function payBill(bill, amount) {
     return { paid: true, mock: true };
   }
 
-  const options = checkoutOptions(order);
-
-  let result;
-  try {
-    result = await RazorpayCheckout.open(options);
-  } catch (err) {
-    // User closed the sheet or payment failed.
-    if (err?.code === 0 || /cancel/i.test(err?.description || "")) {
-      return { cancelled: true };
-    }
-    throw new Error(err?.description || "Payment failed");
-  }
+  const opened = await openCheckout(order);
+  if (opened.cancelled) return { cancelled: true };
+  const result = opened.result;
 
   await api.verifyPayment(bill.id, {
     razorpay_order_id: result.razorpay_order_id,
@@ -45,17 +55,9 @@ export async function payBooking(booking) {
     return { paid: true, mock: true };
   }
 
-  const options = checkoutOptions(order);
-
-  let result;
-  try {
-    result = await RazorpayCheckout.open(options);
-  } catch (err) {
-    if (err?.code === 0 || /cancel/i.test(err?.description || "")) {
-      return { cancelled: true };
-    }
-    throw new Error(err?.description || "Payment failed");
-  }
+  const opened = await openCheckout(order);
+  if (opened.cancelled) return { cancelled: true };
+  const result = opened.result;
 
   await api.verifyBookingPayment(booking.id, {
     razorpay_order_id: result.razorpay_order_id,
@@ -74,17 +76,9 @@ export async function paySubscription() {
     return { paid: true, mock: true, ...r };
   }
 
-  const options = checkoutOptions(order);
-
-  let result;
-  try {
-    result = await RazorpayCheckout.open(options);
-  } catch (err) {
-    if (err?.code === 0 || /cancel/i.test(err?.description || "")) {
-      return { cancelled: true };
-    }
-    throw new Error(err?.description || "Payment failed");
-  }
+  const opened = await openCheckout(order);
+  if (opened.cancelled) return { cancelled: true };
+  const result = opened.result;
 
   const r = await api.verifySubscriptionPayment({
     razorpay_order_id: result.razorpay_order_id,

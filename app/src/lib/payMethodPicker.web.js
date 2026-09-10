@@ -2,11 +2,11 @@
 // Desktop checkout often hides intent apps; this sheet makes the options explicit.
 
 const METHODS = [
-  { id: "gpay", label: "Google Pay", hint: "UPI app", method: "upi", app: "google_pay" },
-  { id: "phonepe", label: "PhonePe", hint: "UPI app", method: "upi", app: "phonepe" },
-  { id: "paytm", label: "Paytm", hint: "UPI app", method: "upi", app: "paytm" },
-  { id: "vpa", label: "UPI ID / QR", hint: "Enter VPA or scan", method: "upi" },
-  { id: "card", label: "Card / net banking", hint: "Visa, Mastercard, banks", method: "card" },
+  { id: "gpay", label: "Google Pay", hint: "UPI app", method: "upi", app: "google_pay", mark: "G", cls: "gm-pay-gpay" },
+  { id: "phonepe", label: "PhonePe", hint: "UPI app", method: "upi", app: "phonepe", mark: "Pe", cls: "gm-pay-phonepe" },
+  { id: "paytm", label: "Paytm", hint: "UPI app", method: "upi", app: "paytm", mark: "Pay", cls: "gm-pay-paytm" },
+  { id: "vpa", label: "UPI ID / QR", hint: "Enter VPA or scan", method: "upi", mark: "UPI", cls: "gm-pay-vpa" },
+  { id: "card", label: "Card / net banking", hint: "Visa, Mastercard, banks", method: "card", mark: "₹", cls: "gm-pay-card" },
 ];
 
 export function pickPayMethod({ amountPaise, description } = {}) {
@@ -30,7 +30,12 @@ export function pickPayMethod({ amountPaise, description } = {}) {
         .gm-pay-sub{margin:0 0 14px;color:#5A6B74;font-size:13px;line-height:1.4}
         .gm-pay-row{width:100%;display:flex;align-items:center;gap:12px;border:1px solid #E6EEF2;background:#F7FAFB;border-radius:12px;padding:12px 14px;margin:0 0 8px;cursor:pointer;text-align:left}
         .gm-pay-row:hover{border-color:#0B6E8F;background:#EAF4F7}
-        .gm-pay-dot{width:34px;height:34px;border-radius:10px;background:#0B6E8F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+        .gm-pay-dot{width:36px;height:36px;border-radius:10px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0}
+        .gm-pay-gpay{background:#1A73E8}
+        .gm-pay-phonepe{background:#5F259F}
+        .gm-pay-paytm{background:#00BAF2}
+        .gm-pay-vpa{background:#0B6E8F}
+        .gm-pay-card{background:#1C2B33}
         .gm-pay-name{display:block;color:#1B2B33;font-size:14px;font-weight:700}
         .gm-pay-hint{display:block;color:#6B7B85;font-size:12px;margin-top:2px}
         .gm-pay-cancel{width:100%;margin-top:6px;border:0;background:transparent;color:#6B7B85;font-size:14px;font-weight:700;padding:12px;cursor:pointer}
@@ -59,8 +64,8 @@ export function pickPayMethod({ amountPaise, description } = {}) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "gm-pay-row";
-      const initials = m.id === "vpa" ? "ID" : m.id === "card" ? "₹" : m.label.slice(0, 2).toUpperCase();
-      btn.innerHTML = `<span class="gm-pay-dot">${initials}</span><span><span class="gm-pay-name">${m.label}</span><span class="gm-pay-hint">${m.hint}</span></span>`;
+      const initials = m.mark;
+      btn.innerHTML = `<span class="gm-pay-dot ${m.cls}">${initials}</span><span><span class="gm-pay-name">${m.label}</span><span class="gm-pay-hint">${m.hint}</span></span>`;
       btn.addEventListener("click", () => finish({ method: m.method, app: m.app }));
       list.appendChild(btn);
     });

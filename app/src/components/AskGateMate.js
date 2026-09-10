@@ -139,7 +139,10 @@ export default function AskGateMate({ navigation }) {
       await ask(text);
     } catch (e) {
       setBusy(false);
-      Alert.alert("Voice input failed", e.message);
+      const msg = /404/.test(e.message || "")
+        ? "Voice is not available on the live server yet. Type your question instead."
+        : e.message;
+      Alert.alert("Voice input failed", msg);
     }
   };
 
@@ -153,7 +156,7 @@ export default function AskGateMate({ navigation }) {
     <View style={styles.shell}>
       <View style={styles.accent} />
       <View style={styles.card}>
-        <View style={styles.bar}>
+        <View style={styles.headRow}>
           <View style={styles.mark}>
             <Ionicons name="sparkles" size={14} color="#0B6E8F" />
           </View>
@@ -161,6 +164,8 @@ export default function AskGateMate({ navigation }) {
           <View style={styles.aiPill}>
             <Text style={styles.aiPillText}>AI</Text>
           </View>
+        </View>
+        <View style={styles.composer}>
           <TextInput
             style={styles.input}
             value={input}
@@ -175,26 +180,31 @@ export default function AskGateMate({ navigation }) {
             placeholderTextColor="#7A93A0"
             onSubmitEditing={() => ask()}
             returnKeyType="send"
+            blurOnSubmit
+            multiline
+            textAlignVertical="top"
             editable={!listening}
           />
-          {VOICE_SUPPORTED ? (
+          <View style={styles.composerActions}>
+            {VOICE_SUPPORTED ? (
+              <TouchableOpacity
+                style={[styles.iconBtn, listening && styles.micBtnActive]}
+                onPress={listening ? stopListening : startListening}
+                disabled={busy && !listening}
+                accessibilityLabel={listening ? "Stop recording" : "Speak your request"}
+              >
+                <Ionicons name={listening ? "stop" : "mic"} size={16} color={listening ? "#B42318" : "#0B6E8F"} />
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity
-              style={[styles.iconBtn, listening && styles.micBtnActive]}
-              onPress={listening ? stopListening : startListening}
-              disabled={busy && !listening}
-              accessibilityLabel={listening ? "Stop recording" : "Speak your request"}
+              style={[styles.sendBtn, (busy || listening) && { opacity: 0.5 }]}
+              onPress={() => ask()}
+              disabled={busy || listening}
+              accessibilityLabel="Send request"
             >
-              <Ionicons name={listening ? "stop" : "mic"} size={16} color={listening ? "#B42318" : "#0B6E8F"} />
+              <Ionicons name="arrow-forward" size={16} color="#fff" />
             </TouchableOpacity>
-          ) : null}
-          <TouchableOpacity
-            style={[styles.sendBtn, (busy || listening) && { opacity: 0.5 }]}
-            onPress={() => ask()}
-            disabled={busy || listening}
-            accessibilityLabel="Send request"
-          >
-            <Ionicons name="arrow-forward" size={16} color="#fff" />
-          </TouchableOpacity>
+          </View>
         </View>
 
         {result ? (
@@ -256,7 +266,7 @@ const styles = StyleSheet.create({
   },
   accent: { width: 4, backgroundColor: "#0B6E8F" },
   card: { flex: 1, paddingVertical: 12, paddingHorizontal: 14, backgroundColor: "#fff" },
-  bar: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  headRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
   mark: {
     width: 28,
     height: 28,
@@ -274,20 +284,23 @@ const styles = StyleSheet.create({
   },
   aiPillText: { color: "#fff", fontSize: 9, letterSpacing: 0.6, ...head(700) },
   input: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 180,
-    minWidth: 120,
-    backgroundColor: "rgba(255,255,255,0.92)",
+    width: "100%",
+    minHeight: 44,
+    maxHeight: 120,
+    backgroundColor: "#F7FBFC",
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#D5E6ED",
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 13.5,
+    paddingTop: 10,
+    paddingBottom: 10,
+    fontSize: 15,
+    lineHeight: 21,
     color: "#1B2B33",
     ...body(400),
   },
+  composer: { gap: 8 },
+  composerActions: { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 8 },
   iconBtn: {
     width: 32,
     height: 32,
@@ -305,7 +318,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8, paddingLeft: 36 },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
   chip: {
     backgroundColor: "#F3F8FA",
     borderRadius: 14,
@@ -317,8 +330,8 @@ const styles = StyleSheet.create({
   },
   chipText: { color: "#0B6E8F", ...body(600), fontSize: 12, lineHeight: 16 },
   answer: {
-    marginTop: 8,
-    marginLeft: 36,
+    marginTop: 10,
+    marginLeft: 0,
     backgroundColor: "#F5F9FB",
     borderRadius: 10,
     paddingHorizontal: 12,

@@ -18,8 +18,8 @@
       "icon": "./assets/brand/gatezo/icon.png",
       "splash": "./assets/brand/gatezo/splash.png",
       "favicon": "./assets/brand/gatezo/favicon.png",
-      "adaptiveFg": "./assets/brand/gatezo/icon.png",
-      "adaptiveBg": "./assets/brand/gatezo/splash.png"
+      "adaptiveFg": "./assets/brand/gatezo/adaptive-icon-fg.png",
+      "adaptiveBg": "./assets/brand/gatezo/adaptive-icon-bg.png"
     }
   }
 }

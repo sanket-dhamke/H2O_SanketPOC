@@ -4,6 +4,7 @@ import { prisma } from "../prisma.js";
 import { authRequired } from "../auth.js";
 import { serializeBill } from "../serializers.js";
 import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorpay.js";
+import { brand } from "../brand.js";
 import { recordPayment, effectivePaid, billBalance, refreshLateFees, refreshBillLateFee } from "../billing.js";
 import { computeTransparency } from "../ledger.js";
 import { cacheWrap } from "../cache.js";
@@ -143,7 +144,7 @@ maintenanceRouter.post("/maintenance/:id/create-order", authRequired, async (req
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      name: "GATEZO Society",
+      name: brand.name,
       description: `Maintenance ${bill.period} (Flat ${bill.flat?.flatNo})`,
       prefill: {
         name: payer?.name || req.user?.name || "",

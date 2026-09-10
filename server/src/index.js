@@ -6,6 +6,7 @@ import { prisma } from "./prisma.js";
 import { razorpayEnabled } from "./razorpay.js";
 import { storageEnabled } from "./storage.js";
 import { aiEnabled } from "./ai.js";
+import { brand } from "./brand.js";
 import { authRouter } from "./routes/auth.js";
 import { maintenanceRouter } from "./routes/maintenance.js";
 import { visitorsRouter } from "./routes/visitors.js";
@@ -97,7 +98,7 @@ app.use("/api/ai", aiLimiter);
 app.get("/api/health", (_req, res) =>
   res.json({
     ok: true,
-    name: "GATEZO",
+    name: brand.name,
     razorpay: razorpayEnabled,
     storage: storageEnabled,
     ai: aiEnabled,

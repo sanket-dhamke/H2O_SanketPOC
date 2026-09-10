@@ -44,8 +44,8 @@ function Legend({ segments, total, format }) {
         return (
           <View key={s.key} style={styles.legendRow}>
             <View style={[styles.dot, { backgroundColor: s.color }]} />
-            <Text style={styles.legendLabel}>{s.label}</Text>
-            <Text style={styles.legendMeta}>
+            <Text style={styles.legendLabel} numberOfLines={1}>{s.label}</Text>
+            <Text style={styles.legendMeta} numberOfLines={1}>
               {value} · {pct}
             </Text>
           </View>
@@ -53,8 +53,8 @@ function Legend({ segments, total, format }) {
       })}
       {total != null ? (
         <View style={[styles.legendRow, styles.legendTotal]}>
-          <Text style={styles.legendLabel}>Total</Text>
-          <Text style={styles.legendTotalValue}>{format(total)}</Text>
+          <Text style={styles.legendLabel} numberOfLines={1}>Total</Text>
+          <Text style={styles.legendTotalValue} numberOfLines={1}>{format(total)}</Text>
         </View>
       ) : null}
     </View>
@@ -332,40 +332,33 @@ const styles = StyleSheet.create({
   alertIcon: { width: 30, height: 30, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   alertLabel: { fontSize: 13.5, ...head(700), color: "#1B2B33" },
   alertDetail: { fontSize: 12, color: "#6B7B85", marginTop: 1, ...body(400)},
-  vizRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start", gap: 20 },
+  vizRow: { gap: 16 },
   vizMain: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 320,
-    minWidth: 280,
+    width: "100%",
     flexDirection: "row",
-    flexWrap: "wrap",
     alignItems: "center",
-    gap: 16,
+    gap: 14,
   },
-  donutSlot: { width: CHART_SIZE, height: CHART_SIZE, flexShrink: 0 },
-  vizTrend: { flexGrow: 1, flexShrink: 1, flexBasis: 240, minWidth: 220 },
+  donutSlot: { width: CHART_SIZE, height: CHART_SIZE, flexShrink: 0, overflow: "hidden" },
+  vizTrend: { width: "100%", marginTop: 4 },
   chartRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     alignItems: "center",
-    gap: 16,
+    gap: 14,
     minHeight: 128,
   },
   legend: {
-    flexGrow: 1,
-    flexShrink: 0,
-    flexBasis: 168,
-    minWidth: 168,
-    gap: 10,
+    flex: 1,
+    minWidth: 0,
+    gap: 8,
     justifyContent: "center",
   },
-  legendRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
+  legendRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   legendTotal: { borderTopWidth: 1, borderTopColor: "#EDF2F4", paddingTop: 8, marginTop: 2 },
   dot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-  legendLabel: { fontSize: 13, color: "#3A4A54", ...body(600), flexShrink: 0 },
-  legendMeta: { marginLeft: "auto", fontSize: 12.5, color: "#5C7380", ...body(600), flexShrink: 0 },
-  legendTotalValue: { marginLeft: "auto", fontSize: 13, ...body(700), color: "#0B3A49", flexShrink: 0 },
+  legendLabel: { flex: 1, minWidth: 0, fontSize: 13, color: "#3A4A54", ...body(600) },
+  legendMeta: { fontSize: 12.5, color: "#5C7380", ...body(600), flexShrink: 0 },
+  legendTotalValue: { fontSize: 13, ...body(700), color: "#0B3A49", flexShrink: 0 },
   emptyNote: { flex: 1, fontSize: 12.5, color: "#8895A0", lineHeight: 18, ...body(400)},
   chartsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, width: "100%", alignItems: "stretch" },
   chartsRowStack: { flexDirection: "column" },

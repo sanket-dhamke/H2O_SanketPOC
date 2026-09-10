@@ -36,8 +36,8 @@ export default function DonutChart({
     : [];
 
   return (
-    <View style={{ width: size, height: size }}>
-      <Svg width={size} height={size}>
+    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+      <Svg width={size} height={size} style={StyleSheet.absoluteFill} viewBox={`0 0 ${size} ${size}`}>
         {/* Rotate so the first segment starts at 12 o'clock rather than 3. */}
         <G rotation={-90} origin={`${size / 2}, ${size / 2}`}>
           <Circle
@@ -64,23 +64,22 @@ export default function DonutChart({
           ))}
         </G>
       </Svg>
-      <View style={styles.center} pointerEvents="none">
-        <Text style={styles.centerValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+      <View style={[styles.center, { maxWidth: size * 0.55 }]} pointerEvents="none">
+        <Text style={styles.centerValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>
           {centerValue}
         </Text>
-        {centerLabel ? <Text style={styles.centerLabel}>{centerLabel}</Text> : null}
+        {centerLabel ? (
+          <Text style={styles.centerLabel} numberOfLines={1}>
+            {centerLabel}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  center: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 22,
-  },
-  centerValue: { fontSize: 22, ...head(800), color: "#0B3A49" },
+  center: { alignItems: "center", justifyContent: "center" },
+  centerValue: { fontSize: 22, ...head(800), color: "#0B3A49", textAlign: "center" },
   centerLabel: { fontSize: 11, color: "#6B7B85", marginTop: 1, textAlign: "center", ...body(600) },
 });

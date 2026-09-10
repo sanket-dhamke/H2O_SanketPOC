@@ -1,5 +1,8 @@
-// Shared Razorpay Checkout options so UPI (GPay, PhonePe, Paytm, UPI ID)
-// is the first method on web and native, with card / netbanking still available.
+import { Platform } from "react-native";
+import { brand } from "./brand";
+
+// Shared Razorpay Checkout options. Native ignores web-only `config.display`
+// blocks (those were hiding UPI on Android). Web keeps an explicit UPI block.
 
 const UPI_APPS = ["google_pay", "phonepe", "paytm", "bhim"];
 
@@ -9,46 +12,51 @@ export function checkoutOptions(order, preference = {}) {
   const method = preference.method || "upi";
   const apps = preference.app ? [preference.app] : UPI_APPS;
 
-  return {
+  const prefill = { method };
+  if (order.prefill?.email) prefill.email = order.prefill.email;
+  if (contact) prefill.contact = contact;
+
+  const options = {
     key: order.keyId,
     order_id: order.orderId,
     amount: order.amount,
     currency: order.currency || "INR",
-    name: order.name,
+    name: brand.name,
     description: order.description,
-    prefill: {
-      name: order.prefill?.name || "",
-      email: order.prefill?.email || "",
-      ...(contact ? { contact } : null),
-      method,
+    prefill,
+    hidden: {
+      email: true,
+      contact: true,
     },
     method: {
-      upi: true,
-      card: true,
-      netbanking: true,
-      wallet: true,
-      emi: false,
-      paylater: false,
+      upi: 1,
+      card: 1,
+      netbanking: 1,
+      wallet: 0,
+      emi: 0,
+      paylater: 0,
     },
-    config: {
+    theme: { color: "#0B6E8F" },
+  };
+
+  if (Platform.OS === "web") {
+    options.config = {
       display: {
         blocks: {
           upi_apps: {
             name: "Pay via UPI",
             instruments: [
               { method: "upi", flows: ["intent"], apps },
-              { method: "upi", flows: ["collect"] },
               { method: "upi", flows: ["qr"] },
             ],
           },
         },
-        sequence: ["block.upi_apps", "upi", "card", "netbanking", "wallet"],
-        preferences: { show_default_blocks: true },
+        hide: [{ method: "wallet" }],
+        sequence: ["block.upi_apps", "upi", "card", "netbanking"],
+        preferences: { show_default_blocks: false },
       },
-    },
-    notes: {
-      method_hint: "upi",
-    },
-    theme: { color: "#0B6E8F" },
-  };
+    };
+  }
+
+  return options;
 }

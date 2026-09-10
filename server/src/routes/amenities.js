@@ -5,6 +5,7 @@ import { authRequired, roleRequired } from "../auth.js";
 import { serializeAmenity, serializeBooking } from "../serializers.js";
 import { enqueuePush } from "../queue.js";
 import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorpay.js";
+import { brand } from "../brand.js";
 
 // Amenity / clubhouse booking engine (per society).
 // Flow: admin enables an amenity + slots (price) -> resident requests a slot on a
@@ -200,7 +201,7 @@ amenitiesRouter.post("/bookings/:id/create-order", authRequired, async (req, res
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      name: "GATEZO Society",
+      name: brand.name,
       description: `${booking.amenity?.name || "Amenity"} · ${booking.slot?.label || ""} · ${booking.date}`,
       prefill: {
         name: payer?.name || req.user?.name || "",
