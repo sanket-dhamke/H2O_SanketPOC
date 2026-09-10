@@ -27,7 +27,7 @@ function rewriteForPreschool(text) {
     .replace(/\bResidents\b/g, "Parents")
     .replace(/\bguards\b/g, "staff")
     .replace(/\bGuards\b/g, "Staff")
-    .replace(/At the gate, Bills & bookings, Community/g, "School and Help");
+    .replace(/At the gate, Bills & bookings, Your society, Community/g, "School and Help");
 }
 
 export function helpTopicsFor(user) {
@@ -59,7 +59,7 @@ export const HELP_TOPICS = [
     summary: "Home is your snapshot: bills, visitors, SOS, folders, Home Services and offers.",
     steps: [
       "Open the Home tab. Charts show the last 30 days of visitors and your bill status.",
-      "Tap a folder (At the gate, Bills & bookings, Community) to expand the shortcuts.",
+      "Tap a folder (At the gate, Bills & bookings, Your society, Community) to expand the shortcuts.",
       "Ask GATEZO on this page to get an answer — then tap the button if you want to open that screen.",
     ],
     examples: ["How much do I owe?", "Who visited my flat?", "What is on the Home tab?"],
@@ -111,7 +111,7 @@ export const HELP_TOPICS = [
     keywords: ["transparency", "ledger", "where money", "expense", "spend", "books", "audit"],
     summary: "A 0–100 score from the real books: payments in, expenses out, sealed on a tamper-evident ledger.",
     steps: [
-      "Open Maintenance → Transparency (or Home → Bills & bookings).",
+      "Open Maintenance → Transparency (or Home → Your society).",
       "How we capture it: every bill payment and every labelled expense is written to a hash-chained ledger. If a past entry is edited or deleted, the chain breaks and the score flags it.",
       "The number is the sum of six factors: ledger intact (30), itemised expenses (20), books updated in 45 days (15), dues collected (15), payout account on file (10), recent committee updates (10).",
       "Use the page to see money in vs out and where it was spent. Admins can seal / re-verify the ledger.",
@@ -125,7 +125,7 @@ export const HELP_TOPICS = [
     keywords: ["sustainability", "green", "water", "meter", "litres", "electricity"],
     summary: "A green score from monthly water-meter readings — not from your maintenance bill.",
     steps: [
-      "Open Maintenance → Sustainability (or Home → Community folder).",
+      "Open Maintenance → Sustainability (or Home → Your society).",
       "How we capture it: the office records litres used this month per flat (tap + or import a CSV). GATEZO compares each flat with the society median.",
       "Scoring: 100 at zero use, 50 at the median, lower if you use more than neighbours. The community score is the average of reported flats.",
       "Residents see their own flat, the median, and a top-savers list. This does not change what you pay in maintenance.",
@@ -190,7 +190,7 @@ export const HELP_TOPICS = [
     keywords: ["agm", "vote", "voting", "motion", "minutes", "election"],
     summary: "Read motions, cast your vote, and see meeting minutes.",
     steps: [
-      "Open Community → AGM & voting (or Home → Community folder).",
+      "Open Community → AGM & voting (or Home → Your society).",
       "Open a motion to read the text, then vote if voting is open.",
       "Minutes of past meetings sit on the same screen.",
     ],
