@@ -40,6 +40,30 @@ aiRouter.post("/assistant", authRequired, async (req, res) => {
   }
 });
 
+// Speech-to-text for Ask GATEZO / the home mic. Open to every signed-in role.
+aiRouter.post("/transcribe", authRequired, async (req, res) => {
+  if (!ensureEnabled(res)) return;
+  const { audioBase64 } = req.body || {};
+  if (!audioBase64) return res.status(400).json({ message: "audioBase64 is required" });
+  if (!transcriptionEnabled) {
+    return res.status(503).json({
+      message:
+        "Voice input needs a Whisper-capable provider (e.g. OpenAI or Groq). Type your request instead.",
+    });
+  }
+  try {
+    const raw = audioBase64.replace(/^data:.*;base64,/, "");
+    const text = await transcribeAudio(Buffer.from(raw, "base64"));
+    if (!text.trim()) {
+      return res.status(400).json({ message: "No speech detected. Please try again." });
+    }
+    res.json({ text: text.trim() });
+  } catch (err) {
+    console.error("AI transcribe failed:", err.message);
+    res.status(502).json({ message: `Could not process the audio: ${err.message}` });
+  }
+});
+
 // Voice-to-entry for guards: accepts recorded audio (base64) or a plain
 // transcript, and returns structured visitor fields to prefill the form.
 aiRouter.post("/voice-visitor", authRequired, roleRequired("guard", "admin"), async (req, res) => {
