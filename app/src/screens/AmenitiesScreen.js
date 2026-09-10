@@ -22,6 +22,7 @@ import { useAuth } from "../lib/auth";
 import { labelsFor } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
 import DateField from "../components/DateField";
+import OffersRail from "../components/OffersRail";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
@@ -56,6 +57,7 @@ export default function AmenitiesScreen() {
 
 /* ============================ Resident view ============================== */
 function ResidentAmenities({ onBack, L }) {
+  const navigation = useNavigation();
   const [tab, setTab] = useState("book");
   const [amenities, setAmenities] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -120,6 +122,7 @@ function ResidentAmenities({ onBack, L }) {
             <BookingRow key={b.id} booking={b} onChanged={load} />
           ))
         )}
+        {tab === "book" ? <OffersRail slot="amenities" navigation={navigation} compact /> : null}
       </ScrollView>
     </View>
   );

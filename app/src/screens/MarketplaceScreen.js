@@ -10,6 +10,7 @@ import {
   Modal,
   Image,
   FlatList,
+  Platform,
 } from "react-native";
 import TextInput from "../components/AppTextInput";
 import * as ImagePicker from "expo-image-picker";
@@ -21,6 +22,7 @@ import { useAuth } from "../lib/auth";
 import { labelsFor } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
 import KeyboardAvoider from "../components/KeyboardAvoider";
+import OffersRail from "../components/OffersRail";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
@@ -38,13 +40,38 @@ export const catMeta = (id) => LISTING_CATEGORIES.find((c) => c.id === id) || LI
 
 // Circular-economy listing types shown as top-level sections.
 export const LISTING_KINDS = [
-  { id: null, label: "All", icon: "grid-outline" },
+  { id: null, label: "All types", icon: "grid-outline" },
   { id: "sale", label: "Buy & Sell", icon: "pricetag-outline" },
   { id: "borrow", label: "Borrow / Lend", icon: "swap-horizontal-outline" },
   { id: "skill", label: "Skills", icon: "school-outline" },
   { id: "group_buy", label: "Group buy", icon: "people-outline" },
 ];
 export const kindMeta = (id) => LISTING_KINDS.find((k) => k.id === id) || LISTING_KINDS[1];
+
+function FilterChip({ icon, label, active, onPress, tone = "teal" }) {
+  const palette =
+    tone === "purple"
+      ? { idleBg: "#F5F0FE", idleBorder: "#DDD0F2", idle: "#6D3BD1", on: "#6D3BD1" }
+      : { idleBg: "#fff", idleBorder: "#CFE0E6", idle: "#0B6E8F", on: "#0B6E8F" };
+  const color = active ? "#fff" : palette.idle;
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[
+        styles.filterChip,
+        {
+          backgroundColor: active ? palette.on : palette.idleBg,
+          borderColor: active ? palette.on : palette.idleBorder,
+        },
+      ]}
+    >
+      {icon ? <Ionicons name={icon} size={15} color={color} /> : null}
+      <Text numberOfLines={1} style={[styles.filterChipText, { color }]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
 
 export default function MarketplaceScreen() {
   const navigation = useNavigation();
@@ -105,51 +132,61 @@ export default function MarketplaceScreen() {
         onBack={() => navigation.goBack()}
         right={addBtn}
       />
-      <View style={styles.searchWrap}>
-        <Ionicons name="search" size={18} color="#8895A0" />
-        <TextInput style={styles.search} value={query} onChangeText={setQuery} placeholder="What are you looking for?" />
-      </View>
+      <View style={styles.filters}>
+        <View style={styles.searchWrap}>
+          <Ionicons name="search" size={18} color="#8895A0" />
+          <TextInput
+            style={styles.search}
+            value={query}
+            onChangeText={setQuery}
+            placeholder="What are you looking for?"
+            underlineColorAndroid="transparent"
+          />
+        </View>
 
-      <View style={styles.toggleRow}>
-        <TouchableOpacity style={[styles.toggle, !mine && styles.toggleActive]} onPress={() => setMine(false)}>
-          <Text style={[styles.toggleText, !mine && styles.toggleTextActive]}>Browse</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.toggle, mine && styles.toggleActive]} onPress={() => setMine(true)}>
-          <Text style={[styles.toggleText, mine && styles.toggleTextActive]}>My listings</Text>
-        </TouchableOpacity>
-      </View>
-
-      {!mine && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
-          {LISTING_KINDS.map((k) => (
-            <TouchableOpacity
-              key={k.id || "all"}
-              style={[styles.kindChip, kind === k.id && styles.kindChipActive]}
-              onPress={() => setKind(k.id)}
-            >
-              <Ionicons name={k.icon} size={14} color={kind === k.id ? "#fff" : "#6D3BD1"} />
-              <Text style={[styles.kindChipText, kind === k.id && { color: "#fff" }]}>{k.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
-
-      {!mine && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
-          <TouchableOpacity style={[styles.catChip, !category && styles.catChipActive]} onPress={() => setCategory(null)}>
-            <Text style={[styles.catChipText, !category && { color: "#fff" }]}>All</Text>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggle, !mine && styles.toggleActive]} onPress={() => setMine(false)}>
+            <Text style={[styles.toggleText, !mine && styles.toggleTextActive]}>Browse</Text>
           </TouchableOpacity>
-          {LISTING_CATEGORIES.map((c) => (
-            <TouchableOpacity key={c.id} style={[styles.catChip, category === c.id && styles.catChipActive]} onPress={() => setCategory(c.id)}>
-              <Ionicons name={c.icon} size={14} color={category === c.id ? "#fff" : "#0B6E8F"} />
-              <Text style={[styles.catChipText, category === c.id && { color: "#fff" }]}>
-                {c.label}
-                {counts[c.id] ? ` ${counts[c.id]}` : ""}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
+          <TouchableOpacity style={[styles.toggle, mine && styles.toggleActive]} onPress={() => setMine(true)}>
+            <Text style={[styles.toggleText, mine && styles.toggleTextActive]}>My listings</Text>
+          </TouchableOpacity>
+        </View>
+
+        {!mine ? (
+          <>
+            <View style={styles.chipWrap}>
+              {LISTING_KINDS.map((k) => (
+                <FilterChip
+                  key={k.id || "all-types"}
+                  icon={k.icon}
+                  label={k.label}
+                  tone="purple"
+                  active={kind === k.id}
+                  onPress={() => setKind(k.id)}
+                />
+              ))}
+            </View>
+            <View style={styles.chipWrap}>
+              <FilterChip
+                icon="apps-outline"
+                label="All categories"
+                active={!category}
+                onPress={() => setCategory(null)}
+              />
+              {LISTING_CATEGORIES.map((c) => (
+                <FilterChip
+                  key={c.id}
+                  icon={c.icon}
+                  label={counts[c.id] ? `${c.label} (${counts[c.id]})` : c.label}
+                  active={category === c.id}
+                  onPress={() => setCategory(c.id)}
+                />
+              ))}
+            </View>
+          </>
+        ) : null}
+      </View>
 
       <FlatList
         data={filtered}
@@ -164,6 +201,14 @@ export default function MarketplaceScreen() {
             <Text style={styles.emptyText}>{mine ? "You haven't listed anything yet." : "No listings here yet. Be the first!"}</Text>
           </View>
         }
+        ListFooterComponent={
+          !mine ? (
+            <View style={{ width: "100%", alignSelf: "stretch", paddingHorizontal: 16, paddingBottom: 8 }}>
+              <OffersRail slot="marketplace" navigation={navigation} compact />
+            </View>
+          ) : null
+        }
+        ListFooterComponentStyle={{ width: "100%" }}
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={() => navigation.navigate("ListingDetail", { id: item.id })}>
             <View style={styles.thumbWrap}>
@@ -421,14 +466,60 @@ const Label = ({ children }) => <Text style={styles.label}>{children}</Text>;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
   addBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
-  searchWrap: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#fff", marginHorizontal: 16, marginTop: 12, borderRadius: 12, paddingHorizontal: 14 },
-  search: { flex: 1, paddingVertical: 12, fontSize: 15 },
-  toggleRow: { flexDirection: "row", backgroundColor: "#fff", margin: 16, marginBottom: 6, borderRadius: 12, padding: 4 },
-  toggle: { flex: 1, paddingVertical: 9, borderRadius: 9, alignItems: "center" },
+  filters: { backgroundColor: "#F1F5F7", paddingTop: 12, paddingBottom: 4, zIndex: 1 },
+  searchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    minHeight: 48,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#E2EAEE",
+  },
+  search: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 15,
+    ...(Platform.OS === "web" ? { outlineStyle: "none", minWidth: 0 } : null),
+  },
+  toggleRow: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 12,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: "#E2EAEE",
+  },
+  toggle: { flex: 1, paddingVertical: 10, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   toggleActive: { backgroundColor: "#0B6E8F" },
   toggleText: { color: "#6B7B85", fontWeight: "700", fontSize: 13 },
   toggleTextActive: { color: "#fff" },
-  catRow: { gap: 8, paddingHorizontal: 16, paddingVertical: 6 },
+  chipWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    gap: 8,
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    height: 36,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexShrink: 0,
+  },
+  filterChipText: { fontSize: 13, fontWeight: "700", lineHeight: 16 },
   catChip: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: "#CFE0E6", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: "#fff", height: 36 },
   catChipActive: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },
   catChipText: { color: "#0B6E8F", fontSize: 12.5, fontWeight: "700" },

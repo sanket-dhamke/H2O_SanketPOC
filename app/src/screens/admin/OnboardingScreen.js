@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -10,14 +10,15 @@ import TextInput from "../../components/AppTextInput";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
-import { labelsFor } from "../../lib/org";
+import { labelsFor, isPreschool } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 
-const CSV_TEMPLATE = `flatNo,block,ownerName,ownerEmail,ownerPhone
-A-101,A,Ravi Kumar,ravi@example.com,9876543210
-A-102,A,Sneha Rao,sneha@example.com,9876500000
-B-201,B,Imran Shaikh,,9812345678`;
+// Shown until the server's org-aware template arrives (and if that call fails).
+const CSV_TEMPLATE = `flatNo,block,ownerName,occupancy,rentMaintenanceAmount,memberName,email,phone,role
+A-101,A,Ravi Kumar,owner,,Ravi Kumar,ravi@example.com,9876543210,resident
+A-102,A,Sneha Rao,rented,3500,Priya Shah,priya@example.com,9811111111,resident
+B-201,B,Imran Shaikh,owner,,,,9812345678,`;
 
 export default function OnboardingScreen({ navigation }) {
   const { user } = useAuth();
@@ -37,7 +38,7 @@ export default function OnboardingScreen({ navigation }) {
         <TabBtn label="Import CSV" active={tab === "csv"} onPress={() => setTab("csv")} />
       </View>
       <KeyboardAwareScrollView contentContainerStyle={{ padding: 16 }}>
-        {tab === "generate" ? <GenerateForm /> : <CsvForm />}
+        {tab === "generate" ? <GenerateForm /> : <CsvForm L={L} preschool={isPreschool(user)} />}
       </KeyboardAwareScrollView>
     </View>
   );
@@ -276,26 +277,63 @@ function GenerateForm() {
   );
 }
 
-function CsvForm() {
+function CsvForm({ L, preschool }) {
   const [csv, setCsv] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [template, setTemplate] = useState(CSV_TEMPLATE);
+  const [busy, setBusy] = useState(null); // "check" | "import"
+  const [preview, setPreview] = useState(null);
   const [result, setResult] = useState(null);
 
-  const submit = async () => {
+  // The server owns the column list, so the template an admin fills in can never
+  // drift from what the importer actually accepts.
+  useEffect(() => {
+    api
+      .adminImportTemplate()
+      .then(({ csv: text }) => text && setTemplate(text))
+      .catch(() => {});
+  }, []);
+
+  // Dry run: validate and show exactly what would happen, writing nothing. Worth
+  // the extra round-trip — an import of a few hundred people is hard to undo.
+  const check = async () => {
     if (!csv.trim()) {
-      Alert.alert("Paste CSV", "Paste your CSV data first (or tap 'Use template').");
+      Alert.alert("Paste your CSV", "Paste the data first, or tap 'Use template'.");
       return;
     }
-    setBusy(true);
+    setBusy("check");
     setResult(null);
+    try {
+      setPreview(await api.adminPreviewImport(csv));
+    } catch (e) {
+      Alert.alert("Couldn't read that file", e.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const submit = async () => {
+    setBusy("import");
     try {
       const r = await api.adminImportFlats({ csv });
       setResult(r);
+      setPreview(null);
     } catch (e) {
-      Alert.alert("Error", e.message);
+      Alert.alert("Import failed", e.message);
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
+  };
+
+  const confirmImport = () => {
+    const people = preview?.residentsCreated || 0;
+    Alert.alert(
+      "Import now?",
+      `This creates ${preview?.flatsCreated || 0} ${L.units.toLowerCase()} and ${people} login${people === 1 ? "" : "s"}.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Import", onPress: submit },
+      ]
+    );
   };
 
   return (
@@ -303,59 +341,101 @@ function CsvForm() {
       <View style={styles.infoCard}>
         <Ionicons name="document-text-outline" size={18} color="#0B6E8F" />
         <Text style={styles.infoText}>
-          Migrating from another app? Export your members to a spreadsheet, then paste as CSV.
-          Header row: <Text style={{ fontWeight: "800" }}>flatNo, block, ownerName, ownerEmail, ownerPhone</Text>.
-          Rows with an email also get a resident login (a temporary password is generated & shown here).
+          Moving from another app or a spreadsheet? Export to CSV and paste it below.
+          {preschool
+            ? " Only studentName is required — class, guardian details, email and phone are optional."
+            : ` Only ${"flatNo"} is required — block, owner, occupancy, rent, email, phone and role are optional.`}{" "}
+          Any row with an email also gets a login, and the temporary password is shown here afterwards.
         </Text>
       </View>
 
       <View style={styles.csvHeadRow}>
         <Label>CSV data</Label>
-        <TouchableOpacity onPress={() => setCsv(CSV_TEMPLATE)}>
+        <TouchableOpacity onPress={() => { setCsv(template); setPreview(null); setResult(null); }}>
           <Text style={styles.templateLink}>Use template</Text>
         </TouchableOpacity>
       </View>
       <TextInput
         style={styles.csvInput}
         value={csv}
-        onChangeText={setCsv}
-        placeholder={CSV_TEMPLATE}
+        onChangeText={(t) => { setCsv(t); setPreview(null); }}
+        placeholder={template}
         multiline
         autoCapitalize="none"
         autoCorrect={false}
       />
 
-      <TouchableOpacity style={[styles.primaryBtn, busy && { opacity: 0.6 }]} onPress={submit} disabled={busy}>
-        <Ionicons name="cloud-upload-outline" size={18} color="#fff" />
-        <Text style={styles.primaryText}>{busy ? "Importing…" : "Import"}</Text>
+      <TouchableOpacity
+        style={[styles.secondaryBtn, busy && { opacity: 0.6 }]}
+        onPress={check}
+        disabled={!!busy}
+      >
+        <Ionicons name="checkmark-circle-outline" size={18} color="#0B6E8F" />
+        <Text style={styles.secondaryText}>{busy === "check" ? "Checking…" : "Check file"}</Text>
       </TouchableOpacity>
+
+      {preview && (
+        <View style={styles.resultCard}>
+          <Text style={styles.resultTitle}>Preview — nothing saved yet</Text>
+          <Text style={styles.resultLine}>Rows read: {preview.rows}</Text>
+          <Text style={styles.resultLine}>{L.units} to create: {preview.flatsCreated}</Text>
+          {preview.flatsSkipped > 0 && (
+            <Text style={styles.resultLine}>Already exist (left as-is): {preview.flatsSkipped}</Text>
+          )}
+          <Text style={styles.resultLine}>Logins to create: {preview.residentsCreated}</Text>
+          {!!preview.sample?.length && <Text style={styles.resultLine}>e.g. {preview.sample.join(", ")}</Text>}
+          <Notices errors={preview.errors} />
+
+          <TouchableOpacity
+            style={[styles.primaryBtn, busy && { opacity: 0.6 }]}
+            onPress={confirmImport}
+            disabled={!!busy || (preview.flatsCreated === 0 && preview.residentsCreated === 0)}
+          >
+            <Ionicons name="cloud-upload-outline" size={18} color="#fff" />
+            <Text style={styles.primaryText}>{busy === "import" ? "Importing…" : "Import for real"}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {result && (
         <View style={styles.resultCard}>
           <Text style={styles.resultTitle}>Import complete</Text>
-          <Text style={styles.resultLine}>Flats created: {result.flatsCreated}</Text>
-          <Text style={styles.resultLine}>Flats skipped (existing): {result.flatsSkipped}</Text>
-          <Text style={styles.resultLine}>Resident logins created: {result.residentsCreated}</Text>
+          <Text style={styles.resultLine}>{L.units} created: {result.flatsCreated}</Text>
+          <Text style={styles.resultLine}>Skipped (already existed): {result.flatsSkipped}</Text>
+          <Text style={styles.resultLine}>Logins created: {result.residentsCreated}</Text>
           {!!result.credentials?.length && (
             <>
               <Text style={[styles.resultTitle, { marginTop: 12 }]}>Temporary passwords</Text>
-              <Text style={styles.hint}>Share securely — residents can change these after first login.</Text>
+              <Text style={styles.hint}>Share securely — everyone can change theirs after first login.</Text>
               {result.credentials.map((c) => (
                 <Text key={c.email} style={styles.cred}>
-                  {c.flatNo} · {c.email} → {c.tempPassword || "(password you provided)"}
+                  {c.flatNo || c.role} · {c.email} → {c.tempPassword || "(password you provided)"}
                 </Text>
               ))}
             </>
           )}
-          {!!result.errors?.length && (
-            <>
-              <Text style={[styles.resultTitle, { marginTop: 12, color: "#C2571A" }]}>Notices</Text>
-              {result.errors.map((e, i) => (
-                <Text key={i} style={styles.errLine}>• {e}</Text>
-              ))}
-            </>
-          )}
+          <Notices errors={result.errors} />
         </View>
+      )}
+    </>
+  );
+}
+
+// Row-level warnings from the importer. Long files can produce a lot of them, so
+// only the first handful are shown with a count of the rest.
+function Notices({ errors }) {
+  if (!errors?.length) return null;
+  const shown = errors.slice(0, 12);
+  return (
+    <>
+      <Text style={[styles.resultTitle, { marginTop: 12, color: "#C2571A" }]}>
+        Notices ({errors.length})
+      </Text>
+      {shown.map((e, i) => (
+        <Text key={i} style={styles.errLine}>• {e}</Text>
+      ))}
+      {errors.length > shown.length && (
+        <Text style={styles.errLine}>…and {errors.length - shown.length} more</Text>
       )}
     </>
   );
@@ -386,6 +466,8 @@ const styles = StyleSheet.create({
   total: { color: "#0B6E8F", fontWeight: "800", marginTop: 14, textAlign: "center" },
   primaryBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#0B6E8F", borderRadius: 12, paddingVertical: 14, marginTop: 16 },
   primaryText: { color: "#fff", fontWeight: "800", fontSize: 14 },
+  secondaryBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#fff", borderWidth: 1.5, borderColor: "#0B6E8F", borderRadius: 12, paddingVertical: 13, marginTop: 16 },
+  secondaryText: { color: "#0B6E8F", fontWeight: "800", fontSize: 14 },
   csvHeadRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
   templateLink: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
   csvInput: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, padding: 12, fontSize: 13, backgroundColor: "#fff", minHeight: 160, textAlignVertical: "top", fontFamily: "monospace" },

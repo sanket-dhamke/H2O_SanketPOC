@@ -15,18 +15,21 @@ import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { brand } from "../lib/brand";
 import { labelsFor } from "../lib/org";
 import { SUPPORT, memberId } from "../lib/support";
 import ChangePasswordModal from "./ChangePasswordModal";
+import { openScreen } from "../lib/nav";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 const ROLE_LABEL = {
   resident: "Resident",
   guard: "Gate desk / Guard",
   admin: "Society admin",
-  superadmin: "GateMate Platform owner",
+  superadmin: `${brand.name} Platform owner`,
 };
 const ID_LABEL = { resident: "Resident ID", guard: "Staff ID", admin: "Admin ID", superadmin: "Owner ID" };
 
@@ -43,6 +46,7 @@ const initials = (name) =>
 export default function ProfileModal({ visible, onClose }) {
   const { user, logout, updateUser } = useAuth();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const [pwModal, setPwModal] = useState(false);
   const [notifyBusy, setNotifyBusy] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
@@ -108,7 +112,7 @@ export default function ProfileModal({ visible, onClose }) {
 
   const open = (url) => Linking.openURL(url).catch(() => Alert.alert("Unavailable", `Couldn't open ${url}`));
   const sendFeedback = () => {
-    const subject = encodeURIComponent(`GateMate feedback — ${user?.name} (${memberId(user)})`);
+    const subject = encodeURIComponent(`${brand.name} feedback — ${user?.name} (${memberId(user)})`);
     const body = encodeURIComponent(
       `\n\n—\nFrom: ${user?.name}\nRole: ${roleLabel}\n` +
         (user?.societyName ? `${L.org}: ${user.societyName}\n` : "") +
@@ -184,7 +188,7 @@ export default function ProfileModal({ visible, onClose }) {
               />
             </View>
             {Platform.OS === "web" && (
-              <Text style={styles.note}>This preference applies to the GateMate mobile app.</Text>
+              <Text style={styles.note}>This preference applies to the {brand.name} mobile app.</Text>
             )}
             {isResident && (
               <View style={[styles.prefRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#EAEEF0" }]}>
@@ -231,6 +235,17 @@ export default function ProfileModal({ visible, onClose }) {
 
           {/* Support & feedback */}
           <Section title="Support & feedback">
+            {user.role !== "superadmin" ? (
+              <ActionRow
+                icon="book-outline"
+                label="Help & how-to"
+                value="Features with examples"
+                onPress={() => {
+                  onClose();
+                  openScreen(navigation, "Community", { screen: "Help" });
+                }}
+              />
+            ) : null}
             <ActionRow icon="call-outline" label="Call support" value={SUPPORT.phone} onPress={() => open(`tel:${SUPPORT.phone.replace(/\s/g, "")}`)} />
             <ActionRow icon="mail-outline" label="Email support" value={SUPPORT.email} onPress={() => open(`mailto:${SUPPORT.email}`)} />
             <ActionRow icon="chatbox-ellipses-outline" label="Send feedback" onPress={sendFeedback} />
@@ -239,7 +254,7 @@ export default function ProfileModal({ visible, onClose }) {
           </Section>
 
           <Text style={styles.version}>
-            GateMate v{Constants.expoConfig?.version || "1.0.0"} · {ROLE_LABEL[user.role]}
+            {brand.name} v{Constants.expoConfig?.version || "1.0.0"} · {ROLE_LABEL[user.role]}
           </Text>
         </ScrollView>
 

@@ -13,6 +13,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { labelsFor, isPreschool } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
 
 const inr = (n) => `₹${Math.round(Number(n) || 0).toLocaleString("en-IN")}`;
@@ -27,6 +28,8 @@ const scoreColor = (s) => (s >= 80 ? "#1E7A3D" : s >= 60 ? "#0B6E8F" : s >= 40 ?
 export default function TransparencyScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const L = labelsFor(user);
+  const preschool = isPreschool(user);
   const isAdmin = user?.role === "admin";
 
   const [data, setData] = useState(null);
@@ -69,7 +72,7 @@ export default function TransparencyScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <ScreenHeader icon="shield-checkmark" title="Transparency" onBack={navigation?.canGoBack?.() ? () => navigation.goBack() : undefined} />
+        <ScreenHeader icon="shield-checkmark" title="Transparency" onBack={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate("MaintenanceHome"))} />
         <View style={styles.loading}><ActivityIndicator color="#0B6E8F" /></View>
       </View>
     );
@@ -86,9 +89,20 @@ export default function TransparencyScreen() {
         icon="shield-checkmark"
         title="Transparency"
         subtitle={data.societyName || "Where your money goes"}
-        onBack={navigation?.canGoBack?.() ? () => navigation.goBack() : undefined}
+        onBack={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate("MaintenanceHome"))}
       />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+        <View style={styles.howCard}>
+          <Text style={styles.howKicker}>How we capture this</Text>
+          <Text style={styles.howTitle}>A trust score from the real books</Text>
+          <Text style={styles.howText}>
+            Every {preschool ? "fee" : "maintenance"} payment (money in) and every labelled expense (money out) is written to a hash-chained ledger. If anyone edits or deletes a past entry, the chain breaks and this page flags it. The 0–100 score is the sum of the six factors below — not a survey.
+          </Text>
+          <Text style={styles.howText}>
+            {L.payers} use this tab to see where {L.org.toLowerCase()} money went. Admins log expenses, collect dues, and can seal / re-verify the ledger.
+          </Text>
+        </View>
+
         {/* Score gauge */}
         <View style={styles.scoreCard}>
           <View style={[styles.scoreRing, { borderColor: c }]}>
@@ -239,4 +253,8 @@ const styles = StyleSheet.create({
   sealBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#0B6E8F", borderRadius: 12, paddingVertical: 14, marginTop: 18 },
   sealText: { color: "#fff", fontWeight: "800" },
   footNote: { color: "#8895A0", fontSize: 12, lineHeight: 18, marginTop: 14 },
+  howCard: { backgroundColor: "#EAF4F7", borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: "#C5DDE6" },
+  howKicker: { color: "#0B6E8F", fontSize: 11, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase" },
+  howTitle: { color: "#0B3A49", fontSize: 16, fontWeight: "800", marginTop: 4 },
+  howText: { color: "#3A5560", fontSize: 13, lineHeight: 19, marginTop: 8 },
 });

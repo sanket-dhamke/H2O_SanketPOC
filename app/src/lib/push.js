@@ -3,6 +3,7 @@ import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { api } from "./api";
+import { brand } from "./brand";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -23,7 +24,7 @@ export async function registerForPushNotifications() {
   // channelId here must match the one the server sends on ("default").
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
-      name: "GateMate alerts",
+      name: `${brand.name} alerts`,
       importance: Notifications.AndroidImportance.MAX, // heads-up banner + sound
       sound: "default",
       vibrationPattern: [0, 250, 250, 250],

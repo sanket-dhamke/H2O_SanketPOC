@@ -15,6 +15,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
+import { brand } from "../lib/brand";
 import { useAuth } from "../lib/auth";
 import { downloadReceipt } from "../lib/receipt";
 import ScreenHeader from "../components/ScreenHeader";
@@ -103,7 +104,7 @@ export default function VehiclesScreen() {
 
   const printPass = async (v) => {
     try {
-      const societyName = user?.societyName || "GateMate";
+      const societyName = user?.societyName || brand.name;
       await downloadReceipt(buildVehiclePassHtml(v, societyName), `GatePass-${v.plate}`);
     } catch (e) {
       Alert.alert("Error", e.message);
@@ -175,7 +176,7 @@ export default function VehiclesScreen() {
           <Ionicons name="lock-closed" size={40} color="#9AA7AF" />
           <Text style={styles.lockTitle}>A Platinum feature</Text>
           <Text style={styles.lockText}>
-            Automated vehicle gate (QR / RFID / number-plate) is available on the Platinum plan. Ask your GateMate owner to upgrade.
+            Automated vehicle gate (QR / RFID / number-plate) is available on the Platinum plan. Ask your {brand.name} owner to upgrade.
           </Text>
         </View>
       ) : (

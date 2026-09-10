@@ -22,6 +22,7 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { labelsFor, isPreschool } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
+import { body, head } from "../lib/type";
 
 const PURPOSES = ["Guest", "Delivery", "Cab", "Service", "Other"];
 const PRESCHOOL_PURPOSES = ["Pickup", "Drop", "Guest", "Delivery", "Service", "Other"];
@@ -42,6 +43,7 @@ export default function GateScreen({ navigation }) {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [isRecording, setIsRecording] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
+  const [heard, setHeard] = useState(null); // { transcript, filled[], missing[], unmatchedFlat }
   const [verifyModal, setVerifyModal] = useState(false);
 
   const flatsRef = useRef([]);
@@ -55,19 +57,34 @@ export default function GateScreen({ navigation }) {
       .catch(() => {});
   }, []);
 
-  // Apply the fields the AI extracted from the guard's speech to the form.
+  // Flat numbers get written as "A-101", "A 101" or "a101" depending on who
+  // typed them in, so compare on letters and digits only. Without this an
+  // otherwise perfect transcript silently left the unit unselected.
+  const normFlat = (s) => String(s || "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+
+  // Apply the fields the AI extracted from the guard's speech to the form, and
+  // report back which ones actually landed so the UI can say so.
   const applyParsedFields = (fields) => {
-    if (!fields) return;
-    if (fields.name) setName(fields.name);
-    if (fields.phone) setPhone(fields.phone);
-    if (fields.vehicleNo) setVehicleNo(fields.vehicleNo);
-    if (fields.purpose && purposes.includes(fields.purpose)) setPurpose(fields.purpose);
-    if (fields.flatNo) {
-      const match = flatsRef.current.find(
-        (f) => f.flatNo.toLowerCase() === String(fields.flatNo).toLowerCase()
-      );
-      if (match) setFlatId(match.id);
+    if (!fields) return [];
+    const filled = [];
+    if (fields.name) { setName(fields.name); filled.push(`Name: ${fields.name}`); }
+    if (fields.phone) { setPhone(fields.phone); filled.push(`Phone: ${fields.phone}`); }
+    if (fields.vehicleNo) { setVehicleNo(fields.vehicleNo); filled.push(`Vehicle: ${fields.vehicleNo}`); }
+    if (fields.purpose) {
+      const match = purposes.find((p) => p.toLowerCase() === String(fields.purpose).toLowerCase());
+      if (match) { setPurpose(match); filled.push(`Purpose: ${match}`); }
     }
+    if (fields.flatNo) {
+      const want = normFlat(fields.flatNo);
+      const match =
+        flatsRef.current.find((f) => normFlat(f.flatNo) === want) ||
+        flatsRef.current.find((f) => normFlat(f.flatNo).endsWith(want));
+      if (match) {
+        setFlatId(match.id);
+        filled.push(`${L.unit}: ${match.flatNo}`);
+      }
+    }
+    return filled;
   };
 
   const startRecording = async () => {
@@ -96,11 +113,18 @@ export default function GateScreen({ navigation }) {
       const base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-      const { fields } = await api.aiVoiceVisitor({
+      const { fields, transcript } = await api.aiVoiceVisitor({
         audioBase64: `data:audio/m4a;base64,${base64}`,
       });
-      applyParsedFields(fields);
-      Alert.alert("Got it", "Review the details below and tap Notify.");
+      const filled = applyParsedFields(fields);
+      // Showing the transcript and the filled fields inline beats an alert the
+      // guard has to dismiss before they can check the form against it.
+      setHeard({
+        transcript,
+        filled,
+        missing: fields?.missing || [],
+        unmatchedFlat: fields?.unmatchedFlat || "",
+      });
     } catch (e) {
       Alert.alert("Voice entry failed", e.message);
     } finally {
@@ -186,6 +210,44 @@ export default function GateScreen({ navigation }) {
               : "🎤  Dictate details (AI)"}
         </Text>
       </TouchableOpacity>
+
+      {isRecording ? (
+        <Text style={styles.voiceHint}>
+          Just say it normally — “{preschool ? "Meera Sharma picking up Aarav from Jr KG" : `Ramesh Kumar to ${flats[0]?.flatNo || "A-101"}, Amazon delivery, bike MH12AB1234`}”.
+          Any language works; the form fills in English.
+        </Text>
+      ) : null}
+
+      {heard ? (
+        <View style={styles.heardCard}>
+          <View style={styles.heardHead}>
+            <Ionicons name="ear-outline" size={15} color="#0B6E8F" />
+            <Text style={styles.heardTitle}>Heard</Text>
+            <TouchableOpacity onPress={() => setHeard(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close" size={16} color="#8895A0" />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.heardTranscript}>“{heard.transcript}”</Text>
+          {heard.filled.length ? (
+            heard.filled.map((f) => (
+              <View key={f} style={styles.heardRow}>
+                <Ionicons name="checkmark-circle" size={14} color="#1E7A3D" />
+                <Text style={styles.heardFilled}>{f}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.heardMiss}>Nothing could be filled in — please type the details below.</Text>
+          )}
+          {heard.unmatchedFlat ? (
+            <Text style={styles.heardMiss}>
+              No {L.unit.toLowerCase()} on file matches “{heard.unmatchedFlat}” — pick it below.
+            </Text>
+          ) : null}
+          {heard.missing.length ? (
+            <Text style={styles.heardMiss}>Still needed: {heard.missing.join(", ")}.</Text>
+          ) : null}
+        </View>
+      ) : null}
 
       <TouchableOpacity style={styles.passBtn} onPress={() => setVerifyModal(true)}>
         <Ionicons name="qr-code-outline" size={18} color="#2E9E52" />
@@ -340,28 +402,36 @@ function GatePassVerifyModal({ visible, onClose }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
-  title: { fontSize: 22, fontWeight: "800", color: "#1B2B33", marginBottom: 8 },
+  title: { fontSize: 22, ...head(800), color: "#1B2B33", marginBottom: 8 },
   voiceBtn: { backgroundColor: "#E7F1F5", borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 8 },
   voiceBtnActive: { backgroundColor: "#FCEEE2" },
-  voiceBtnText: { color: "#0B6E8F", fontWeight: "700", fontSize: 15 },
+  voiceBtnText: { color: "#0B6E8F", ...body(700), fontSize: 15 },
+  voiceHint: { color: "#6B7B85", fontSize: 12.5, lineHeight: 18, marginTop: 8, paddingHorizontal: 4, ...body(400)},
+  heardCard: { backgroundColor: "#F4F9FB", borderRadius: 12, padding: 13, marginTop: 10, borderWidth: 1, borderColor: "#DCEAF0" },
+  heardHead: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
+  heardTitle: { flex: 1, color: "#0B6E8F", ...head(800), fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
+  heardTranscript: { color: "#3C5560", fontSize: 13.5, fontStyle: "italic", marginBottom: 8, lineHeight: 19, ...body(400)},
+  heardRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3 },
+  heardFilled: { color: "#1B2B33", fontSize: 13, ...body(600) },
+  heardMiss: { color: "#C2571A", fontSize: 12.5, marginTop: 6, lineHeight: 18, ...body(400)},
   passBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#E3F5E8", borderRadius: 12, paddingVertical: 13, marginTop: 10 },
-  passBtnText: { color: "#2E9E52", fontWeight: "700", fontSize: 15 },
+  passBtnText: { color: "#2E9E52", ...body(700), fontSize: 15 },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 24 },
   modalCard: { backgroundColor: "#fff", borderRadius: 18, overflow: "hidden" },
   modalHeader: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingVertical: 16 },
   modalHeaderIcon: { width: 38, height: 38, borderRadius: 11, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
-  modalTitle: { fontSize: 17, fontWeight: "800", color: "#fff", flex: 1 },
+  modalTitle: { fontSize: 17, ...body(800), color: "#fff", flex: 1 },
   modalBody: { padding: 20 },
-  modalLabel: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 8 },
-  codeInput: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 14, fontSize: 24, letterSpacing: 6, textAlign: "center", backgroundColor: "#F8FAFB" },
+  modalLabel: { fontSize: 13, ...body(600), color: "#334", marginBottom: 8 },
+  codeInput: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 14, fontSize: 24, letterSpacing: 6, textAlign: "center", backgroundColor: "#F8FAFB", ...body(400)},
   passInfo: { backgroundColor: "#F6F9FA", borderRadius: 10, padding: 14, marginTop: 14 },
-  passName: { fontSize: 17, fontWeight: "800", color: "#1B2B33" },
-  passMeta: { color: "#6B7B85", fontSize: 13, marginTop: 3 },
+  passName: { fontSize: 17, ...body(800), color: "#1B2B33" },
+  passMeta: { color: "#6B7B85", fontSize: 13, marginTop: 3, ...body(400)},
   modalActions: { flexDirection: "row", gap: 12, marginTop: 20 },
   mBtn: { flex: 1, backgroundColor: "#0B6E8F", borderRadius: 10, paddingVertical: 13, alignItems: "center" },
-  mBtnText: { color: "#fff", fontWeight: "700" },
+  mBtnText: { color: "#fff", ...body(700) },
   mCancel: { backgroundColor: "#EEF2F4" },
-  mCancelText: { color: "#6B7B85", fontWeight: "700" },
+  mCancelText: { color: "#6B7B85", ...body(700) },
   photoBox: { alignSelf: "center", marginTop: 12, marginBottom: 4 },
   photo: { width: 120, height: 120, borderRadius: 60 },
   photoPlaceholder: {
@@ -375,9 +445,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  photoIcon: { fontSize: 30, color: "#0B6E8F", fontWeight: "800" },
-  photoText: { color: "#6B7B85", fontSize: 11, marginTop: 2 },
-  label: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 6, marginTop: 14 },
+  photoIcon: { fontSize: 30, color: "#0B6E8F", ...body(800) },
+  photoText: { color: "#6B7B85", fontSize: 11, marginTop: 2, ...body(400)},
+  label: { fontSize: 13, ...body(600), color: "#334", marginBottom: 6, marginTop: 14 },
   input: {
     borderWidth: 1,
     borderColor: "#D6DEE3",
@@ -385,9 +455,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: "#fff",
-  },
-  hint: { color: "#8895A0", fontSize: 12 },
+    backgroundColor: "#fff", ...body(400)},
+  hint: { color: "#8895A0", fontSize: 12, ...body(400)},
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     paddingHorizontal: 16,
@@ -399,7 +468,7 @@ const styles = StyleSheet.create({
   },
   chipActive: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },
   chipDisabled: { backgroundColor: "#EEF1F3", borderColor: "#E1E6E9", opacity: 0.6 },
-  chipText: { color: "#334", fontWeight: "600" },
+  chipText: { color: "#334", ...body(600) },
   chipTextActive: { color: "#fff" },
   chipTextDisabled: { color: "#A6B0B7" },
   button: {
@@ -409,5 +478,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 28,
   },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  buttonText: { color: "#fff", ...body(700), fontSize: 16 },
 });

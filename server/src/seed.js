@@ -4,7 +4,7 @@ import { prisma } from "./prisma.js";
 import { placeholderPhoto } from "./storage.js";
 
 // Seeds the platform:
-//   - 1 superadmin (GateMate owner) that can see every society
+//   - 1 superadmin (GATEZO owner) that can see every society
 //   - 2 demo societies, each with its own admins/guards/residents, flats, bills,
 //     visitors and expenses, so the super-admin summary shows real numbers.
 // Password for every account: Password123
@@ -15,6 +15,11 @@ async function main() {
   const hash = bcrypt.hashSync(PASSWORD, 10);
 
   // Wipe existing data (order matters for FK constraints).
+  try {
+    await prisma.serviceBooking.deleteMany();
+  } catch (e) {
+    console.warn("serviceBooking wipe skipped:", e.message);
+  }
   await prisma.booking.deleteMany();
   await prisma.amenitySlot.deleteMany();
   await prisma.amenity.deleteMany();
@@ -31,7 +36,7 @@ async function main() {
   // ---- Platform owner (no society) --------------------------------------
   await prisma.user.create({
     data: {
-      name: "GateMate Owner",
+      name: "GATEZO Owner",
       email: "owner@h2o.com",
       role: "superadmin",
       passwordHash: hash,
@@ -104,6 +109,7 @@ async function main() {
     { name: "Amazon Delivery", phone: "91000 55667", purpose: "Delivery", vehicleNo: "MH14DL7788", status: "leave_at_gate", createdAt: hoursAgo(5), decidedAt: hoursAgo(4.9) },
     { name: "Priya Nair", phone: "99870 33221", purpose: "Guest", vehicleNo: null, status: "approved", createdAt: hoursAgo(26), decidedAt: hoursAgo(25.9) },
     { name: "Ola Cab Driver", phone: "98111 22334", purpose: "Cab", vehicleNo: "KA05MN4321", status: "approved", createdAt: hoursAgo(74), decidedAt: hoursAgo(73.9) },
+    { name: "Prashant Kulkarni", phone: "98765 44321", purpose: "Guest", vehicleNo: "MH12XH1234", status: "approved", createdAt: hoursAgo(40), decidedAt: hoursAgo(39.8) },
   ];
   for (const v of greenVisitors) {
     await prisma.visitor.create({
@@ -126,6 +132,15 @@ async function main() {
     data: [
       { societyId: green.id, label: "Lift AMC (July)", amount: 3500, date: hoursAgo(240) },
       { societyId: green.id, label: "Garden maintenance", amount: 1200, date: hoursAgo(120) },
+    ],
+  });
+
+  const waterPeriod = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+  await prisma.waterReading.createMany({
+    data: [
+      { societyId: green.id, flatId: flatA101.id, period: waterPeriod, litres: 9800 },
+      { societyId: green.id, flatId: flatA102.id, period: waterPeriod, litres: 14200 },
+      { societyId: green.id, flatId: flatB201.id, period: waterPeriod, litres: 11100 },
     ],
   });
 
@@ -263,7 +278,7 @@ async function main() {
   });
 
   console.log("Seed complete. All demo logins use password: " + PASSWORD);
-  console.log("  SUPER ADMIN (GateMate owner): owner@h2o.com");
+  console.log("  SUPER ADMIN (GATEZO owner): owner@h2o.com");
   console.log("  Society 1 - Green Valley Residency (Pune):");
   console.log("     admin@h2o.com / admin2@h2o.com, guard@h2o.com / guard2@h2o.com");
   console.log("     resident@h2o.com (A-101), resident2@h2o.com (A-102), resident3@h2o.com (B-201)");

@@ -1,5 +1,6 @@
 // Builds a detailed, printable HTML payment receipt. Shared by web and native
 // download helpers (see receipt.web.js / receipt.native.js).
+import { brand } from "./brand";
 
 // Formats a number using the Indian grouping system (e.g. 1,23,456).
 function inr(n) {
@@ -56,7 +57,7 @@ function esc(s) {
 
 // Returns { html, filename } for the given paid bill.
 export function buildReceipt({ bill, user, payee }) {
-  const societyName = payee?.accountHolderName || "GateMate Society";
+  const societyName = payee?.accountHolderName || `${brand.name} Society`;
   const isRazorpay = !!bill?.paymentRef && String(bill.paymentRef).startsWith("pay_");
   const method = isRazorpay ? "Razorpay (UPI / Card / Net Banking)" : "Manual / Test mode";
   const receiptNo =

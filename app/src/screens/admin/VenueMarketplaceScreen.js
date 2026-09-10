@@ -16,6 +16,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
+import { brand } from "../../lib/brand";
 import ScreenHeader from "../../components/ScreenHeader";
 import KeyboardAvoider from "../../components/KeyboardAvoider";
 
@@ -82,7 +83,7 @@ export default function VenueMarketplaceScreen() {
       }
       await load();
       const routedNote = r.routed
-        ? `\n\n90% (${money(b.societyNet)}) will settle to the society; GateMate keeps the ${b.platformFeePct}% fee.`
+        ? `\n\n90% (${money(b.societyNet)}) will settle to the society; ${brand.name} keeps the ${b.platformFeePct}% fee.`
         : "\n\n(Society bank account not linked to Razorpay Route yet — full amount settles to the platform account; settle the society's share manually.)";
       Alert.alert("Payment link ready", `Share this with ${b.vendorName}:\n${r.url}${routedNote}`, [
         { text: "Close" },
@@ -156,11 +157,11 @@ export default function VenueMarketplaceScreen() {
             <Text style={styles.upsellText}>
               The vendor venue marketplace lets outside vendors (decorators, event
               companies, etc.) book your community hall or grounds and pay the society —
-              with GateMate keeping a small platform fee (10%).
+              with {brand.name} keeping a small platform fee (10%).
             </Text>
             <Text style={styles.upsellText}>
-              This is part of the <Text style={{ fontWeight: "800" }}>GateMate Premium</Text> plan.
-              Ask the GateMate team to enable premium for your society.
+              This is part of the <Text style={{ fontWeight: "800" }}>{brand.name} Premium</Text> plan.
+              Ask the {brand.name} team to enable premium for your society.
             </Text>
           </View>
         </ScrollView>
@@ -182,7 +183,7 @@ export default function VenueMarketplaceScreen() {
               <Text style={[styles.sumVal, { color: "#2E9E52" }]}>{money(summary.societyEarnings)}</Text>
             </View>
             <View style={styles.sumBox}>
-              <Text style={styles.sumLabel}>GateMate fees</Text>
+              <Text style={styles.sumLabel}>{brand.name} fees</Text>
               <Text style={styles.sumVal}>{money(summary.platformFees)}</Text>
             </View>
             <View style={styles.sumBox}>
@@ -212,7 +213,7 @@ export default function VenueMarketplaceScreen() {
 
             <View style={styles.feeRow}>
               <Fee label="Amount" value={money(b.amount)} />
-              <Fee label={`GateMate fee (${b.platformFeePct}%)`} value={money(b.platformFee)} />
+              <Fee label={`${brand.name} fee (${b.platformFeePct}%)`} value={money(b.platformFee)} />
               <Fee label="Society gets" value={money(b.societyNet)} strong />
             </View>
 
@@ -351,14 +352,14 @@ function AddBookingModal({ visible, onClose, onDone }) {
                 <TextInput style={styles.input} value={f.amount} onChangeText={set("amount")} placeholder="20000" keyboardType="number-pad" />
               </View>
               <View style={{ width: 110 }}>
-                <Label>GateMate fee %</Label>
+                <Label>{brand.name} fee %</Label>
                 <TextInput style={styles.input} value={f.platformFeePct} onChangeText={set("platformFeePct")} keyboardType="number-pad" />
               </View>
             </View>
 
             {amount > 0 && (
               <Text style={styles.split}>
-                Society gets {money(amount - fee)} · GateMate fee {money(fee)}
+                Society gets {money(amount - fee)} · {brand.name} fee {money(fee)}
               </Text>
             )}
 

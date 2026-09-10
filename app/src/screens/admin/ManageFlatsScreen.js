@@ -58,7 +58,7 @@ export default function ManageFlatsScreen({ navigation }) {
 
   const addFlat = async () => {
     if (!flatNo.trim()) {
-      Alert.alert("Missing info", "Flat number is required.");
+      Alert.alert("Missing info", `${L.unit} ${preschool ? "name / roll no" : "number"} is required.`);
       return;
     }
     setBusy(true);

@@ -18,6 +18,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
+import { brand, brandIcon } from "../../lib/brand";
 import { TIERS, TIER_LABEL, TIER_COLOR } from "../../lib/plan";
 import ScreenHeader from "../../components/ScreenHeader";
 import KeyboardAvoider from "../../components/KeyboardAvoider";
@@ -133,7 +134,7 @@ export default function SocietiesScreen() {
     <View style={styles.container}>
       <ScreenHeader
         icon="business"
-        logo={require("../../../assets/icon.png")}
+        logo={brandIcon}
         title="Societies"
         subtitle={`${societies.length} onboarded`}
         right={headerBtns}
@@ -807,8 +808,8 @@ function EditPlanModal({ society, onClose, onDone }) {
   );
 }
 
-// Owner-editable GateMate platform settings: the contact email shown to admins and
-// GateMate's own bank/UPI details (reference for "Pay to GateMate").
+// Owner-editable GATEZO platform settings: the contact email shown to admins and
+// GATEZO's own bank/UPI details (reference for "Pay to GATEZO").
 function PlatformSettingsModal({ visible, onClose }) {
   const [contactEmail, setContactEmail] = useState("");
   const [accountName, setAccountName] = useState("");
@@ -839,7 +840,7 @@ function PlatformSettingsModal({ visible, onClose }) {
     try {
       await api.superUpdateSettings({ contactEmail, accountName, bankName, accountNumber, ifsc, upiId });
       onClose();
-      notify("Saved", "GateMate platform settings updated.");
+      notify("Saved", `${brand.name} platform settings updated.`);
     } catch (e) {
       notify("Error", e.message);
     } finally {
@@ -848,11 +849,11 @@ function PlatformSettingsModal({ visible, onClose }) {
   };
 
   return (
-    <FormModal visible={visible} onClose={onClose} title="GateMate settings" icon="settings-outline" busy={busy} onSubmit={submit}>
+    <FormModal visible={visible} onClose={onClose} title={`${brand.name} settings`} icon="settings-outline" busy={busy} onSubmit={submit}>
       <Label>Platform contact email</Label>
       <TextInput style={styles.input} value={contactEmail} onChangeText={setContactEmail} placeholder="sanket.dhamke@gmail.com" autoCapitalize="none" keyboardType="email-address" />
-      <Text style={styles.helpText}>Shown on the owner profile and used as the GateMate reply-to contact.</Text>
-      <Label>GateMate bank / UPI (for "Pay to GateMate")</Label>
+      <Text style={styles.helpText}>Shown on the owner profile and used as the {brand.name} reply-to contact.</Text>
+      <Label>{brand.name} bank / UPI (for "Pay to {brand.name}")</Label>
       <TextInput style={styles.input} value={accountName} onChangeText={setAccountName} placeholder="Account holder name" />
       <TextInput style={styles.input} value={bankName} onChangeText={setBankName} placeholder="Bank name" />
       <TextInput style={styles.input} value={accountNumber} onChangeText={setAccountNumber} placeholder="Account number" keyboardType="number-pad" />

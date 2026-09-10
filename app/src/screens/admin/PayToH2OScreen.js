@@ -13,6 +13,7 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
+import { brand } from "../../lib/brand";
 import { paySubscription } from "../../lib/pay";
 import ScreenHeader from "../../components/ScreenHeader";
 
@@ -57,7 +58,7 @@ export default function PayToH2OScreen({ navigation }) {
 
   const pay = async () => {
     if (!(Number(data?.planAmount) > 0)) {
-      notify("No amount set", "GateMate hasn't set your subscription amount yet. Please contact GateMate support.");
+      notify("No amount set", `${brand.name} hasn't set your subscription amount yet. Please contact ${brand.name} support.`);
       return;
     }
     setBusy(true);
@@ -65,7 +66,7 @@ export default function PayToH2OScreen({ navigation }) {
       const result = await paySubscription();
       if (result?.cancelled) return;
       await load();
-      notify("Payment successful", "Your GateMate subscription is now active. Thank you!");
+      notify("Payment successful", `Your ${brand.name} subscription is now active. Thank you!`);
     } catch (e) {
       notify("Payment failed", e.message);
     } finally {
@@ -76,7 +77,7 @@ export default function PayToH2OScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.container}>
-        <ScreenHeader icon="ribbon" title="Pay to GateMate" subtitle="Platform subscription" onBack={() => navigation.goBack()} />
+        <ScreenHeader icon="ribbon" title={`Pay to ${brand.name}`} subtitle="Platform subscription" onBack={() => navigation.goBack()} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#0B6E8F" />
         </View>
@@ -91,7 +92,7 @@ export default function PayToH2OScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader icon="ribbon" title="Pay to GateMate" subtitle="Platform subscription" onBack={() => navigation.goBack()} />
+      <ScreenHeader icon="ribbon" title={`Pay to ${brand.name}`} subtitle="Platform subscription" onBack={() => navigation.goBack()} />
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -106,7 +107,7 @@ export default function PayToH2OScreen({ navigation }) {
           </View>
           <Text style={styles.statusLine}>
             {premium
-              ? `Your GateMate subscription is active until ${fmtDate(data?.planExpiresAt)}.`
+              ? `Your ${brand.name} subscription is active until ${fmtDate(data?.planExpiresAt)}.`
               : "Upgrade to unlock premium features (vendor marketplace, voice AI & more)."}
           </Text>
           <View style={styles.amountRow}>
@@ -124,12 +125,12 @@ export default function PayToH2OScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           {amount <= 0 && (
-            <Text style={styles.hint}>GateMate hasn't set your plan amount yet. Contact GateMate support to get started.</Text>
+            <Text style={styles.hint}>{brand.name} hasn't set your plan amount yet. Contact {brand.name} support to get started.</Text>
           )}
         </View>
 
-        {/* GateMate reference details */}
-        <Text style={styles.sectionTitle}>GateMate account (for reference)</Text>
+        {/* GATEZO reference details */}
+        <Text style={styles.sectionTitle}>{brand.name} account (for reference)</Text>
         <View style={styles.refCard}>
           {p.contactEmail && <RefRow icon="mail-outline" label="Contact" value={p.contactEmail} />}
           {hasBank ? (
@@ -141,7 +142,7 @@ export default function PayToH2OScreen({ navigation }) {
               {p.upiId && <RefRow icon="at-outline" label="UPI" value={p.upiId} />}
             </>
           ) : (
-            <Text style={styles.hint}>GateMate bank details aren't published yet.</Text>
+            <Text style={styles.hint}>{brand.name} bank details aren't published yet.</Text>
           )}
           <Text style={styles.refNote}>
             Payment is collected securely in-app. These details are shown for reference only.

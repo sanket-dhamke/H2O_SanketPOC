@@ -18,6 +18,7 @@ import { useAuth } from "../lib/auth";
 import { isPreschool } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
 import KeyboardAvoider from "../components/KeyboardAvoider";
+import OffersRail from "../components/OffersRail";
 import { translateAndSpeak, stopSpeaking, speechSupported } from "../lib/speak";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
@@ -137,6 +138,12 @@ export default function CommunityScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.shortcutRow}>
+          {!preschool ? (
+            <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("HomeServices")}>
+              <Ionicons name="construct" size={20} color="#0B6E8F" />
+              <Text style={styles.shortcutText}>Home Services</Text>
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Marketplace")}>
             <Ionicons name="pricetags" size={20} color="#C99000" />
             <Text style={styles.shortcutText}>Buy & Sell</Text>
@@ -153,11 +160,20 @@ export default function CommunityScreen() {
             <Ionicons name="construct" size={20} color="#7A5AF8" />
             <Text style={styles.shortcutText}>Services & help</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Workers")}>
-            <Ionicons name="ribbon" size={20} color="#0B6E8F" />
-            <Text style={styles.shortcutText}>Trusted helpers</Text>
+          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Amenities")}>
+            <Ionicons name="calendar" size={20} color="#0B6E8F" />
+            <Text style={styles.shortcutText}>{preschool ? "Book hall" : "Book clubhouse"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Assistant")}>
+            <Ionicons name="sparkles" size={20} color="#6D3BD1" />
+            <Text style={styles.shortcutText}>Assistant</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Help")}>
+            <Ionicons name="book" size={20} color="#0B6E8F" />
+            <Text style={styles.shortcutText}>Help & how-to</Text>
           </TouchableOpacity>
         </View>
+        <OffersRail slot="community" navigation={navigation} compact />
         {tab === "announcements" ? (
           <>
             {announcements.length === 0 && <Empty text="No announcements yet." />}

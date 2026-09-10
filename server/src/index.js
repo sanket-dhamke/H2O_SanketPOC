@@ -30,6 +30,8 @@ import { agmRouter } from "./routes/agm.js";
 import { rentalRouter } from "./routes/rental.js";
 import { sustainabilityRouter } from "./routes/sustainability.js";
 import { aiRouter } from "./routes/ai.js";
+import { homeRouter } from "./routes/home.js";
+import { homeServicesRouter } from "./routes/homeServices.js";
 import { globalLimiter, authLimiter, aiLimiter } from "./rateLimit.js";
 import { startQueueWorkers, queueBackend } from "./queue.js";
 import { cacheBackend } from "./cache.js";
@@ -95,7 +97,7 @@ app.use("/api/ai", aiLimiter);
 app.get("/api/health", (_req, res) =>
   res.json({
     ok: true,
-    name: "GateMate",
+    name: "GATEZO",
     razorpay: razorpayEnabled,
     storage: storageEnabled,
     ai: aiEnabled,
@@ -105,6 +107,7 @@ app.get("/api/health", (_req, res) =>
 );
 
 app.use("/api", authRouter);
+app.use("/api", homeRouter);
 app.use("/api", maintenanceRouter);
 app.use("/api", visitorsRouter);
 app.use("/api/admin", adminRouter);
@@ -119,6 +122,7 @@ app.use("/api", gatePassRouter);
 app.use("/api", marketplaceRouter);
 app.use("/api", gateRouter);
 app.use("/api", servicesRouter);
+app.use("/api", homeServicesRouter);
 app.use("/api", workersRouter);
 app.use("/api", preschoolRouter);
 app.use("/api", sosRouter);
@@ -264,7 +268,7 @@ async function ensurePlatformSetting() {
 }
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`GateMate server running on http://0.0.0.0:${PORT}`);
+  console.log(`GATEZO server running on http://0.0.0.0:${PORT}`);
   console.log(`[infra] cache=${cacheBackend} queue=${queueBackend}`);
   // Start the notification queue worker (only active in redis mode; the
   // in-process queue drains on its own when no REDIS_URL is set).

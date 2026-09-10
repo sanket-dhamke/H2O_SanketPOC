@@ -9,6 +9,13 @@ import { sendPush } from "../push.js";
 import { sendEmail } from "../email.js";
 import { buildSocietyBackup, emailSocietyBackup, buildWingReport, listBlocks } from "../backup.js";
 import { parseCsv } from "../csv.js";
+import {
+  MAX_IMPORT_ROWS,
+  BULK_HASH_ROUNDS,
+  tempPassword,
+  normaliseImportRows,
+  importTemplate,
+} from "../importCsv.js";
 import { isPremium } from "../plan.js";
 import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorpay.js";
 import { recordPayment, effectivePaid, billBalance, buildFlatLedger, refreshLateFees } from "../billing.js";
@@ -909,10 +916,6 @@ adminRouter.post("/backup/email", async (req, res) => {
 });
 
 /* ------------------------- Onboarding / bulk setup ----------------------- */
-// Compliant temporary password for bulk-created residents.
-function tempPassword() {
-  return "H2o" + Math.floor(1000 + Math.random() * 9000) + "x!";
-}
 
 // Generate a whole society structure at once: wings × floors × flats-per-floor.
 // Flat numbers look like  A-101, A-102 ... B-201  (block = wing).
@@ -990,82 +993,142 @@ adminRouter.post("/flats/bulk", async (req, res) => {
   });
 });
 
-// Bulk import flats (and optionally their owners as resident logins) from CSV.
-// CSV headers (case-insensitive): flatNo, block, ownerName, ownerEmail, ownerPhone
-// Optionally: password (else a temp one is generated & returned).
+/* --------------------------- CSV bulk import ----------------------------- */
+// A ready-to-fill CSV so admins never have to guess the column names.
+adminRouter.get("/flats/import/template", async (req, res) => {
+  const society = await prisma.society.findUnique({
+    where: { id: sid(req) },
+    select: { orgType: true },
+  });
+  const orgType = society?.orgType === "preschool" ? "preschool" : "society";
+  res.json({ csv: importTemplate(orgType), orgType });
+});
+
+// Bulk import units (and optionally their members as logins) from CSV.
+// Set dryRun:true to validate and preview without writing anything.
+//
+// Performance: everything is batched. Earlier this ran ~4 queries per row, so a
+// few hundred members meant thousands of sequential round-trips to Postgres and
+// a request that could outlive the proxy timeout. Now it is a fixed handful of
+// queries regardless of file size.
 adminRouter.post("/flats/import", async (req, res) => {
-  const { csv, rows: bodyRows, createResidents = true } = req.body || {};
+  const { csv, rows: bodyRows, createResidents = true, dryRun = false } = req.body || {};
   let rows = [];
   if (Array.isArray(bodyRows)) rows = bodyRows;
   else if (csv) rows = parseCsv(csv);
   else return res.status(400).json({ message: "Provide 'csv' text or a 'rows' array" });
   if (rows.length === 0) return res.status(400).json({ message: "No data rows found" });
-  if (rows.length > 3000) return res.status(400).json({ message: "Please import under 3000 rows at a time" });
+  if (rows.length > MAX_IMPORT_ROWS) {
+    return res.status(400).json({ message: `Please import under ${MAX_IMPORT_ROWS} rows at a time` });
+  }
 
   const societyId = req.user.societyId;
-  const summary = { flatsCreated: 0, flatsSkipped: 0, residentsCreated: 0, credentials: [], errors: [] };
+  const { records, errors } = normaliseImportRows(rows, { createResidents });
+  const problems = [...errors];
 
-  const existingFlats = new Set(
-    (await prisma.flat.findMany({ where: { societyId }, select: { flatNo: true } })).map((f) => f.flatNo)
-  );
+  // ---- Two reads tell us everything about what already exists. ----
+  const emails = [...new Set(records.map((r) => r.email).filter(Boolean))];
+  const [existingFlats, existingUsers] = await Promise.all([
+    prisma.flat.findMany({ where: { societyId }, select: { id: true, flatNo: true } }),
+    emails.length
+      ? prisma.user.findMany({ where: { email: { in: emails } }, select: { email: true } })
+      : Promise.resolve([]),
+  ]);
+  const flatIdByNo = new Map(existingFlats.map((f) => [f.flatNo, f.id]));
+  const takenEmails = new Set(existingUsers.map((u) => u.email));
 
-  for (let i = 0; i < rows.length; i++) {
-    const r = rows[i] || {};
-    const flatNo = (r.flatno || r.flat || r["flatnumber"] || "").trim();
-    const block = (r.block || r.wing || "").trim();
-    const ownerName = (r.ownername || r.owner || r.name || "").trim();
-    const ownerEmail = (r.owneremail || r.email || "").trim().toLowerCase();
-    const ownerPhone = (r.ownerphone || r.phone || r.mobile || "").trim();
-    const line = i + 2; // account for header row
+  // ---- Decide what to create. ----
+  const newFlats = [];
+  const newFlatNos = new Set();
+  for (const r of records) {
+    if (!r.flatNo || flatIdByNo.has(r.flatNo) || newFlatNos.has(r.flatNo)) continue;
+    newFlatNos.add(r.flatNo);
+    newFlats.push({
+      societyId,
+      flatNo: r.flatNo,
+      block: r.block,
+      ownerName: r.ownerName,
+      ...(r.occupancy ? { occupancy: r.occupancy } : {}),
+      ...(r.rentMaintenanceAmount != null ? { rentMaintenanceAmount: r.rentMaintenanceAmount } : {}),
+      guardianName: r.guardianName,
+      guardianPhone: r.guardianPhone,
+      guardianEmail: r.guardianEmail,
+    });
+  }
 
-    if (!flatNo) {
-      summary.errors.push(`Row ${line}: missing flat number — skipped`);
+  const pendingMembers = [];
+  for (const r of records) {
+    if (!r.email) continue;
+    if (takenEmails.has(r.email)) {
+      problems.push({ line: r.line, field: "email", message: `Row ${r.line}: ${r.email} already has an account — login not created` });
       continue;
     }
-
-    // Flat.
-    if (existingFlats.has(flatNo)) {
-      summary.flatsSkipped++;
-    } else {
-      await prisma.flat.create({ data: { flatNo, block: block || null, ownerName: ownerName || null, societyId } });
-      existingFlats.add(flatNo);
-      summary.flatsCreated++;
-    }
-    const flat = await prisma.flat.findFirst({ where: { flatNo, societyId } });
-
-    // Optional resident login for the owner.
-    if (createResidents && ownerEmail) {
-      const dup = await prisma.user.findUnique({ where: { email: ownerEmail } });
-      if (dup) {
-        summary.errors.push(`Row ${line}: ${ownerEmail} already has an account — resident not created`);
-      } else {
-        const pwd = (r.password || "").trim() || tempPassword();
-        const policyError = validatePassword(pwd);
-        if (policyError) {
-          summary.errors.push(`Row ${line}: ${ownerEmail} password rejected (${policyError})`);
-        } else {
-          await prisma.user.create({
-            data: {
-              name: ownerName || ownerEmail.split("@")[0],
-              email: ownerEmail,
-              phone: ownerPhone || null,
-              role: "resident",
-              societyId,
-              flatId: flat?.id || null,
-              passwordHash: bcrypt.hashSync(pwd, 10),
-            },
-          });
-          summary.residentsCreated++;
-          summary.credentials.push({ email: ownerEmail, tempPassword: r.password ? undefined : pwd, flatNo });
-        }
-      }
-    }
+    takenEmails.add(r.email);
+    pendingMembers.push(r);
   }
-  res.json(summary);
+
+  const flatsSkipped = records.filter((r) => r.flatNo && !newFlatNos.has(r.flatNo)).length;
+
+  if (dryRun) {
+    return res.json({
+      dryRun: true,
+      rows: records.length,
+      flatsCreated: newFlats.length,
+      flatsSkipped,
+      residentsCreated: pendingMembers.length,
+      byRole: pendingMembers.reduce((acc, m) => ({ ...acc, [m.role]: (acc[m.role] || 0) + 1 }), {}),
+      sample: newFlats.slice(0, 6).map((f) => f.flatNo),
+      credentials: [],
+      errors: problems.map((p) => p.message),
+      problems,
+    });
+  }
+
+  // ---- Write: one createMany for flats, one for members. ----
+  if (newFlats.length) {
+    await prisma.flat.createMany({ data: newFlats, skipDuplicates: true });
+    const refreshed = await prisma.flat.findMany({
+      where: { societyId, flatNo: { in: [...newFlatNos] } },
+      select: { id: true, flatNo: true },
+    });
+    for (const f of refreshed) flatIdByNo.set(f.flatNo, f.id);
+  }
+
+  const credentials = [];
+  const memberData = [];
+  for (const r of pendingMembers) {
+    const pwd = r.password || tempPassword();
+    credentials.push({
+      email: r.email,
+      tempPassword: r.password ? undefined : pwd,
+      flatNo: r.flatNo || null,
+      role: r.role,
+    });
+    memberData.push({
+      name: r.memberName || r.email.split("@")[0],
+      email: r.email,
+      phone: r.phone,
+      role: r.role,
+      societyId,
+      flatId: r.role === "resident" ? flatIdByNo.get(r.flatNo) || null : null,
+      passwordHash: await bcrypt.hash(pwd, BULK_HASH_ROUNDS),
+    });
+  }
+  if (memberData.length) await prisma.user.createMany({ data: memberData, skipDuplicates: true });
+
+  res.json({
+    flatsCreated: newFlats.length,
+    flatsSkipped,
+    residentsCreated: memberData.length,
+    byRole: memberData.reduce((acc, m) => ({ ...acc, [m.role]: (acc[m.role] || 0) + 1 }), {}),
+    credentials,
+    errors: problems.map((p) => p.message),
+    problems,
+  });
 });
 
 /* ----------------------- Vendor venue marketplace ------------------------ */
-// Premium perk: outside vendors book a society premise; GateMate keeps a platform fee.
+// Premium perk: outside vendors book a society premise; GATEZO keeps a platform fee.
 async function loadSocietyForPlan(req) {
   return prisma.society.findUnique({ where: { id: sid(req) } });
 }
@@ -1095,7 +1158,7 @@ adminRouter.get("/venue-bookings", async (req, res) => {
 adminRouter.post("/venue-bookings", async (req, res) => {
   const society = await loadSocietyForPlan(req);
   if (!isPremium(society)) {
-    return res.status(402).json({ premium: false, message: "The vendor marketplace is a premium feature. Ask GateMate to enable premium for your society." });
+    return res.status(402).json({ premium: false, message: "The vendor marketplace is a premium feature. Ask GATEZO to enable premium for your society." });
   }
   const { venueName, vendorName, vendorPhone, vendorEmail, purpose, date, slot, amount, platformFeePct, notes } = req.body || {};
   if (!venueName || !vendorName || !date) {
@@ -1153,7 +1216,7 @@ adminRouter.delete("/venue-bookings/:id", async (req, res) => {
 
 // Create a Razorpay Payment Link the vendor can pay. When the society has a
 // Razorpay Route linked account, the society's 90% (societyNet) is transferred
-// to it and GateMate keeps the 10% platform fee on the primary account.
+// to it and GATEZO keeps the 10% platform fee on the primary account.
 adminRouter.post("/venue-bookings/:id/payment-link", async (req, res) => {
   const society = await loadSocietyForPlan(req);
   if (!isPremium(society)) return res.status(402).json({ premium: false, message: "Premium feature" });
@@ -1174,7 +1237,7 @@ adminRouter.post("/venue-bookings/:id/payment-link", async (req, res) => {
   const amountPaise = Math.round(booking.amount * 100);
   const netPaise = Math.round(booking.societyNet * 100);
 
-  // Route the society's share to its linked account (GateMate keeps the remainder).
+  // Route the society's share to its linked account (GATEZO keeps the remainder).
   const transfers =
     account?.active && account?.razorpayAccountId
       ? [{ account: account.razorpayAccountId, amount: netPaise, currency: "INR", notes: { venueBookingId: booking.id } }]
@@ -1239,8 +1302,8 @@ adminRouter.post("/venue-bookings/:id/sync", async (req, res) => {
   }
 });
 
-/* ------------------------- GateMate subscription (Pay to GateMate) ------------------- */
-// A society admin pays GateMate's platform subscription. Payment settles to GateMate's own
+/* ------------------------- GATEZO subscription (Pay to GATEZO) ------------------- */
+// A society admin pays GATEZO's platform subscription. Payment settles to GATEZO's own
 // Razorpay account (a plain order, no Route transfer). Only admins reach these.
 
 function subscriptionAmount(society) {
@@ -1271,7 +1334,7 @@ async function activateSubscription(society, req, { amount, orderId, paymentRef 
   return { newExpiry, periodLabel };
 }
 
-// Current plan status + GateMate bank/UPI reference + recent subscription payments.
+// Current plan status + GATEZO bank/UPI reference + recent subscription payments.
 adminRouter.get("/subscription", async (req, res) => {
   const society = await prisma.society.findUnique({ where: { id: sid(req) } });
   const setting = await prisma.platformSetting.findUnique({ where: { id: "platform" } });
@@ -1306,13 +1369,13 @@ adminRouter.get("/subscription", async (req, res) => {
   });
 });
 
-// Step 1: create a Razorpay order for the plan amount (settles to GateMate).
+// Step 1: create a Razorpay order for the plan amount (settles to GATEZO).
 adminRouter.post("/subscription/create-order", async (req, res) => {
   const society = await prisma.society.findUnique({ where: { id: sid(req) } });
   if (!society) return res.status(404).json({ message: "Society not found" });
   const amount = subscriptionAmount(society);
   if (!(amount > 0)) {
-    return res.status(400).json({ message: "No subscription amount is set yet. Ask GateMate to set your plan amount." });
+    return res.status(400).json({ message: "No subscription amount is set yet. Ask GATEZO to set your plan amount." });
   }
   if (!razorpayEnabled) return res.json({ enabled: false });
   try {
@@ -1328,9 +1391,13 @@ adminRouter.post("/subscription/create-order", async (req, res) => {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      name: "GateMate Platform",
-      description: `GateMate subscription - ${society.name}`,
-      prefill: { name: req.user.name || "", email: req.user.email || "" },
+      name: "GATEZO Platform",
+      description: `GATEZO subscription - ${society.name}`,
+      prefill: {
+        name: req.user.name || "",
+        email: req.user.email || "",
+        contact: String(req.user.phone || "").replace(/\D/g, "").slice(-10),
+      },
     });
   } catch (err) {
     console.error("Razorpay subscription order failed:", err?.error || err.message);
@@ -1366,7 +1433,7 @@ adminRouter.post("/subscription/pay", async (req, res) => {
   if (!society) return res.status(404).json({ message: "Society not found" });
   const amount = subscriptionAmount(society);
   if (!(amount > 0)) {
-    return res.status(400).json({ message: "No subscription amount is set yet. Ask GateMate to set your plan amount." });
+    return res.status(400).json({ message: "No subscription amount is set yet. Ask GATEZO to set your plan amount." });
   }
   const { newExpiry, periodLabel } = await activateSubscription(society, req, {
     amount,

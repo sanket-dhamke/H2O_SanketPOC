@@ -8,6 +8,12 @@ export function parseCsv(text) {
   let inQuotes = false;
   const s = String(text || "").replace(/\r\n?/g, "\n");
 
+  // Physical line tracking so callers can report errors against the line the
+  // admin sees in their spreadsheet, even though blank rows get dropped below
+  // and quoted fields may span several lines.
+  let line = 1;
+  let rowStartLine = 1;
+
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
     if (inQuotes) {
@@ -19,6 +25,7 @@ export function parseCsv(text) {
           inQuotes = false;
         }
       } else {
+        if (c === "\n") line++;
         field += c;
       }
     } else if (c === '"') {
@@ -28,9 +35,11 @@ export function parseCsv(text) {
       field = "";
     } else if (c === "\n") {
       row.push(field);
-      rows.push(row);
+      rows.push({ cells: row, line: rowStartLine });
       row = [];
       field = "";
+      line++;
+      rowStartLine = line;
     } else {
       field += c;
     }
@@ -38,19 +47,21 @@ export function parseCsv(text) {
   // flush last field/row
   if (field.length > 0 || row.length > 0) {
     row.push(field);
-    rows.push(row);
+    rows.push({ cells: row, line: rowStartLine });
   }
 
   // Drop fully-empty rows.
-  const clean = rows.filter((r) => r.some((c) => String(c).trim() !== ""));
+  const clean = rows.filter((r) => r.cells.some((c) => String(c).trim() !== ""));
   if (clean.length === 0) return [];
 
-  const headers = clean[0].map((h) => String(h).trim().toLowerCase().replace(/\s+/g, ""));
+  const headers = clean[0].cells.map((h) => String(h).trim().toLowerCase().replace(/\s+/g, ""));
   return clean.slice(1).map((r) => {
     const obj = {};
     headers.forEach((h, idx) => {
-      obj[h] = (r[idx] ?? "").trim();
+      obj[h] = (r.cells[idx] ?? "").trim();
     });
+    // Hidden so it never shows up as a column to anything iterating the row.
+    Object.defineProperty(obj, "__line", { value: r.line, enumerable: false });
     return obj;
   });
 }

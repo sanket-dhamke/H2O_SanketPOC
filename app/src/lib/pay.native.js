@@ -1,5 +1,6 @@
 import RazorpayCheckout from "react-native-razorpay";
 import { api } from "./api";
+import { checkoutOptions } from "./razorpayCheckout";
 
 // Runs the full payment flow on a real device (iOS/Android dev build):
 // 1) ask backend to create an order, 2) open the native Razorpay sheet,
@@ -13,19 +14,7 @@ export async function payBill(bill, amount) {
     return { paid: true, mock: true };
   }
 
-  const options = {
-    key: order.keyId,
-    order_id: order.orderId,
-    amount: order.amount,
-    currency: order.currency,
-    name: order.name,
-    description: order.description,
-    prefill: {
-      name: order.prefill?.name,
-      email: order.prefill?.email,
-    },
-    theme: { color: "#0B6E8F" },
-  };
+  const options = checkoutOptions(order);
 
   let result;
   try {
@@ -56,16 +45,7 @@ export async function payBooking(booking) {
     return { paid: true, mock: true };
   }
 
-  const options = {
-    key: order.keyId,
-    order_id: order.orderId,
-    amount: order.amount,
-    currency: order.currency,
-    name: order.name,
-    description: order.description,
-    prefill: { name: order.prefill?.name, email: order.prefill?.email },
-    theme: { color: "#0B6E8F" },
-  };
+  const options = checkoutOptions(order);
 
   let result;
   try {
@@ -85,8 +65,8 @@ export async function payBooking(booking) {
   return { paid: true };
 }
 
-// A society admin pays GateMate's platform subscription. Same real flow; settles to
-// GateMate's own Razorpay account. Falls back to the mock when Razorpay is off.
+// A society admin pays GATEZO's platform subscription. Same real flow; settles to
+// GATEZO's own Razorpay account. Falls back to the mock when Razorpay is off.
 export async function paySubscription() {
   const order = await api.createSubscriptionOrder();
   if (!order.enabled) {
@@ -94,16 +74,7 @@ export async function paySubscription() {
     return { paid: true, mock: true, ...r };
   }
 
-  const options = {
-    key: order.keyId,
-    order_id: order.orderId,
-    amount: order.amount,
-    currency: order.currency,
-    name: order.name,
-    description: order.description,
-    prefill: { name: order.prefill?.name, email: order.prefill?.email },
-    theme: { color: "#0B6E8F" },
-  };
+  const options = checkoutOptions(order);
 
   let result;
   try {

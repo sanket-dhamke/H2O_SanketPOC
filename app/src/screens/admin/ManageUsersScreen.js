@@ -14,6 +14,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { labelsFor, isPreschool } from "../../lib/org";
+import { brand } from "../../lib/brand";
 import ScreenHeader from "../../components/ScreenHeader";
 
 const ROLE_ORDER = ["admin", "guard", "resident"];
@@ -76,8 +77,8 @@ export default function ManageUsersScreen({ navigation }) {
     try {
       await Share.share({
         message:
-          `Join our ${preschool ? "preschool" : "society"} on GateMate.\n\n` +
-          `1. Install GateMate\n2. Tap "New resident? Register with a join code"\n` +
+          `Join our ${preschool ? "preschool" : "society"} on ${brand.name}.\n\n` +
+          `1. Install ${brand.name}\n2. Tap "New resident? Register with a join code"\n` +
           `3. Enter join code: ${joinCode}\n4. Enter your ${L.unit.toLowerCase()} number and set a password.\n\n` +
           `An admin will approve your account. (Share this only with your ${noun}.)`,
       });

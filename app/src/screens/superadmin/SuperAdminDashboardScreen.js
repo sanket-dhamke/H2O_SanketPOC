@@ -13,6 +13,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
+import { brand, brandIcon } from "../../lib/brand";
 import { useAuth } from "../../lib/auth";
 import ScreenHeader from "../../components/ScreenHeader";
 import ProfileModal from "../../components/ProfileModal";
@@ -99,8 +100,8 @@ export default function SuperAdminDashboardScreen() {
     <View style={styles.container}>
       <ScreenHeader
         icon="planet"
-        logo={require("../../../assets/icon.png")}
-        title="GateMate Platform"
+        logo={brandIcon}
+        title={`${brand.name} Platform`}
         subtitle="Overview of all societies"
         right={headerBtns}
       />
@@ -111,7 +112,7 @@ export default function SuperAdminDashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.heroCard}>
-          <Text style={styles.heroLabel}>Societies using GateMate</Text>
+          <Text style={styles.heroLabel}>Societies using {brand.name}</Text>
           <Text style={styles.heroValue}>{data?.societies ?? "—"}</Text>
           <Text style={styles.heroSub}>{data?.activeSocieties ?? 0} active</Text>
         </View>
@@ -180,7 +181,7 @@ export default function SuperAdminDashboardScreen() {
               />
             </View>
             <View style={styles.monthRevenue}>
-              <Text style={styles.monthRevenueLabel}>GateMate revenue this month</Text>
+              <Text style={styles.monthRevenueLabel}>{brand.name} revenue this month</Text>
               <Text style={styles.monthRevenueValue}>{money(month.revenue?.total)}</Text>
               <Text style={styles.monthRevenueSub}>
                 Subscriptions {money(month.revenue?.subscriptions)} · Vendor fees {money(month.revenue?.platformFees)}
@@ -199,11 +200,11 @@ export default function SuperAdminDashboardScreen() {
         </View>
         <Text style={styles.tapHint}>Tap any card to see the breakdown by society.</Text>
 
-        <Text style={styles.sectionTitle}>GateMate revenue</Text>
+        <Text style={styles.sectionTitle}>{brand.name} revenue</Text>
         <View style={styles.revenueCard}>
           <View style={styles.revenueTop}>
             <View>
-              <Text style={styles.revenueLabel}>Total GateMate revenue</Text>
+              <Text style={styles.revenueLabel}>Total {brand.name} revenue</Text>
               <Text style={styles.revenueValue}>{money(data?.revenue?.total)}</Text>
             </View>
             <View style={styles.premiumPill}>

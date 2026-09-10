@@ -380,7 +380,7 @@ gateRouter.post("/gate/verify", async (req, res) => {
     const title = "⚠️ Vehicle QR blocked";
     const body =
       `${vehicle.plate}'s gate QR was blocked at ${device.name || "the gate"} — it looks like it was reused/copied. ` +
-      `If this wasn't you, open GateMate and regenerate the QR.`;
+      `If this wasn't you, open GATEZO and regenerate the QR.`;
     for (const r of recipients) {
       if (r.expoPushToken) enqueuePush(r.expoPushToken, title, body, { type: "gate_alert", vehicleId: vehicle.id });
     }

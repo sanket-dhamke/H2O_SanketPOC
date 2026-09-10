@@ -15,6 +15,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
+import { brand } from "../lib/brand";
 import ScreenHeader from "../components/ScreenHeader";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 
@@ -184,7 +185,7 @@ function RegisterWorkerModal({ visible, onClose, onDone }) {
     try {
       const r = await api.registerWorker({ name: name.trim(), phone, category, subtype: subtype.trim() || undefined, idProof: idProof.trim() || undefined });
       if (r.existed) {
-        Alert.alert("Already on GateMate", `${r.worker.name} already has a Trust Passport — opening it so you can add your rating.`);
+        Alert.alert(`Already on ${brand.name}`, `${r.worker.name} already has a Trust Passport — opening it so you can add your rating.`);
       }
       onDone(r.worker);
     } catch (e) {

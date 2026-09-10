@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { prisma } from "./prisma.js";
 
 // Human-friendly code: no ambiguous chars (0/O, 1/I/L). Prefixed "GM" so it's
-// recognisably a GateMate join code when shared over WhatsApp.
+// recognisably a GATEZO join code when shared over WhatsApp.
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 function randomCode(len = 6) {

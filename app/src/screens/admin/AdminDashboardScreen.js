@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { labelsFor, isPreschool } from "../../lib/org";
+import { brand } from "../../lib/brand";
 import ScreenHeader from "../../components/ScreenHeader";
 import MonthField from "../../components/MonthField";
 import WingedFlats from "../../components/WingedFlats";
@@ -97,7 +98,7 @@ export default function AdminDashboardScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader icon="stats-chart" title="Finances" subtitle="Balance, dues & reminders" />
+      <ScreenHeader icon="stats-chart" title={preschool ? "Fees" : "Finances"} subtitle={preschool ? "Balance, fees & reminders" : "Balance, dues & reminders"} />
       <ScrollView
         contentContainerStyle={{ padding: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -168,7 +169,7 @@ export default function AdminDashboardScreen() {
       )}
       <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("PayToH2O")}>
         <Ionicons name="ribbon-outline" size={18} color="#0B6E8F" />
-        <Text style={styles.collectText}>GateMate subscription — Pay to GateMate</Text>
+        <Text style={styles.collectText}>{brand.name} subscription — Pay to {brand.name}</Text>
       </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>{L.unit}-wise status</Text>
@@ -298,6 +299,10 @@ function Stat({ label, value, color }) {
 }
 
 function GenerateBillsModal({ visible, onClose, onDone }) {
+  const { user } = useAuth();
+  const L = labelsFor(user);
+  const preschool = isPreschool(user);
+  const unitWord = L.unit.toLowerCase();
   const [period, setPeriod] = useState("");
   const [amount, setAmount] = useState("");
   const [useHeads, setUseHeads] = useState(false);
@@ -320,7 +325,7 @@ function GenerateBillsModal({ visible, onClose, onDone }) {
       return;
     }
     if (!useHeads && !amount.trim()) {
-      Alert.alert("Missing info", "Enter the amount per flat, or turn on maintenance heads.");
+      Alert.alert("Missing info", `Enter the amount per ${unitWord}${preschool ? "" : ", or turn on maintenance heads"}.`);
       return;
     }
     setBusy(true);
@@ -332,11 +337,11 @@ function GenerateBillsModal({ visible, onClose, onDone }) {
       const total = res.total ?? res.created;
       let msg;
       if (res.created === 0) {
-        msg = `Every flat already has a bill for ${period.trim()} — nothing new to create.`;
+        msg = `Every ${unitWord} already has a bill for ${period.trim()} — nothing new to create.`;
       } else if (res.skipped) {
-        msg = `Applied bills to ${res.created} flat(s) for ${period.trim()}. ${res.skipped} already had one (skipped).`;
+        msg = `Applied bills to ${res.created} ${unitWord}(s) for ${period.trim()}. ${res.skipped} already had one (skipped).`;
       } else {
-        msg = `Monthly bills for ${period.trim()} applied to all ${res.created} flat(s).`;
+        msg = `Monthly bills for ${period.trim()} applied to all ${res.created} ${unitWord}(s).`;
       }
       setPeriod("");
       setAmount("");
@@ -355,11 +360,13 @@ function GenerateBillsModal({ visible, onClose, onDone }) {
     <FormModal visible={visible} onClose={onClose} title="Generate monthly bills" icon="receipt-outline" busy={busy} onSubmit={submit}>
       <Label>Billing month</Label>
       <MonthField value={period} onChange={setPeriod} minCurrent placeholder="Select billing month" />
+      {!preschool ? (
       <View style={[styles.switchRow, { marginTop: 16 }]}>
         <Text style={styles.switchLabel}>Split by maintenance heads</Text>
         <Switch value={useHeads} onValueChange={setUseHeads} trackColor={{ true: "#0B6E8F", false: "#CBD5DB" }} thumbColor="#fff" />
       </View>
-      {useHeads ? (
+      ) : null}
+      {useHeads && !preschool ? (
         <View style={{ marginTop: 8 }}>
           {enabledHeads.length === 0 ? (
             <Text style={styles.helpText}>No enabled heads. Set them in “Maintenance heads”.</Text>
@@ -372,13 +379,13 @@ function GenerateBillsModal({ visible, onClose, onDone }) {
             ))
           )}
           <View style={styles.headTotal}>
-            <Text style={styles.headTotalLabel}>Total per flat</Text>
+            <Text style={styles.headTotalLabel}>Total per {unitWord}</Text>
             <Text style={styles.headTotalValue}>{money(headsTotal)}</Text>
           </View>
         </View>
       ) : (
         <>
-          <Label>Amount per flat (Rs.)</Label>
+          <Label>Amount per {unitWord} (Rs.)</Label>
           <TextInput style={styles.input} value={amount} onChangeText={setAmount} placeholder="2500" keyboardType="numeric" />
         </>
       )}

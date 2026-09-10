@@ -5,7 +5,7 @@ import { authRequired, roleRequired } from "../auth.js";
 
 // Portable Helper & Vendor "Trust Passport". Workers are network-wide (not
 // scoped to a society) so their rating & attendance travel across every
-// GateMate society — something a single-society app structurally can't do.
+// GATEZO society — something a single-society app structurally can't do.
 export const workersRouter = Router();
 
 const cleanPhone = (p) => String(p || "").replace(/[^\d]/g, "").slice(-10);

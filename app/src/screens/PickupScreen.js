@@ -12,6 +12,7 @@ import TextInput from "../components/AppTextInput";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
+import { brand } from "../lib/brand";
 import ScreenHeader from "../components/ScreenHeader";
 import KeyboardAwareScrollView from "../components/KeyboardAwareScrollView";
 
@@ -78,7 +79,7 @@ export default function PickupScreen() {
             <Text style={styles.verifyText}>{busy ? "…" : "Verify"}</Text>
           </TouchableOpacity>
         </View>
-        <Text style={styles.hint}>Ask the parent/guardian to show their pickup QR from the GateMate app. Type the code under it.</Text>
+        <Text style={styles.hint}>Ask the parent/guardian to show their pickup QR from the {brand.name} app. Type the code under it.</Text>
 
         {result && (
           <View style={styles.resultCard}>

@@ -4,6 +4,7 @@ import TextInput from "../components/AppTextInput";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
+import { brand } from "../lib/brand";
 import { useAuth } from "../lib/auth";
 import ScreenHeader from "../components/ScreenHeader";
 import KeyboardAvoider from "../components/KeyboardAvoider";
@@ -43,8 +44,26 @@ export default function SustainabilityScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader icon="leaf" title="Sustainability" subtitle="Green score & water metering" onBack={() => navigation.goBack()} right={addBtn} />
+      <ScreenHeader
+        icon="leaf"
+        title="Sustainability"
+        subtitle="Green score & water metering"
+        onBack={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate("MaintenanceHome"))}
+        right={addBtn}
+      />
       <ScrollView contentContainerStyle={{ padding: 16 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+        <View style={styles.howCard}>
+          <Text style={styles.howKicker}>How we capture this</Text>
+          <Text style={styles.howTitle}>Water readings, not your maintenance bill</Text>
+          <Text style={styles.howText}>
+            The office records litres used this month for each flat (admin tap + , or a CSV import). {brand.name} compares every flat with the society median: 100 at zero use, 50 at the median, lower if you use more than neighbours. The community score is the average of reported flats.
+          </Text>
+          <Text style={styles.howText}>
+            {isAdmin
+              ? "Tap + to add this month’s reading. Residents then see their own flat, the median, and a top-savers list. This does not change what anyone pays in maintenance."
+              : "If your flat says “no reading yet”, ask the office to enter this month’s meter. Lower litres = higher score. This does not change your maintenance bill."}
+          </Text>
+        </View>
         {data && (
           <>
             <View style={styles.scoreCard}>
@@ -174,4 +193,8 @@ const styles = StyleSheet.create({
   mBtnText: { color: "#fff", fontWeight: "700" },
   mCancel: { backgroundColor: "#EEF2F4" },
   mCancelText: { color: "#6B7B85", fontWeight: "700" },
+  howCard: { backgroundColor: "#EAF7EF", borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: "#C7E4D0" },
+  howKicker: { color: "#1E7A3D", fontSize: 11, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase" },
+  howTitle: { color: "#1B3D24", fontSize: 16, fontWeight: "800", marginTop: 4 },
+  howText: { color: "#3B5A47", fontSize: 13, lineHeight: 19, marginTop: 8 },
 });

@@ -5,7 +5,7 @@ import { enqueuePush } from "../queue.js";
 
 // Daily-help & helpline directory (maid, electrician, doctor, ambulance, MSEB…).
 // Three layers via ServiceContact.scope:
-//   platform : GateMate-curated, shown in every society (managed by superadmin).
+//   platform : GATEZO-curated, shown in every society (managed by superadmin).
 //   society  : added by a society admin, shown to that society's residents.
 //   personal : added by a resident; private to them unless "suggested" to the
 //              society (status = "suggested") and then approved by an admin.

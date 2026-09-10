@@ -22,6 +22,7 @@ import { buildReceipt } from "../lib/receiptHtml";
 import { downloadReceipt } from "../lib/receipt";
 import ScreenHeader from "../components/ScreenHeader";
 import MonthField from "../components/MonthField";
+import OffersRail from "../components/OffersRail";
 
 function formatDateTime(iso) {
   if (!iso) return "-";
@@ -166,16 +167,20 @@ export default function MaintenanceScreen() {
           </View>
         }
       />
-      {payee && (
-        <View style={styles.payee}>
+      <View style={styles.payee}>
+        {payee ? (
           <Text style={styles.payeeText}>
             Payments go to{" "}
             <Text style={styles.payeeStrong}>{payee.accountHolderName}</Text>
             {payee.bankName ? ` · ${payee.bankName}` : ""}
             {payee.last4 ? ` · A/c ••${payee.last4}` : ""}
           </Text>
-        </View>
-      )}
+        ) : null}
+        <Text style={styles.upiHint}>
+          Pay opens with UPI first — Google Pay, PhonePe, Paytm or a UPI ID. Card and net banking stay available.
+        </Text>
+        {payee?.upiId ? <Text style={styles.upiId}>Society UPI · {payee.upiId}</Text> : null}
+      </View>
       <FlatList
         data={visibleBills}
         keyExtractor={(item) => item.id}
@@ -223,6 +228,12 @@ export default function MaintenanceScreen() {
             ) : null}
           </View>
         }
+        ListFooterComponent={
+          <View style={{ width: "100%", alignSelf: "stretch" }}>
+            <OffersRail slot="bills" navigation={navigation} compact />
+          </View>
+        }
+        ListFooterComponentStyle={{ width: "100%" }}
         ListEmptyComponent={
           <View style={styles.emptyBox}>
             <Ionicons name="receipt-outline" size={30} color="#B7C2C9" />
@@ -348,12 +359,12 @@ export default function MaintenanceScreen() {
         </View>
       </Modal>
 
-      <CashModal bill={cashBill} onClose={() => setCashBill(null)} onSubmit={markCash} />
+      <CashModal bill={cashBill} onClose={() => setCashBill(null)} onSubmit={markCash} labels={L} />
     </View>
   );
 }
 
-function CashModal({ bill, onClose, onSubmit }) {
+function CashModal({ bill, onClose, onSubmit, labels }) {
   const [collectedBy, setCollectedBy] = useState("");
   const [collectorPhone, setCollectorPhone] = useState("");
   const [busy, setBusy] = useState(false);
@@ -390,12 +401,12 @@ function CashModal({ bill, onClose, onSubmit }) {
               <Text style={styles.receiptTitle}>Record cash payment</Text>
             </View>
             <Text style={styles.cashSub}>
-              {bill ? `Flat ${bill.flatNo} · ${bill.period} · ₹${bill.amount}` : ""}
+              {bill ? `${labels?.unit || "Flat"} ${bill.flatNo} · ${bill.period} · ₹${bill.amount}` : ""}
             </Text>
           </LinearGradient>
           <View style={styles.receiptBody}>
-            <Text style={styles.cashLabel}>Collected by (society member) *</Text>
-            <TextInput style={styles.cashInput} value={collectedBy} onChangeText={setCollectedBy} placeholder="e.g. Committee Head" />
+            <Text style={styles.cashLabel}>Collected by ({labels?.org === "Preschool" ? "staff" : "society member"}) *</Text>
+            <TextInput style={styles.cashInput} value={collectedBy} onChangeText={setCollectedBy} placeholder={labels?.org === "Preschool" ? "e.g. Class teacher" : "e.g. Committee Head"} />
             <Text style={styles.cashLabel}>Collector phone</Text>
             <TextInput style={styles.cashInput} value={collectorPhone} onChangeText={setCollectorPhone} placeholder="Optional" keyboardType="phone-pad" />
             <TouchableOpacity style={[styles.downloadBtn, busy && { opacity: 0.6 }]} onPress={submit} disabled={busy}>
@@ -447,6 +458,8 @@ const styles = StyleSheet.create({
   payee: { backgroundColor: "#EAF6FA", paddingHorizontal: 16, paddingVertical: 10 },
   payeeText: { color: "#0B6E8F", fontSize: 12, textAlign: "center" },
   payeeStrong: { fontWeight: "800" },
+  upiHint: { color: "#3A6A7A", fontSize: 11, textAlign: "center", marginTop: 6, lineHeight: 16 },
+  upiId: { color: "#0B3A49", fontSize: 12, textAlign: "center", marginTop: 4, fontWeight: "700" },
   bill: {
     flexDirection: "row",
     alignItems: "center",

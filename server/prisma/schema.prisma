@@ -68,6 +68,7 @@ model Society {
   vehicles      Vehicle[]
   gateDevices   GateDevice[]
   vehicleEntries VehicleEntry[]
+  serviceBookings ServiceBooking[]
 }
 
 // A commercial booking of a society premise by an OUTSIDE vendor (not a resident):
@@ -184,6 +185,7 @@ model User {
   listings      Listing[]  @relation("ListingAuthor")
   listingMessages ListingMessage[] @relation("ListingMsgFrom")
   listingJoins  ListingJoin[] @relation("ListingJoinUser")
+  serviceBookings ServiceBooking[] @relation("ResidentServiceBookings")
 
   // societyId+role: directory & admin/guard lookups. flatId: fast push targeting
   // (notify a flat's residents) and "residents of this flat" reads.
@@ -773,6 +775,32 @@ model ServiceContact {
   // society contact card can surface the worker's network-wide rating.
   workerId      String?
   @@index([workerId])
+}
+
+// Bookable home services (cleaning, AC, painting, movers…) — separate from
+// amenity/clubhouse Booking and from the phone-directory ServiceContact.
+model ServiceBooking {
+  id            String   @id @default(uuid())
+  society       Society  @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId     String
+  resident      User     @relation("ResidentServiceBookings", fields: [residentId], references: [id], onDelete: Cascade)
+  residentId    String
+  flatId        String?
+  serviceSlug   String
+  serviceName   String
+  packageId     String
+  packageName   String
+  amount        Float
+  scheduledDate String   // YYYY-MM-DD
+  slot          String
+  notes         String?
+  partnerName   String?
+  status        String   @default("requested") // requested | confirmed | assigned | completed | cancelled
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([societyId, status])
+  @@index([residentId, createdAt])
 }
 
 // ---- SOS "neighbour mesh" (panic button + responder network) ----

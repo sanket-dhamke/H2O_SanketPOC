@@ -4,19 +4,44 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
-  ImageBackground,
   Image,
   ScrollView,
   Linking,
+  Dimensions,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import TextInput from "../components/AppTextInput";
 import { useAuth } from "../lib/auth";
 import { getBaseUrl, setBaseUrl, clearOrgMode, api } from "../lib/api";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
 import RegisterModal from "../components/RegisterModal";
+import { body, head } from "../lib/type";
+import { brand, brandIcon } from "../lib/brand";
+
+function loginErrorMessage(err, orgMode) {
+  const raw = String(err?.message || err || "").trim();
+  const lower = raw.toLowerCase();
+  const org =
+    orgMode === "preschool" ? "preschool" : orgMode === "society" ? "society" : "organisation";
+
+  if (!raw) return "Sign-in didn’t work. Please try again.";
+  if (/invalid email or password/.test(lower)) {
+    return "That email or password isn’t right. Check for typos, or tap Forgot password below.";
+  }
+  if (/inactive/.test(lower)) {
+    return `This ${org} is currently inactive. Contact your admin or ${brand.name} support.`;
+  }
+  if (/awaiting admin approval/.test(lower)) return raw;
+  if (/failed to fetch|network request failed|load failed|networkerror|econnrefused|timed out|can't reach the (gatemate|gatezo) server/.test(lower)) {
+    return `Can’t reach the ${brand.name} server. Check your internet, then try again. If you use a custom URL, tap Advanced server settings.`;
+  }
+  if (/request failed \(5/.test(lower)) {
+    return "The server had a problem. Please wait a moment and try again.";
+  }
+  return raw;
+}
 
 // Extracts a tenant slug from a branded link / deep link, supporting both
 // ?t=<slug> query form and /t/<slug> path form.
@@ -37,19 +62,19 @@ function slugFromUrl(url) {
 const isWeb = Platform.OS === "web";
 const BACKDROPS = {
   neutral: {
-    image: isWeb ? require("../../assets/society-bg-wide.png") : require("../../assets/society-bg.png"),
+    image: isWeb ? require("../../assets/society-bg-wide.jpg") : require("../../assets/society-bg.jpg"),
     tagline: "Smart living, simplified",
     emailPlaceholder: "you@email.com",
     hint: "Accounts are created by your admin.\nContact them if you can't sign in.",
   },
   society: {
-    image: isWeb ? require("../../assets/society-bg-wide.png") : require("../../assets/society-bg.png"),
+    image: isWeb ? require("../../assets/society-bg-wide.jpg") : require("../../assets/society-bg.jpg"),
     tagline: "Your society, simplified",
     emailPlaceholder: "you@society.com",
     hint: "Accounts are created by your society admin.\nContact them if you can't sign in.",
   },
   preschool: {
-    image: isWeb ? require("../../assets/preschool-bg-wide.png") : require("../../assets/preschool-bg.png"),
+    image: isWeb ? require("../../assets/preschool-bg-wide.jpg") : require("../../assets/preschool-bg.jpg"),
     tagline: "Smart preschool entry & fees",
     emailPlaceholder: "you@preschool.com",
     hint: "Accounts are created by your preschool admin.\nContact them if you can't sign in.",
@@ -68,6 +93,7 @@ export default function LoginScreen() {
   const [registerOpen, setRegisterOpen] = useState(false);
   const [orgMode, setOrgMode] = useState("neutral"); // "neutral" | "society" | "preschool"
   const [tenantName, setTenantName] = useState(null);
+  const [error, setError] = useState("");
   const passwordRef = useRef(null);
   const theme = BACKDROPS[orgMode];
 
@@ -80,7 +106,7 @@ export default function LoginScreen() {
 
   // Auto-brand the login ONLY from a branded link/QR (?t=slug or /t/slug).
   // With no such link, we stay neutral — branding is never remembered/sticky,
-  // so a plain refresh always returns to the neutral GateMate login.
+  // so a plain refresh always returns to the neutral GATEZO login.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -113,22 +139,24 @@ export default function LoginScreen() {
 
   const onSubmit = async () => {
     if (!email.trim() || !password) {
-      Alert.alert("Missing details", "Please enter your email and password.");
+      setError("Please enter both your email and password.");
       return;
     }
+    setError("");
     setBusy(true);
     try {
       await setBaseUrl(serverUrl);
       await login(email.trim(), password);
     } catch (e) {
-      Alert.alert("Login failed", e.message);
+      setError(loginErrorMessage(e, orgMode));
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <ImageBackground source={theme.image} style={styles.bg} resizeMode="cover">
+    <View style={styles.bg}>
+      <BleedPhoto source={theme.image} />
       <View style={styles.overlay} />
       <KeyboardAvoidingView
         style={styles.container}
@@ -140,8 +168,10 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.logoWrap}>
-            <Image source={require("../../assets/icon.png")} style={styles.logoMark} resizeMode="contain" />
-            <Text style={styles.logo}>GateMate</Text>
+            <View style={styles.lockup}>
+              <Image source={brandIcon} style={styles.logoMark} resizeMode="cover" />
+              <Text style={styles.logo}>{brand.name}</Text>
+            </View>
             <Text style={styles.tagline}>{theme.tagline}</Text>
           </View>
 
@@ -149,28 +179,33 @@ export default function LoginScreen() {
         {tenantName ? (
           <Text style={styles.tenantName}>Signing in to {tenantName}</Text>
         ) : null}
-        <Text style={styles.label}>Email</Text>
+        <Text style={styles.signIn}>Sign in</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, error ? styles.inputError : null]}
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(v) => {
+            setEmail(v);
+            if (error) setError("");
+          }}
           autoCapitalize="none"
           keyboardType="email-address"
-          placeholder={theme.emailPlaceholder}
+          placeholder="Email"
           placeholderTextColor="#8895A0"
           returnKeyType="next"
           onSubmitEditing={() => passwordRef.current?.focus()}
           blurOnSubmit={false}
         />
-        <Text style={styles.label}>Password</Text>
-        <View style={styles.passwordRow}>
+        <View style={[styles.passwordRow, error ? styles.inputError : null]}>
           <TextInput
             ref={passwordRef}
             style={styles.passwordInput}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(v) => {
+              setPassword(v);
+              if (error) setError("");
+            }}
             secureTextEntry={!showPassword}
-            placeholder="Enter your password"
+            placeholder="Password"
             placeholderTextColor="#8895A0"
             autoCapitalize="none"
             autoCorrect={false}
@@ -186,6 +221,13 @@ export default function LoginScreen() {
             <Text style={styles.showBtnText}>{showPassword ? "Hide" : "Show"}</Text>
           </TouchableOpacity>
         </View>
+        {error ? (
+          <View style={styles.errorBox} accessibilityRole="alert" accessibilityLiveRegion="polite">
+            <Ionicons name="alert-circle" size={18} color="#B42318" />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
+
         <TouchableOpacity
           style={[styles.button, busy && { opacity: 0.6 }]}
           onPress={onSubmit}
@@ -194,13 +236,14 @@ export default function LoginScreen() {
           <Text style={styles.buttonText}>{busy ? "Signing in..." : "Sign In"}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setForgotOpen(true)}>
-          <Text style={styles.forgot}>Forgot password?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => setRegisterOpen(true)}>
-          <Text style={styles.register}>New resident? Register with a join code</Text>
-        </TouchableOpacity>
+        <View style={styles.footerRow}>
+          <TouchableOpacity onPress={() => setForgotOpen(true)} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+            <Text style={styles.footerLink}>Forgot password?</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setRegisterOpen(true)} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+            <Text style={styles.footerLink}>Register</Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity onPress={() => setShowAdvanced((v) => !v)}>
           <Text style={styles.advancedToggle}>
@@ -209,7 +252,6 @@ export default function LoginScreen() {
         </TouchableOpacity>
         {showAdvanced && (
           <View>
-            <Text style={styles.label}>Server URL</Text>
             <TextInput
               style={styles.input}
               value={serverUrl}
@@ -217,7 +259,7 @@ export default function LoginScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
-              placeholder="https://xxxx.trycloudflare.com"
+              placeholder="Server URL"
             />
             <Text style={styles.hint}>
               Paste your backend/tunnel URL here (no trailing slash).
@@ -235,75 +277,140 @@ export default function LoginScreen() {
         initialEmail={email.trim()}
       />
       <RegisterModal visible={registerOpen} onClose={() => setRegisterOpen(false)} />
-    </ImageBackground>
+    </View>
+  );
+}
+
+function BleedPhoto({ source }) {
+  const [box, setBox] = useState(() => Dimensions.get("window"));
+  useEffect(() => {
+    const sub = Dimensions.addEventListener("change", ({ window }) => setBox(window));
+    return () => sub?.remove?.();
+  }, []);
+  return (
+    <Image
+      source={source}
+      resizeMode="cover"
+      style={[
+        styles.bleed,
+        {
+          width: box.width,
+          height: box.height,
+          maxWidth: box.width,
+          maxHeight: box.height,
+        },
+      ]}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: "#0B3A49" },
+  bg: { flex: 1, backgroundColor: "#0B3A49", overflow: "hidden" },
+  bleed: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    ...(Platform.OS === "web" ? { objectFit: "cover" } : null),
+  },
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(6, 40, 52, 0.38)" },
   container: { flex: 1 },
-  scroll: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 20 },
-  logoWrap: { alignItems: "center", marginBottom: 22 },
-  logoMark: { width: 84, height: 84, borderRadius: 20, marginBottom: 12, shadowColor: "#000", shadowOpacity: 0.3, shadowOffset: { width: 0, height: 6 }, shadowRadius: 14, elevation: 8 },
-  logo: { fontSize: 40, fontWeight: "800", color: "#fff", letterSpacing: -0.5, textShadowColor: "rgba(0,0,0,0.35)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12 },
-  tagline: { color: "#EAF6FA", marginTop: 6, fontSize: 13, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "600", textShadowColor: "rgba(0,0,0,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 },
+  scroll: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 24 },
+  logoWrap: { alignItems: "center", marginBottom: 40 },
+  lockup: { flexDirection: "row", alignItems: "center", gap: 10 },
+  logoMark: { width: 36, height: 36, borderRadius: 9 },
+  logo: {
+    fontSize: 28,
+    ...head(800),
+    color: "#fff",
+    letterSpacing: 1.4,
+    textShadowColor: "rgba(0,0,0,0.28)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
+  },
+  tagline: { color: "#EAF6FA", marginTop: 10, fontSize: 11, letterSpacing: 1.8, textTransform: "uppercase", ...body(600), textShadowColor: "rgba(0,0,0,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 },
   card: {
     width: "100%",
-    maxWidth: 380,
+    maxWidth: 420,
     alignSelf: "center",
-    backgroundColor: "rgba(255,255,255,0.97)",
-    borderRadius: 16,
-    padding: 18,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingHorizontal: 28,
+    paddingTop: 28,
+    paddingBottom: 24,
     shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 8,
+    shadowOpacity: 0.16,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
-  tenantName: { textAlign: "center", color: "#0B6E8F", fontWeight: "700", fontSize: 14, marginBottom: 4 },
-  label: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 6, marginTop: 12 },
+  tenantName: { textAlign: "center", color: "#0B6E8F", ...body(700), fontSize: 13, marginBottom: 8 },
+  signIn: { textAlign: "center", color: "#1B2B33", fontSize: 22, marginBottom: 28, ...head(700) },
   input: {
     borderWidth: 1,
-    borderColor: "#D6DEE3",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderColor: "#D0D5DD",
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
+    lineHeight: 22,
     color: "#1B2B33",
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#fff",
+    marginBottom: 16,
+    ...body(400),
   },
   passwordRow: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#D6DEE3",
-    borderRadius: 10,
-    backgroundColor: "#F8FAFB",
+    borderColor: "#D0D5DD",
+    borderRadius: 8,
+    backgroundColor: "#fff",
+    marginBottom: 8,
   },
   passwordInput: {
     flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
+    lineHeight: 22,
     color: "#1B2B33",
     // Android bug: a secureTextEntry field ignores `color` for the masked dots
     // unless a NON-DEFAULT fontFamily is set — "monospace" reliably forces the
     // typed password to render dark (visible) instead of faint/white.
     ...Platform.select({ android: { fontFamily: "monospace" }, default: {} }),
   },
-  showBtn: { paddingHorizontal: 14, paddingVertical: 12 },
-  showBtnText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
+  inputError: { borderColor: "#E8A199", backgroundColor: "#FFF8F7" },
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 4,
+    backgroundColor: "#FDECEC",
+    borderWidth: 1,
+    borderColor: "#F3C4C0",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  errorText: { flex: 1, color: "#8A1F18", fontSize: 13, lineHeight: 18, ...body(600) },
+  showBtn: { paddingHorizontal: 14, paddingVertical: 14 },
+  showBtnText: { color: "#0B6E8F", ...body(600), fontSize: 14 },
   button: {
     backgroundColor: "#0B6E8F",
-    borderRadius: 10,
+    borderRadius: 8,
     paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 16,
+  },
+  buttonText: { color: "#fff", ...body(700), fontSize: 16 },
+  footerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     marginTop: 20,
   },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  forgot: { color: "#0B6E8F", fontWeight: "700", fontSize: 13, textAlign: "center", marginTop: 14 },
-  register: { color: "#0B6E8F", fontWeight: "700", fontSize: 13, textAlign: "center", marginTop: 12 },
-  advancedToggle: { color: "#0B6E8F", fontWeight: "600", fontSize: 13, textAlign: "center", marginTop: 16 },
-  hint: { color: "#8895A0", fontSize: 12, textAlign: "center", marginTop: 16, lineHeight: 18 },
+  footerLink: { color: "#0B6E8F", ...body(600), fontSize: 14 },
+  advancedToggle: { color: "#8895A0", ...body(500), fontSize: 12, textAlign: "center", marginTop: 16 },
+  hint: { color: "#8895A0", fontSize: 12, textAlign: "center", marginTop: 14, lineHeight: 18, ...body(400) },
 });

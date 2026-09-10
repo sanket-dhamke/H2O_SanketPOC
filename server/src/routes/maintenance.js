@@ -143,9 +143,13 @@ maintenanceRouter.post("/maintenance/:id/create-order", authRequired, async (req
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      name: "GateMate Society",
+      name: "GATEZO Society",
       description: `Maintenance ${bill.period} (Flat ${bill.flat?.flatNo})`,
-      prefill: { name: payer?.name || "", email: payer?.email || "" },
+      prefill: {
+        name: payer?.name || req.user?.name || "",
+        email: payer?.email || req.user?.email || "",
+        contact: String(payer?.phone || req.user?.phone || "").replace(/\D/g, "").slice(-10),
+      },
     });
   } catch (err) {
     const rzpMsg = err?.error?.description || err?.message;

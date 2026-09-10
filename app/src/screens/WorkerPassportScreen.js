@@ -15,6 +15,7 @@ import TextInput from "../components/AppTextInput";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
+import { brand } from "../lib/brand";
 import { useAuth } from "../lib/auth";
 import ScreenHeader from "../components/ScreenHeader";
 import { workerCat, Stars } from "./WorkersScreen";
@@ -151,7 +152,7 @@ export default function WorkerPassportScreen() {
           {showQr && (
             <View style={styles.qrWrap}>
               <Image source={{ uri: qrUrlFor(worker.code) }} style={styles.qr} />
-              <Text style={styles.qrHint}>The worker carries this. Any GateMate gate can scan it to see this passport.</Text>
+              <Text style={styles.qrHint}>The worker carries this. Any {brand.name} gate can scan it to see this passport.</Text>
             </View>
           )}
         </View>

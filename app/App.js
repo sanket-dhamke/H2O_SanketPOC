@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { View, ActivityIndicator, StyleSheet, Platform } from "react-native";
+import { View, ActivityIndicator, StyleSheet, Platform, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer, useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -7,8 +7,10 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import * as Notifications from "expo-notifications";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFonts } from "expo-font";
 
 import { AuthProvider, useAuth } from "./src/lib/auth";
+import { FONTS, body } from "./src/lib/type";
 import { registerForPushNotifications } from "./src/lib/push";
 import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
@@ -17,10 +19,13 @@ import VisitorsScreen from "./src/screens/VisitorsScreen";
 import GateScreen from "./src/screens/GateScreen";
 import AssistantScreen from "./src/screens/AssistantScreen";
 import CommunityScreen from "./src/screens/CommunityScreen";
+import HelpScreen from "./src/screens/HelpScreen";
 import HelpdeskScreen from "./src/screens/HelpdeskScreen";
 import TicketDetailScreen from "./src/screens/TicketDetailScreen";
 import DirectoryScreen from "./src/screens/DirectoryScreen";
 import ServicesScreen from "./src/screens/ServicesScreen";
+import HomeServicesScreen from "./src/screens/HomeServicesScreen";
+import HomeServiceDetailScreen from "./src/screens/HomeServiceDetailScreen";
 import WorkersScreen from "./src/screens/WorkersScreen";
 import WorkerPassportScreen from "./src/screens/WorkerPassportScreen";
 import ChildScreen from "./src/screens/ChildScreen";
@@ -84,6 +89,19 @@ const TAB_ICONS = {
   Societies: "business",
 };
 
+function TabLabel({ children, color }) {
+  return (
+    <Text
+      style={[styles.tabLabel, { color }]}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.75}
+    >
+      {children}
+    </Text>
+  );
+}
+
 // Builds the tab-navigator options, adding the device's bottom safe-area inset
 // to the tab bar so it never sits behind the phone's system navigation bar
 // (gesture pill / 3-button controls). Must be used inside a component (hook).
@@ -95,16 +113,16 @@ function useTabScreenOptions() {
     headerShown: false,
     tabBarActiveTintColor: "#0B6E8F",
     tabBarInactiveTintColor: "#93A2AB",
-    tabBarLabelStyle: { fontSize: 10, fontWeight: "700", marginTop: -2 },
+    tabBarLabel: ({ children, color }) => <TabLabel color={color}>{children}</TabLabel>,
     tabBarItemStyle: { paddingHorizontal: 2, paddingTop: 4 },
     tabBarAllowFontScaling: false,
     tabBarStyle: {
       backgroundColor: "#fff",
       borderTopWidth: 0,
-      // Base bar height + whatever the OS reserves for its nav bar.
-      height: 62 + bottomInset,
-      paddingTop: 8,
-      paddingBottom: 8 + bottomInset,
+      // Icon + full label + OS nav inset. Tall enough that "Maintenance" is not clipped.
+      height: 70 + bottomInset,
+      paddingTop: 6,
+      paddingBottom: 10 + bottomInset,
       shadowColor: "#000",
       shadowOpacity: 0.08,
       shadowRadius: 12,
@@ -178,6 +196,8 @@ function CommunityStackScreen() {
       <CommunityStack.Screen name="TicketDetail" component={TicketDetailScreen} />
       <CommunityStack.Screen name="Directory" component={DirectoryScreen} />
       <CommunityStack.Screen name="Services" component={ServicesScreen} />
+      <CommunityStack.Screen name="HomeServices" component={HomeServicesScreen} />
+      <CommunityStack.Screen name="HomeServiceDetail" component={HomeServiceDetailScreen} />
       <CommunityStack.Screen name="Workers" component={WorkersScreen} />
       <CommunityStack.Screen name="WorkerPassport" component={WorkerPassportScreen} />
       <CommunityStack.Screen name="Child" component={ChildScreen} />
@@ -188,6 +208,9 @@ function CommunityStackScreen() {
       <CommunityStack.Screen name="Assets" component={AssetsScreen} />
       <CommunityStack.Screen name="Agm" component={AgmScreen} />
       <CommunityStack.Screen name="Sustainability" component={SustainabilityScreen} />
+      <CommunityStack.Screen name="Amenities" component={AmenitiesScreen} />
+      <CommunityStack.Screen name="Assistant" component={AssistantScreen} />
+      <CommunityStack.Screen name="Help" component={HelpScreen} />
     </CommunityStack.Navigator>
   );
 }
@@ -224,12 +247,11 @@ function AdminTabs() {
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-      <Tab.Screen name="Finance" component={FinanceStackScreen} options={{ tabBarLabel: L.feesShort }} />
-      <Tab.Screen name="Members" component={MembersStackScreen} options={{ headerShown: false, tabBarLabel: L.members }} />
+      <Tab.Screen name="Finance" component={FinanceStackScreen} options={{ title: L.feesShort }} />
+      <Tab.Screen name="Members" component={MembersStackScreen} options={{ headerShown: false, title: L.members }} />
       {preschool && <Tab.Screen name="Staff" component={StaffAttendanceScreen} />}
       <Tab.Screen name="Community" component={CommunityStackScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: L.gate }} />
-      <Tab.Screen name="Assistant" component={AssistantScreen} />
     </Tab.Navigator>
   );
 }
@@ -241,11 +263,9 @@ function ResidentTabs() {
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-      <Tab.Screen name="Maintenance" component={MaintenanceStackScreen} options={{ tabBarLabel: L.feesShort }} />
+      <Tab.Screen name="Maintenance" component={MaintenanceStackScreen} options={{ title: L.feesShort }} />
+      <Tab.Screen name="Visitors" component={VisitorsStackScreen} options={{ title: L.visitors }} />
       <Tab.Screen name="Community" component={CommunityStackScreen} />
-      <Tab.Screen name="Amenities" component={AmenitiesScreen} />
-      <Tab.Screen name="Visitors" component={VisitorsStackScreen} options={{ tabBarLabel: L.visitors }} />
-      <Tab.Screen name="Assistant" component={AssistantScreen} />
     </Tab.Navigator>
   );
 }
@@ -272,7 +292,6 @@ function GuardTabs() {
       {preschool && <Tab.Screen name="Staff" component={StaffAttendanceScreen} />}
       <Tab.Screen name="Community" component={CommunityStackScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: L.gate }} />
-      <Tab.Screen name="Assistant" component={AssistantScreen} />
     </Tab.Navigator>
   );
 }
@@ -321,6 +340,18 @@ function AppInner() {
 }
 
 export default function App() {
+  // Hold the first frame until the brand fonts are ready, otherwise the login
+  // screen paints in the system font and visibly reflows a moment later.
+  const [fontsLoaded] = useFonts(FONTS);
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#0B6E8F" />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <AuthProvider>
@@ -332,4 +363,5 @@ export default function App() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F1F5F7" },
+  tabLabel: { fontSize: 11, textAlign: "center", marginTop: 2, ...body(700) },
 });

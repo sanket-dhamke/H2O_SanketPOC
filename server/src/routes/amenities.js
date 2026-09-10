@@ -200,9 +200,13 @@ amenitiesRouter.post("/bookings/:id/create-order", authRequired, async (req, res
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      name: "GateMate Society",
+      name: "GATEZO Society",
       description: `${booking.amenity?.name || "Amenity"} · ${booking.slot?.label || ""} · ${booking.date}`,
-      prefill: { name: payer?.name || "", email: payer?.email || "" },
+      prefill: {
+        name: payer?.name || req.user?.name || "",
+        email: payer?.email || req.user?.email || "",
+        contact: String(payer?.phone || req.user?.phone || "").replace(/\D/g, "").slice(-10),
+      },
     });
   } catch (err) {
     const rzpMsg = err?.error?.description || err?.message;

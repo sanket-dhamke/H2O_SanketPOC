@@ -32,7 +32,7 @@ ivrRouter.all("/ivr/visitor/:id/voice", async (req, res) => {
   xml(
     res,
     `<Gather numDigits="1" action="${action}" method="POST" timeout="8">` +
-      `<Say language="hi-IN">GateMate. ${who} gate par hain. Andar bhejne ke liye ek dabaayein. Mana karne ke liye do dabaayein.</Say>` +
+      `<Say language="hi-IN">GATEZO. ${who} gate par hain. Andar bhejne ke liye ek dabaayein. Mana karne ke liye do dabaayein.</Say>` +
       `<Say language="en-IN">${who} is at the gate. Press 1 to allow, press 2 to deny.</Say>` +
       `</Gather>` +
       `<Say>No input received. Goodbye.</Say>`

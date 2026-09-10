@@ -1,4 +1,6 @@
 import { api } from "./api";
+import { checkoutOptions } from "./razorpayCheckout";
+import { pickPayMethod } from "./payMethodPicker.web";
 
 const CHECKOUT_SRC = "https://checkout.razorpay.com/v1/checkout.js";
 
@@ -17,6 +19,37 @@ function loadCheckoutScript() {
   return scriptPromise;
 }
 
+function clearPayPicker() {
+  document.querySelectorAll("[data-gatemate-pay-picker]").forEach((n) => n.remove());
+}
+
+async function openRazorpay(order, choice) {
+  clearPayPicker();
+  await loadCheckoutScript();
+  return new Promise((resolve, reject) => {
+    const rzp = new window.Razorpay({
+      ...checkoutOptions(order, choice),
+      handler: (response) => resolve(response),
+      modal: { ondismiss: () => resolve(null) },
+    });
+    rzp.on("payment.failed", (resp) =>
+      reject(new Error(resp?.error?.description || "Payment failed"))
+    );
+    rzp.open();
+  });
+}
+
+async function chooseAndCheckout(order) {
+  const choice = await pickPayMethod({
+    amountPaise: order.amount,
+    description: order.description,
+  });
+  if (!choice) return { cancelled: true };
+  const result = await openRazorpay(order, choice);
+  if (!result) return { cancelled: true };
+  return { result };
+}
+
 // Web version of the payment flow: create order -> open Razorpay web checkout
 // -> verify signature. Returns { paid, mock }, { cancelled } or throws.
 export async function payBill(bill, amount) {
@@ -27,29 +60,9 @@ export async function payBill(bill, amount) {
     return { paid: true, mock: true };
   }
 
-  await loadCheckoutScript();
-
-  const result = await new Promise((resolve, reject) => {
-    const rzp = new window.Razorpay({
-      key: order.keyId,
-      order_id: order.orderId,
-      amount: order.amount,
-      currency: order.currency,
-      name: order.name,
-      description: order.description,
-      prefill: {
-        name: order.prefill?.name,
-        email: order.prefill?.email,
-      },
-      theme: { color: "#0B6E8F" },
-      handler: (response) => resolve(response),
-      modal: { ondismiss: () => resolve(null) },
-    });
-    rzp.on("payment.failed", (resp) =>
-      reject(new Error(resp?.error?.description || "Payment failed"))
-    );
-    rzp.open();
-  });
+  const opened = await chooseAndCheckout(order);
+  if (opened.cancelled) return { cancelled: true };
+  const result = opened.result;
 
   if (!result) return { cancelled: true };
 
@@ -71,28 +84,9 @@ export async function payBooking(booking) {
     return { paid: true, mock: true };
   }
 
-  await loadCheckoutScript();
-
-  const result = await new Promise((resolve, reject) => {
-    const rzp = new window.Razorpay({
-      key: order.keyId,
-      order_id: order.orderId,
-      amount: order.amount,
-      currency: order.currency,
-      name: order.name,
-      description: order.description,
-      prefill: { name: order.prefill?.name, email: order.prefill?.email },
-      theme: { color: "#0B6E8F" },
-      handler: (response) => resolve(response),
-      modal: { ondismiss: () => resolve(null) },
-    });
-    rzp.on("payment.failed", (resp) =>
-      reject(new Error(resp?.error?.description || "Payment failed"))
-    );
-    rzp.open();
-  });
-
-  if (!result) return { cancelled: true };
+  const opened = await chooseAndCheckout(order);
+  if (opened.cancelled) return { cancelled: true };
+  const result = opened.result;
 
   await api.verifyBookingPayment(booking.id, {
     razorpay_order_id: result.razorpay_order_id,
@@ -102,7 +96,7 @@ export async function payBooking(booking) {
   return { paid: true };
 }
 
-// Web version of the GateMate subscription payment (mirrors payBooking).
+// Web version of the GATEZO subscription payment (mirrors payBooking).
 export async function paySubscription() {
   const order = await api.createSubscriptionOrder();
 
@@ -111,28 +105,9 @@ export async function paySubscription() {
     return { paid: true, mock: true, ...r };
   }
 
-  await loadCheckoutScript();
-
-  const result = await new Promise((resolve, reject) => {
-    const rzp = new window.Razorpay({
-      key: order.keyId,
-      order_id: order.orderId,
-      amount: order.amount,
-      currency: order.currency,
-      name: order.name,
-      description: order.description,
-      prefill: { name: order.prefill?.name, email: order.prefill?.email },
-      theme: { color: "#0B6E8F" },
-      handler: (response) => resolve(response),
-      modal: { ondismiss: () => resolve(null) },
-    });
-    rzp.on("payment.failed", (resp) =>
-      reject(new Error(resp?.error?.description || "Payment failed"))
-    );
-    rzp.open();
-  });
-
-  if (!result) return { cancelled: true };
+  const opened = await chooseAndCheckout(order);
+  if (opened.cancelled) return { cancelled: true };
+  const result = opened.result;
 
   const r = await api.verifySubscriptionPayment({
     razorpay_order_id: result.razorpay_order_id,

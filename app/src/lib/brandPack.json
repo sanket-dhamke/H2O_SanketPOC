@@ -1,0 +1,25 @@
+{
+  "active": "gatezo",
+  "profiles": {
+    "gatemate": {
+      "id": "gatemate",
+      "name": "GateMate",
+      "ask": "Ask GateMate",
+      "icon": "./assets/brand/gatemate/icon.png",
+      "splash": "./assets/brand/gatemate/splash.png",
+      "favicon": "./assets/brand/gatemate/favicon.png",
+      "adaptiveFg": "./assets/brand/gatemate/adaptive-icon-fg.png",
+      "adaptiveBg": "./assets/brand/gatemate/adaptive-icon-bg.png"
+    },
+    "gatezo": {
+      "id": "gatezo",
+      "name": "GATEZO",
+      "ask": "Ask GATEZO",
+      "icon": "./assets/brand/gatezo/icon.png",
+      "splash": "./assets/brand/gatezo/splash.png",
+      "favicon": "./assets/brand/gatezo/favicon.png",
+      "adaptiveFg": "./assets/brand/gatezo/icon.png",
+      "adaptiveBg": "./assets/brand/gatezo/splash.png"
+    }
+  }
+}

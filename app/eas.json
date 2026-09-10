@@ -18,13 +18,19 @@
       "distribution": "internal",
       "autoIncrement": true,
       "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://h2o-api-5sxc.onrender.com"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://h2o-api-5sxc.onrender.com"
+      }
     }
   },
   "submit": {

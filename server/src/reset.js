@@ -3,7 +3,7 @@ import readline from "readline";
 import { prisma } from "./prisma.js";
 
 // Wipes ALL tenant/app data for a clean testing slate, while PRESERVING:
-//   - every superadmin (GateMate owner) login
+//   - every superadmin (GATEZO owner) login
 //   - the platform settings singleton (owner contact + bank/UPI details)
 //
 // Everything else — societies/preschools, flats, admins/guards/residents,

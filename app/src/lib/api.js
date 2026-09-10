@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { brand } from "./brand";
 
 const API_PORT = 4000;
 
@@ -72,14 +73,19 @@ export async function setBaseUrl(url) {
 async function request(path, { method = "GET", body } = {}) {
   const token = await getToken();
   const baseUrl = await getBaseUrl();
-  const res = await fetch(`${baseUrl}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(`${baseUrl}${path}`, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new Error(`Can't reach the ${brand.name} server. Check your internet connection and try again.`);
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     // Surface the backend's message so the UI shows the real reason.
@@ -189,6 +195,10 @@ export const api = {
     request("/api/admin/flats/bulk", { method: "POST", body: payload }),
   adminImportFlats: (payload) =>
     request("/api/admin/flats/import", { method: "POST", body: payload }),
+  // Validate a CSV and preview the outcome without writing anything.
+  adminPreviewImport: (csv) =>
+    request("/api/admin/flats/import", { method: "POST", body: { csv, dryRun: true } }),
+  adminImportTemplate: () => request("/api/admin/flats/import/template"),
 
   // Admin: vendor venue marketplace (premium)
   adminVenueBookings: () => request("/api/admin/venue-bookings"),
@@ -246,7 +256,7 @@ export const api = {
   adminBackup: () => request("/api/admin/backup"),
   adminEmailBackup: () => request("/api/admin/backup/email", { method: "POST" }),
 
-  // Super admin (GateMate platform owner): cross-society overview + management
+  // Super admin (GATEZO platform owner): cross-society overview + management
   superOverview: (period) =>
     request(`/api/superadmin/overview${period ? `?period=${encodeURIComponent(period)}` : ""}`),
   superListSocieties: () => request("/api/superadmin/societies"),
@@ -278,7 +288,7 @@ export const api = {
   superSocietyBackupEmail: (societyId) =>
     request(`/api/superadmin/societies/${societyId}/backup/email`, { method: "POST", body: {} }),
 
-  // Admin: GateMate subscription ("Pay to GateMate")
+  // Admin: GATEZO subscription ("Pay to GATEZO")
   adminSubscription: () => request("/api/admin/subscription"),
   createSubscriptionOrder: () =>
     request("/api/admin/subscription/create-order", { method: "POST" }),
@@ -356,6 +366,14 @@ export const api = {
   createService: (payload) => request("/api/services", { method: "POST", body: payload }),
   updateService: (id, payload) => request(`/api/services/${id}`, { method: "PATCH", body: payload }),
   deleteService: (id) => request(`/api/services/${id}`, { method: "DELETE" }),
+
+  // Bookable home services (cleaning, AC, painting, movers…)
+  homeServices: () => request("/api/home-services"),
+  homeServiceBookings: () => request("/api/home-service-bookings"),
+  createHomeServiceBooking: (payload) =>
+    request("/api/home-service-bookings", { method: "POST", body: payload }),
+  updateHomeServiceBooking: (id, payload) =>
+    request(`/api/home-service-bookings/${id}`, { method: "PATCH", body: payload }),
 
   // Gate passes / MyGate-style pre-approval
   gatePasses: () => request("/api/gate-passes"),
@@ -468,8 +486,31 @@ export const api = {
     request(`/api/admin/bookings/${id}/decision`, { method: "POST", body: { status } }),
 
   // AI (phase 5)
-  aiAssistant: (question) =>
-    request("/api/ai/assistant", { method: "POST", body: { question } }),
+  aiAssistant: async (question) => {
+    try {
+      return await request("/api/ai/assistant", { method: "POST", body: { question } });
+    } catch (err) {
+      return { answer: null, error: err.message };
+    }
+  },
   aiVoiceVisitor: (payload) =>
     request("/api/ai/voice-visitor", { method: "POST", body: payload }),
+  // Answers AND returns the screen that fulfils the request, for the AI home tab.
+  // Falls back to the older /assistant endpoint so a frontend shipped before the
+  // backend is redeployed still talks instead of showing "Request failed (404)".
+  aiAct: async (question) => {
+    try {
+      return await request("/api/ai/act", { method: "POST", body: { question } });
+    } catch {
+      // Live Render still runs the retired Groq model, so both /act and
+      // /assistant 502. The home card answers from bills/visitors instead.
+      return null;
+    }
+  },
+  // General speech-to-text (any role), unlike the guard-only visitor dictation.
+  aiTranscribe: (audioBase64) =>
+    request("/api/ai/transcribe", { method: "POST", body: { audioBase64 } }),
+
+  // Graphical home dashboard: one role-scoped call for all charts + alerts.
+  homeSummary: () => request("/api/home-summary"),
 };

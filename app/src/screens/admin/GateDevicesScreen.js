@@ -15,6 +15,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
+import { brand } from "../../lib/brand";
 import ScreenHeader from "../../components/ScreenHeader";
 import KeyboardAvoider from "../../components/KeyboardAvoider";
 
@@ -103,7 +104,7 @@ export default function GateDevicesScreen() {
           <Ionicons name="information-circle-outline" size={18} color="#0B6E8F" />
           <Text style={styles.infoText}>
             Add a scanner for each entry lane, then configure the device (or your installer) with its device key and the verify URL below. The
-            scanner posts each scanned QR to GateMate and opens the barrier when we return “open”.
+            scanner posts each scanned QR to {brand.name} and opens the barrier when we return “open”.
           </Text>
         </View>
 
@@ -181,7 +182,7 @@ function DeviceDetailModal({ device, onClose }) {
   const shareAll = () =>
     Share.share({
       message:
-        `GateMate scanner setup — ${device.name}\n\n` +
+        `${brand.name} scanner setup — ${device.name}\n\n` +
         `Device key: ${device.deviceKey}\n` +
         `Verify URL (POST): ${device.verifyUrl}\n` +
         `Whitelist URL (GET): ${device.whitelistUrl}\n\n` +

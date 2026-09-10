@@ -1,5 +1,7 @@
-// GateMate support contact details shown in every user's profile. Update these in one
+// Support contact details shown in every user's profile. Update these in one
 // place. (For a real launch, swap in your official support number/email/site.)
+import { brand } from "./brand";
+
 export const SUPPORT = {
   phone: "+91 90000 12345",
   email: "support@h2oapp.in",
@@ -19,5 +21,5 @@ export function memberId(user) {
       : user.role === "admin"
       ? "ADM"
       : "OWN";
-  return `GateMate-${prefix}-${short}`;
+  return `${brand.name}-${prefix}-${short}`;
 }

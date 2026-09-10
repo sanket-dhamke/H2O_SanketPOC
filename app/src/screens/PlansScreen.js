@@ -6,6 +6,7 @@ import { useAuth } from "../lib/auth";
 import { labelsFor } from "../lib/org";
 import { TIERS, TIER_LABEL, TIER_COLOR, TIER_RANK, TIER_FEATURES, tierFor } from "../lib/plan";
 import ScreenHeader from "../components/ScreenHeader";
+import { brand } from "../lib/brand";
 
 const TIER_TAGLINE = {
   base: "Core operations to run digitally",
@@ -88,7 +89,7 @@ export default function PlansScreen() {
               {isUpgrade && (
                 <View style={styles.upgradeNote}>
                   <Ionicons name="arrow-up-circle-outline" size={16} color="#8A5A00" />
-                  <Text style={styles.upgradeNoteText}>Ask your GateMate owner to upgrade to unlock these.</Text>
+                  <Text style={styles.upgradeNoteText}>Ask your {brand.name} owner to upgrade to unlock these.</Text>
                 </View>
               )}
             </View>
@@ -98,7 +99,7 @@ export default function PlansScreen() {
         <View style={styles.footer}>
           <Ionicons name="information-circle-outline" size={18} color="#6B7B85" />
           <Text style={styles.footerText}>
-            Your plan is set by the GateMate owner. To upgrade or ask about pricing, contact GateMate support from your profile.
+            Your plan is set by the {brand.name} owner. To upgrade or ask about pricing, contact {brand.name} support from your profile.
           </Text>
         </View>
       </ScrollView>

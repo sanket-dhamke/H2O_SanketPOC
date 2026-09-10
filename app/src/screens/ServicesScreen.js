@@ -16,6 +16,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
+import { brand } from "../lib/brand";
 import { useAuth } from "../lib/auth";
 import ScreenHeader from "../components/ScreenHeader";
 import KeyboardAvoider from "../components/KeyboardAvoider";
@@ -145,7 +146,7 @@ export default function ServicesScreen() {
   );
 
   const subtitle = isSuperadmin
-    ? "GateMate-curated helplines (all societies)"
+    ? `${brand.name}-curated helplines (all societies)`
     : "Trusted numbers for your society";
 
   return (
@@ -275,7 +276,7 @@ const ContactCard = React.memo(function ContactCard({ c, canEdit, canFeature, on
           <View style={styles.nameRow}>
             <Text style={styles.name}>{c.name}</Text>
             {c.featured && <Ionicons name="star" size={13} color="#C99000" />}
-            {c.scope === "platform" && <Badge text="GateMate" tint="#0B6E8F" />}
+            {c.scope === "platform" && <Badge text={brand.name} tint="#0B6E8F" />}
             {c.scope === "personal" && <Badge text="Private" tint="#8895A0" />}
           </View>
           <Text style={styles.sub}>

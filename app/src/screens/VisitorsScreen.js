@@ -9,11 +9,12 @@ import {
   RefreshControl,
   Image,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { labelsFor, isPreschool } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
+import OffersRail from "../components/OffersRail";
 
 function timeAt(iso) {
   if (!iso) return "";
@@ -40,6 +41,7 @@ const STATUS_META = {
 
 export default function VisitorsScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation();
   const [visitors, setVisitors] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -100,6 +102,12 @@ export default function VisitorsScreen() {
         ListEmptyComponent={
           <Text style={styles.empty}>No visitors yet. Pull down to refresh.</Text>
         }
+        ListFooterComponent={
+          <View style={{ width: "100%", alignSelf: "stretch" }}>
+            <OffersRail slot="visitors" navigation={navigation} compact />
+          </View>
+        }
+        ListFooterComponentStyle={{ width: "100%" }}
         renderItem={({ item }) => {
           const meta = STATUS_META[item.status] || STATUS_META.pending;
           const isResident = user.role === "resident";
