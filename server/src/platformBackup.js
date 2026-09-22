@@ -1,7 +1,7 @@
 import zlib from "zlib";
 import crypto from "crypto";
 import { prisma } from "./prisma.js";
-import { sendEmail } from "./email.js";
+import { sendEmail, emailConfigured } from "./email.js";
 import { uploadBackup, storageEnabled } from "./storage.js";
 
 // Full-platform disaster-recovery backup. Unlike the per-society monthly email
@@ -97,14 +97,15 @@ export async function runPlatformBackup({ trigger = "manual" } = {}) {
 
   const recipients = await backupRecipients();
   const summary =
-    `GateMate FULL PLATFORM backup\n` +
-    `Generated: ${new Date().toLocaleString("en-IN")}\n` +
-    `Trigger: ${trigger}\n\n` +
-    `Records: ${backup.totalRows} across ${Object.keys(backup.counts).length} tables\n` +
+    `GateMate full platform backup\n` +
+    `Generated: ${new Date().toLocaleString("en-IN")}\n\n` +
+    `Records: ${backup.totalRows}\n` +
     `File: ${backup.filename} (${humanSize(backup.sizeBytes)})\n` +
-    `Encrypted: ${backup.encrypted ? "yes (AES-256-GCM)" : "NO — set BACKUP_ENCRYPTION_KEY"}\n` +
-    `SHA-256: ${backup.sha256}\n` +
-    (uploaded?.url ? `\nDownload (link expires in 7 days):\n${uploaded.url}\n` : "");
+    `File lock: ${backup.encrypted ? "Yes" : "No"}\n` +
+    `Fingerprint (SHA-256): ${backup.sha256}\n` +
+    (uploaded?.url
+      ? `\nCloud download (link expires in 7 days):\n${uploaded.url}\n`
+      : `\nThis copy was not uploaded to the cloud. If you saved the file on your phone, attach it before sending.\n`);
 
   // Attach the file only when small enough for email; otherwise rely on the link.
   const canAttach = backup.sizeBytes <= 8 * 1024 * 1024;
@@ -153,7 +154,14 @@ export async function runPlatformBackup({ trigger = "manual" } = {}) {
     storagePath: uploaded?.path || null,
     emailed: delivered,
     emailDev: dev,
-    recipients: recipients.length,
+    emailConfigured,
+    recipients,
+    recipientCount: recipients.length,
+    emailSubject: `GateMate platform backup — ${new Date().toISOString().slice(0, 10)}`,
+    emailBody: summary,
+    storedIn: uploaded
+      ? "Private cloud folder (off-site)"
+      : "Not saved to the cloud — download or email this copy to keep it",
     logId: log.id,
     at: log.at,
   };

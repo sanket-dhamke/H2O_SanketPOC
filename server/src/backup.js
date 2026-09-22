@@ -1,5 +1,5 @@
 import { prisma } from "./prisma.js";
-import { sendEmail } from "./email.js";
+import { sendEmail, emailConfigured } from "./email.js";
 
 // ---------- helpers ----------
 const money = (n) => `INR ${Number(n || 0).toLocaleString("en-IN")}`;
@@ -119,13 +119,13 @@ export async function buildSocietyBackup(societyId, { period = currentPeriod() }
   };
 }
 
-// Emails the backup to every admin of the society. Returns delivery info.
+// Builds a society backup and, if a server email provider is configured, sends
+// it to the society's admins. Always returns subject + summary so the app can
+// open Gmail when the server cannot send mail itself.
 export async function emailSocietyBackup(societyId, { period = currentPeriod() } = {}) {
   const backup = await buildSocietyBackup(societyId, { period });
   const admins = await prisma.user.findMany({ where: { societyId, role: "admin", active: true } });
   const recipients = admins.map((a) => a.email).filter(Boolean);
-  if (recipients.length === 0) return { admins: 0, delivered: false, dev: false, message: "No admin email found" };
-
   const subject = `GateMate backup — ${backup.society.name} — ${period}`;
   const html =
     `<h2>GateMate monthly backup</h2>` +
@@ -140,7 +140,18 @@ export async function emailSocietyBackup(societyId, { period = currentPeriod() }
     delivered = delivered || r.delivered;
     dev = dev || r.dev;
   }
-  return { admins: recipients.length, recipients, delivered, dev, stats: backup.stats };
+  return {
+    admins: recipients.length,
+    recipients,
+    delivered,
+    dev,
+    emailConfigured,
+    subject,
+    summaryText: backup.summaryText,
+    societyName: backup.society.name,
+    stats: backup.stats,
+    message: recipients.length ? undefined : "No admin email on file — add recipients in Gmail.",
+  };
 }
 
 // Runs the monthly backup for every active society. Called by the scheduler.
