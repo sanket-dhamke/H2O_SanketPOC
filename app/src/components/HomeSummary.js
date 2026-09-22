@@ -61,6 +61,17 @@ function Legend({ segments, total, format }) {
   );
 }
 
+function formatDeltaPct(pct) {
+  if (typeof pct !== "number" || !Number.isFinite(pct)) {
+    return { value: "—", tint: "#8895A0" };
+  }
+  const sign = pct > 0 ? "+" : "";
+  return {
+    value: `${sign}${pct}%`,
+    tint: pct < 0 ? "#B42318" : pct > 0 ? "#1E7A3D" : "#1B2B33",
+  };
+}
+
 function Card({ title, hint, icon, children, fill, onPress }) {
   const Wrapper = onPress ? TouchableOpacity : View;
   const wrapProps = onPress ? { onPress, activeOpacity: 0.86, accessibilityRole: "button" } : {};
@@ -140,8 +151,14 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
   const billsRoute = isAdmin ? "Finance" : data.role === "resident" ? "Maintenance" : null;
   const openBills = billsRoute ? () => openScreen(navigation, billsRoute) : undefined;
 
+  const delta = formatDeltaPct(finance?.collectionDeltaPct);
+  // Equal-height cards only when they sit side by side. In a stacked phone
+  // column, flex:1 plus a 100% flexBasis collapses the card and the SVG donut
+  // paints over Emergency SOS / Gate desk below.
+  const fillCards = !stackCharts;
+
   return (
-    <View>
+    <View style={styles.wrap}>
       {pending.length > 0 ? (
         <View style={styles.attention}>
           <Text style={styles.attentionTitle}>Needs your attention</Text>
@@ -170,7 +187,7 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
 
       <View style={[styles.chartsRow, stackCharts && styles.chartsRowStack]}>
         <View style={[styles.chartCol, stackCharts && styles.chartColStack]}>
-      <Card fill icon="people-outline" title={labels.visitors || "Visitors"} hint={`Last ${visitors?.windowDays || 30} days`} onPress={openVisitors}>
+      <Card fill={fillCards} icon="people-outline" title={labels.visitors || "Visitors"} hint={`Last ${visitors?.windowDays || 30} days`} onPress={openVisitors}>
         <View style={styles.vizRow}>
           <View style={styles.vizMain}>
             <View style={styles.donutSlot}>
@@ -197,7 +214,7 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
         {finance ? (
           <View style={[styles.chartCol, stackCharts && styles.chartColStack]}>
         <Card
-          fill
+          fill={fillCards}
           icon="wallet-outline"
           title={isAdmin ? `${labels.fees || "Collections"} this month` : labels.fees || "Maintenance"}
           hint={`${finance.paidPct}% settled`}
@@ -222,8 +239,8 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
               <Stat label="Expenses" value={money(finance.totalExpenses)} />
               <Stat
                 label="vs last month"
-                value={`${finance.collectionDeltaPct > 0 ? "+" : ""}${finance.collectionDeltaPct}%`}
-                tint={finance.collectionDeltaPct < 0 ? "#B42318" : "#1E7A3D"}
+                value={delta.value}
+                tint={delta.tint}
               />
             </View>
           ) : (
@@ -276,6 +293,7 @@ function Stat({ label, value, tint = "#1B2B33" }) {
 }
 
 const styles = StyleSheet.create({
+  wrap: { overflow: "hidden", width: "100%" },
   card: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -283,14 +301,22 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     borderWidth: 1,
     borderColor: "#E6EEF2",
+    overflow: "hidden",
     shadowColor: "#0B3A49",
     shadowOpacity: 0.04,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
-  cardHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
-  cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, paddingRight: 8 },
+  cardHead: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 14,
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  cardTitleRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, flexGrow: 1, flexShrink: 1, flexBasis: 160, minWidth: 0, paddingRight: 4 },
   cardIcon: {
     width: 26,
     height: 26,
@@ -298,8 +324,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#EAF4F8",
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 1,
   },
-  cardTitle: { fontSize: 14.5, ...head(700), color: "#0B3A49" },
+  cardTitle: { flex: 1, minWidth: 0, fontSize: 14.5, lineHeight: 20, ...head(700), color: "#0B3A49" },
   hintPill: {
     backgroundColor: "#F3F7F9",
     borderRadius: 20,
@@ -307,7 +334,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   cardHint: { fontSize: 11, color: "#5C7380", ...body(600) },
-  cardHeadRight: { flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 },
+  cardHeadRight: { flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: "auto" },
   stateBox: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 24 },
   stateText: { color: "#6B7B85", fontSize: 13, ...body(400)},
   attention: {
@@ -360,10 +387,10 @@ const styles = StyleSheet.create({
   legendMeta: { fontSize: 12.5, color: "#5C7380", ...body(600), flexShrink: 0 },
   legendTotalValue: { fontSize: 13, ...body(700), color: "#0B3A49", flexShrink: 0 },
   emptyNote: { flex: 1, fontSize: 12.5, color: "#8895A0", lineHeight: 18, ...body(400)},
-  chartsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, width: "100%", alignItems: "stretch" },
-  chartsRowStack: { flexDirection: "column" },
+  chartsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, width: "100%", alignItems: "stretch", overflow: "hidden" },
+  chartsRowStack: { flexDirection: "column", alignItems: "stretch" },
   chartCol: { flexGrow: 1, flexShrink: 1, flexBasis: 340, minWidth: 0, marginBottom: 12 },
-  chartColStack: { flexBasis: "100%", width: "100%", minWidth: 0 },
+  chartColStack: { flexGrow: 0, flexShrink: 0, flexBasis: "auto", width: "100%", minWidth: 0 },
   trendBlock: { marginTop: 12, borderTopWidth: 1, borderTopColor: "#F0F4F6", paddingTop: 12 },
   trendTitle: { fontSize: 11, ...body(700), color: "#8895A0", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.4 },
   statStrip: {

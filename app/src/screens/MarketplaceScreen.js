@@ -155,7 +155,12 @@ export default function MarketplaceScreen() {
 
         {!mine ? (
           <>
-            <View style={styles.chipWrap}>
+            <ScrollView
+              horizontal
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipRow}
+            >
               {LISTING_KINDS.map((k) => (
                 <FilterChip
                   key={k.id || "all-types"}
@@ -166,8 +171,13 @@ export default function MarketplaceScreen() {
                   onPress={() => setKind(k.id)}
                 />
               ))}
-            </View>
-            <View style={styles.chipWrap}>
+            </ScrollView>
+            <ScrollView
+              horizontal
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipRow}
+            >
               <FilterChip
                 icon="apps-outline"
                 label="All categories"
@@ -183,7 +193,7 @@ export default function MarketplaceScreen() {
                   onPress={() => setCategory(c.id)}
                 />
               ))}
-            </View>
+            </ScrollView>
           </>
         ) : null}
       </View>
@@ -506,6 +516,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingTop: 10,
+    gap: 8,
+  },
+  chipRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 2,
     gap: 8,
   },
   filterChip: {

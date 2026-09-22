@@ -9,6 +9,8 @@ import { enqueuePush } from "../queue.js";
 //   society  : added by a society admin, shown to that society's residents.
 //   personal : added by a resident; private to them unless "suggested" to the
 //              society (status = "suggested") and then approved by an admin.
+// Roles: admin/superadmin full CRUD on their layer; residents may create a new
+// record (personal or suggest); guards are read-only.
 export const servicesRouter = Router();
 
 const sid = (req) => req.user.societyId || "__none__";
@@ -115,6 +117,9 @@ servicesRouter.get("/services", authRequired, async (req, res) => {
 /* -------------------------------- Create ---------------------------------- */
 servicesRouter.post("/services", authRequired, async (req, res) => {
   const role = req.user.role;
+  if (role === "guard") {
+    return res.status(403).json({ message: "Guards can view helplines but cannot add or change them" });
+  }
   const b = req.body || {};
   const category = CAT_IDS.includes(b.category) ? b.category : null;
   const name = String(b.name || "").trim();
@@ -182,11 +187,14 @@ servicesRouter.patch("/services/:id", authRequired, async (req, res) => {
   const c = await prisma.serviceContact.findUnique({ where: { id: req.params.id } });
   if (!c) return res.status(404).json({ message: "Not found" });
   const role = req.user.role;
+  if (role === "guard") {
+    return res.status(403).json({ message: "Guards can view helplines but cannot add or change them" });
+  }
 
   const canManage =
     (role === "superadmin" && c.scope === "platform") ||
     (role === "admin" && c.scope === "society" && c.societyId === req.user.societyId) ||
-    (c.ownerId && c.ownerId === req.user.id);
+    (c.ownerId && c.ownerId === req.user.id && c.scope === "personal");
   if (!canManage) return res.status(403).json({ message: "Not allowed" });
 
   const b = req.body || {};
@@ -231,10 +239,13 @@ servicesRouter.delete("/services/:id", authRequired, async (req, res) => {
   const c = await prisma.serviceContact.findUnique({ where: { id: req.params.id } });
   if (!c) return res.status(404).json({ message: "Not found" });
   const role = req.user.role;
+  if (role === "guard") {
+    return res.status(403).json({ message: "Guards can view helplines but cannot add or change them" });
+  }
   const canDelete =
     (role === "superadmin" && c.scope === "platform") ||
     (role === "admin" && c.scope === "society" && c.societyId === req.user.societyId) ||
-    (c.ownerId && c.ownerId === req.user.id);
+    (c.ownerId && c.ownerId === req.user.id && c.scope === "personal");
   if (!canDelete) return res.status(403).json({ message: "Not allowed" });
   await prisma.serviceContact.delete({ where: { id: c.id } });
   res.json({ ok: true });

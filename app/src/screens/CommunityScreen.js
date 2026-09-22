@@ -126,7 +126,12 @@ export default function CommunityScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader icon="megaphone" title="Community" subtitle={`Announcements & ${preschool ? "parents'" : "neighbours'"} board`} right={addBtn} />
+      <ScreenHeader
+        icon="megaphone"
+        title="Community"
+        subtitle={preschool ? "Official school notices & parents' board" : "Official society notices & neighbours' board"}
+        right={addBtn}
+      />
 
       <View style={styles.segment}>
         <Seg label="Announcements" active={tab === "announcements"} onPress={() => setTab("announcements")} />
@@ -176,7 +181,23 @@ export default function CommunityScreen() {
         <OffersRail slot="community" navigation={navigation} compact />
         {tab === "announcements" ? (
           <>
-            {announcements.length === 0 && <Empty text="No announcements yet." />}
+            <View style={styles.scopeNote}>
+              <Ionicons name="megaphone-outline" size={16} color="#0B6E8F" />
+              <Text style={styles.scopeNoteText}>
+                {preschool
+                  ? "Official school notices from the office only. Parent chat, sales and questions go on the Board."
+                  : "Official society notices from the committee only — water, AGM, security, lifts. Sales, questions and neighbour chat go on the Board."}
+              </Text>
+            </View>
+            {announcements.length === 0 && (
+              <Empty
+                text={
+                  preschool
+                    ? "No school announcements yet."
+                    : "No society announcements yet."
+                }
+              />
+            )}
             {announcements.map((a) => (
               <View key={a.id} style={styles.card}>
                 <View style={styles.cardHead}>
@@ -283,7 +304,10 @@ function AnnouncementModal({ visible, onClose, onDone }) {
   };
 
   return (
-    <FormModal visible={visible} onClose={onClose} title="New announcement" icon="megaphone-outline" busy={busy} onSubmit={submit}>
+    <FormModal visible={visible} onClose={onClose} title="Society announcement" icon="megaphone-outline" busy={busy} onSubmit={submit}>
+      <Text style={styles.formHint}>
+        Official notice for every resident (water, AGM, security, lifts). Do not use this for buy/sell or personal messages — those go on the Board.
+      </Text>
       <Label>Title</Label>
       <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Water supply maintenance" />
       <Label>Message</Label>
@@ -432,6 +456,17 @@ const styles = StyleSheet.create({
   segText: { color: "#6B7B85", fontWeight: "700", fontSize: 13 },
   segTextActive: { color: "#fff" },
   empty: { color: "#6B7B85", textAlign: "center", marginTop: 30 },
+  scopeNote: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: "#EAF4F8",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  scopeNoteText: { flex: 1, color: "#0B3A49", fontSize: 13, lineHeight: 18, fontWeight: "600" },
+  formHint: { color: "#5C7380", fontSize: 13, lineHeight: 18, marginBottom: 4 },
   shortcutRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 14 },
   shortcut: { minWidth: "47%", flexGrow: 1, backgroundColor: "#fff", borderRadius: 12, paddingVertical: 14, alignItems: "center", gap: 6 },
   shortcutText: { color: "#334", fontWeight: "700", fontSize: 12 },

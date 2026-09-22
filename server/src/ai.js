@@ -354,6 +354,7 @@ function actionCatalogue(role, orgType) {
       { id: "import_csv", label: "Bulk import", intent: "bulk add members or units from a CSV / spreadsheet", keywords: ["csv", "import", "bulk", "excel", "spreadsheet", "upload list"], route: "Members", params: { screen: "Onboarding" } },
       { id: "gate_log", label: "Open gate log", intent: "the visitor / gate entry log", keywords: ["visitor", "gate", "entry", "log", "who came"], route: "Visitors" },
       { id: "helpdesk", label: "Open helpdesk", intent: "resident complaints and tickets", keywords: ["complaint", "ticket", "helpdesk", "issue"], route: "Community", params: { screen: "Helpdesk" } },
+      { id: "book_amenity", label: preschool ? "Open hall" : "Open clubhouse", intent: preschool ? "add the hall, slots, or approve hall booking requests" : "add clubhouse/hall facilities, slots, or approve amenity booking requests", keywords: ["clubhouse", "club house", "hall", "amenity", "party", "booking", "book", "slot", "facility"], route: "Community", params: { screen: "Amenities" } },
       { id: "reports", label: "Open reports", intent: "reports, exports and backups", keywords: ["report", "export", "pdf", "backup"], route: "Finance", params: { screen: "Reports" } },
       { id: "manager", label: "Society manager", intent: "AI-drafted notices, reminders and monthly summaries", keywords: ["notice", "announce", "draft", "reminder", "summary"], route: "Finance", params: { screen: "Manager" } },
     ];
@@ -416,6 +417,13 @@ function deterministicReply(context, action) {
     if (context.role === "admin" && action?.id === "finance") {
       const s = context.society || {};
       return `Collected ${money(s.collectedThisMonth)} this month, with ${money(s.pendingAllTime)} still outstanding. Tap below to open finances.`;
+    }
+    if (action?.id === "book_amenity") {
+      return context.role === "admin"
+        ? (context.orgType === "preschool"
+          ? "Admins don’t place a parent booking here — you add the hall and approve requests. Tap below to open Hall."
+          : "Admins don’t place a resident booking here — you add clubhouse/hall facilities and approve requests. Tap below to open Clubhouse.")
+        : "Tap below to pick a date and slot.";
     }
   } catch {
     /* fall through to the generic line */

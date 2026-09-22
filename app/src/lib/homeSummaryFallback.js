@@ -63,6 +63,29 @@ function visitorTrend(visitors) {
   });
 }
 
+function periodKey(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+}
+
+function collectedInPeriod(bills, period) {
+  let n = 0;
+  for (const b of bills || []) {
+    if ((b.period || "") !== period) continue;
+    if (typeof b.paidAmount === "number") n += b.paidAmount;
+    else if (b.status === "paid") n += (b.amount || 0) + (b.lateFee || 0);
+  }
+  return n;
+}
+
+function collectionDeltaPct(bills) {
+  const now = new Date();
+  const cur = collectedInPeriod(bills, periodKey(now));
+  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prev = collectedInPeriod(bills, periodKey(prevDate));
+  if (!prev) return null;
+  return Math.round(((cur - prev) / prev) * 100);
+}
+
 export function composeHomeSummary({ role, bills = [], totalDue = 0, visitors = [] }) {
   const billed = bills.reduce((sum, b) => sum + (b.amount || 0) + (b.lateFee || 0), 0);
   const pendingAmt = Math.round(totalDue || 0);
@@ -105,6 +128,9 @@ export function composeHomeSummary({ role, bills = [], totalDue = 0, visitors = 
             pending: pendingAmt,
             paidPct: billed > 0 ? Math.round((paid / billed) * 100) : 100,
             overdueBills: 0,
+            balance: 0,
+            totalExpenses: 0,
+            collectionDeltaPct: collectionDeltaPct(bills),
             segments: [
               { key: "paid", label: "Paid", value: paid },
               { key: "pending", label: "Pending", value: pendingAmt },

@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   logoutText: { color: "#fff", ...body(700), fontSize: 13 },
-  body: { paddingHorizontal: 20, paddingTop: 12 },
+  body: { paddingHorizontal: 20, paddingTop: 12, overflow: "hidden" },
   askWrap: { marginBottom: 12 },
   sectionLabel: {
     fontSize: 12,

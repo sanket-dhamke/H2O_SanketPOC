@@ -29,6 +29,7 @@ const ADMIN = [
   { id: "gate_log", label: "Open gate log", keywords: ["visitor", "visited", "gate", "entry", "log", "who came"], route: "Visitors" },
   { id: "helpdesk", label: "Open helpdesk", keywords: ["complaint", "ticket", "helpdesk"], route: "Community", params: { screen: "Helpdesk" } },
   { id: "manager", label: "Society manager", keywords: ["notice", "announce", "draft", "reminder"], route: "Finance", params: { screen: "Manager" } },
+  { id: "book_amenity", label: "Open clubhouse", keywords: ["clubhouse", "club house", "hall", "amenity", "party", "booking", "book", "slot", "facility"], route: "Community", params: { screen: "Amenities" } },
   { id: "sos", label: "Emergency SOS", keywords: ["sos", "emergency"], route: "Community", params: { screen: "Sos" } },
 ];
 
@@ -42,7 +43,12 @@ function catalogue(role, user) {
   const preschool = isPreschool(user);
   if (role === "admin") {
     return preschool
-      ? ADMIN.map((a) => (a.id === "manager" ? { ...a, label: "School manager" } : a.id === "members" ? { ...a, label: "Manage accounts" } : a))
+      ? ADMIN.map((a) => {
+          if (a.id === "manager") return { ...a, label: "School manager" };
+          if (a.id === "members") return { ...a, label: "Manage accounts" };
+          if (a.id === "book_amenity") return { ...a, label: "Open hall" };
+          return a;
+        })
       : ADMIN;
   }
   if (role === "guard") return GUARD;
@@ -238,6 +244,38 @@ function wantsServiceBook(q) {
   return /\b(book|schedule|arrange|fix)\b/.test(q) && detectServiceSlug(q);
 }
 
+function wantsAmenityBook(q) {
+  return /(clubhouse|club house|\bamenit|\bhall\b|party hall)/.test(q) && /(book|booking|reserv|slot|create|add|new)/.test(q);
+}
+
+function amenityAction(role, preschool) {
+  if (role === "admin") {
+    return {
+      id: "book_amenity",
+      label: preschool ? "Open hall" : "Open clubhouse",
+      route: "Community",
+      params: { screen: "Amenities" },
+    };
+  }
+  return {
+    id: "book_amenity",
+    label: preschool ? "Book hall" : "Book clubhouse",
+    route: "Community",
+    params: { screen: "Amenities" },
+  };
+}
+
+function amenityReply(role, preschool) {
+  if (role === "admin") {
+    return preschool
+      ? "Admins don’t place a parent booking here — you add the hall and approve requests. Tap below to open Hall: Requests to approve, or Manage to add the hall and slots."
+      : "Admins don’t place a resident booking here — you add clubhouse/hall facilities and approve requests. Tap below to open Clubhouse: Requests to approve, or Manage to add a facility and slots. Residents book from Community → Book clubhouse.";
+  }
+  return preschool
+    ? "Tap below to pick a date and slot for the hall."
+    : "Tap below to pick a date and slot for the clubhouse or hall.";
+}
+
 function ok(reply, action) {
   return { reply, action, autoOpen: false, source: "app", preferLocal: true };
 }
@@ -381,7 +419,8 @@ function answerBooking(q) {
   );
 }
 
-async function groundedReply(action, role, q, question) {
+async function groundedReply(action, user, q, question) {
+  const role = user?.role;
   try {
     if (action?.id === "pay_bill" || (action?.id === "finance" && role === "admin")) {
       const billed = await answerBills(q, role);
@@ -394,6 +433,9 @@ async function groundedReply(action, role, q, question) {
     if (action?.id === "home_services") {
       const booked = answerBooking(q);
       if (booked) return booked.reply;
+    }
+    if (action?.id === "book_amenity") {
+      return amenityReply(role, isPreschool(user));
     }
     if (action?.id === "call_security") {
       const data = await api.helpdeskContacts().catch(() => ({}));
@@ -420,6 +462,10 @@ export async function resolveAssistant(question, userOrRole) {
     if (wantsServiceBook(q)) {
       const booked = answerBooking(q);
       if (booked) return booked;
+    }
+    if (wantsAmenityBook(q)) {
+      const preschool = isPreschool(user);
+      return ok(amenityReply(role, preschool), amenityAction(role, preschool));
     }
     if (wantsBillSplit(q) || wantsPendingAmount(q)) {
       return await answerBills(q, role);
@@ -473,7 +519,7 @@ export async function resolveAssistant(question, userOrRole) {
 
   const action = matchIntent(question, role, user);
   const reply = action
-    ? await groundedReply(action, role, q, question)
+    ? await groundedReply(action, user, q, question)
     : "I can look up bills, visitors (by name, date or vehicle), bookings, helpdesk, or how a feature works — try “how much maintenance is pending” or “who visited last week”.";
   return {
     reply,
