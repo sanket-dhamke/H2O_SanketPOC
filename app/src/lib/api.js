@@ -360,6 +360,8 @@ export const api = {
   registerWorker: (payload) => request("/api/workers", { method: "POST", body: payload }),
   rateWorker: (id, payload) => request(`/api/workers/${id}/ratings`, { method: "POST", body: payload }),
   workerAttendance: (id) => request(`/api/workers/${id}/attendance`),
+  // Gate desk: every helper in/out logged at this society today.
+  workerAttendanceToday: (date) => request(`/api/workers/attendance/today${qs({ date })}`),
   workerCheckIn: (id, payload) => request(`/api/workers/${id}/attendance/checkin`, { method: "POST", body: payload || {} }),
   workerCheckOut: (attendanceId) => request(`/api/workers/attendance/${attendanceId}/checkout`, { method: "POST" }),
 

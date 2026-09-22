@@ -350,6 +350,7 @@ function getActionGroups(role, L, preschool) {
     ];
     if (!preschool) {
       gate.push({ label: "Vehicle gate", subtitle: "Vehicle QR registry & scanners", icon: "car-sport-outline", tint: "#0B6E8F", route: "Members", params: { screen: "Vehicles" }, feature: "vehicleqr" });
+      gate.push({ label: "Staff & helpers", subtitle: "Attendance for staff, maids & vendors", icon: "id-card-outline", tint: "#7A5AC2", route: "Members", params: { screen: "StaffAttendance" } });
     }
     if (preschool) {
       gate.push({ label: "Staff attendance", subtitle: "Teacher & staff check-in/out", icon: "id-card-outline", tint: "#7A5AC2", route: "Staff" });
@@ -380,11 +381,17 @@ function getActionGroups(role, L, preschool) {
   const gate = [
     { label: "Log a new visitor", subtitle: `Photo, ${L.unit.toLowerCase()} & purpose in seconds`, icon: "person-add-outline", tint: "#0B6E8F", route: "Gate" },
     { label: "View gate log", subtitle: "Today's entries & their status", icon: "list-outline", tint: "#C2571A", route: "Visitors" },
+    {
+      label: preschool ? "Staff attendance" : "Staff & helpers",
+      subtitle: preschool ? "Teacher & staff check-in/out" : "Check in staff, maids & vendors",
+      icon: "id-card-outline",
+      tint: "#7A5AC2",
+      route: "Staff",
+    },
     { label: "Help & how-to", subtitle: "How each feature works, with examples", icon: "book-outline", tint: "#0B6E8F", route: "Community", params: { screen: "Help" } },
   ];
   if (preschool) {
     gate.splice(1, 0, { label: "Child pickup", subtitle: "Scan pass & log pickup/drop", icon: "qr-code-outline", tint: "#6D3BD1", route: "Community", params: { screen: "Pickup" } });
-    gate.push({ label: "Staff attendance", subtitle: "Teacher & staff check-in/out", icon: "id-card-outline", tint: "#7A5AC2", route: "Staff" });
   }
   return {
     sos: { label: "Emergency SOS", subtitle: "Respond to active alerts", icon: "alert-circle", route: "Community", params: { screen: "Sos" } },

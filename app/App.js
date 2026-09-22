@@ -148,6 +148,7 @@ function MembersStackScreen() {
       <MembersStack.Screen name="BankAccount" component={BankAccountScreen} />
       <MembersStack.Screen name="Vehicles" component={VehiclesScreen} />
       <MembersStack.Screen name="GateDevices" component={GateDevicesScreen} />
+      <MembersStack.Screen name="StaffAttendance" component={StaffAttendanceScreen} />
       <MembersStack.Screen name="Plans" component={PlansScreen} />
     </MembersStack.Navigator>
   );
@@ -282,14 +283,15 @@ function SuperAdminTabs() {
 
 function GuardTabs() {
   const { user } = useAuth();
-  const preschool = isPreschool(user);
   const L = labelsFor(user);
   const tabScreenOptions = useTabScreenOptions();
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
       <Tab.Screen name="Gate" component={GateScreen} />
-      {preschool && <Tab.Screen name="Staff" component={StaffAttendanceScreen} />}
+      {/* Guards mark attendance for staff and helpers in every tenant, not just
+          preschools — it is the other half of what happens at the gate. */}
+      <Tab.Screen name="Staff" component={StaffAttendanceScreen} />
       <Tab.Screen name="Community" component={CommunityStackScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: L.gate }} />
     </Tab.Navigator>

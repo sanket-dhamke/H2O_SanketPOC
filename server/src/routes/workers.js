@@ -138,6 +138,54 @@ workersRouter.post("/workers/:id/ratings", authRequired, async (req, res) => {
   res.json({ worker: await buildPassport(worker, req.user.id) });
 });
 
+// Today's helper movement at this society: who is inside now, who has left.
+// The gate screen needs one list; per-worker history is the route below.
+workersRouter.get("/workers/attendance/today", authRequired, roleRequired("guard", "admin"), async (req, res) => {
+  const societyId = req.user.societyId || "__none__";
+  const date = String(req.query.date || new Date().toISOString().slice(0, 10));
+  const rows = await prisma.workerAttendance.findMany({
+    where: { societyId, date },
+    orderBy: { inAt: "desc" },
+    take: 200,
+  });
+  const workers = rows.length
+    ? await prisma.worker.findMany({
+        where: { id: { in: [...new Set(rows.map((r) => r.workerId))] } },
+        select: { id: true, name: true, phone: true, category: true, subtype: true, photoUrl: true, code: true },
+      })
+    : [];
+  const byId = new Map(workers.map((w) => [w.id, w]));
+  const flatIds = [...new Set(rows.map((r) => r.flatId).filter(Boolean))];
+  const flats = flatIds.length
+    ? await prisma.flat.findMany({ where: { id: { in: flatIds } }, select: { id: true, flatNo: true } })
+    : [];
+  const flatById = new Map(flats.map((f) => [f.id, f.flatNo]));
+
+  const records = rows.map((r) => {
+    const w = byId.get(r.workerId) || null;
+    return {
+      id: r.id,
+      workerId: r.workerId,
+      name: w?.name || "Helper",
+      phone: w?.phone || null,
+      category: w?.category || null,
+      subtype: w?.subtype || null,
+      photoUrl: w?.photoUrl || null,
+      code: w?.code || null,
+      flatNo: r.flatId ? flatById.get(r.flatId) || null : null,
+      inAt: r.inAt,
+      outAt: r.outAt,
+    };
+  });
+
+  res.json({
+    date,
+    records,
+    onPremise: records.filter((r) => !r.outAt).length,
+    total: records.length,
+  });
+});
+
 // Guard/admin: log a worker's gate entry/exit at THIS society (portable attendance).
 workersRouter.get("/workers/:id/attendance", authRequired, async (req, res) => {
   const societyId = req.user.societyId || "__none__";
