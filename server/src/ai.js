@@ -708,12 +708,17 @@ const WHISPER_LANGS = { english: "en", en: "en", hindi: "hi", hi: "hi", marathi:
 
 // Words that separate Marathi from Hindi in the same script. Both languages use
 // Devanagari, so without this every Marathi question would be answered in Hindi.
-const MARATHI_MARKERS = /(आहे|आहेत|नाही|काय|कसं|कसे|किती|माझ्या|माझा|माझी|तुम्ही|मला|करायच|पाहिजे)/;
+// Matched whole-word: as a substring "काय" also sits inside the Hindi "शिकायत".
+const MARATHI_WORDS = new Set([
+  "आहे", "आहेत", "नाही", "नाहीये", "काय", "कसं", "कसे", "कशी", "किती",
+  "माझा", "माझी", "माझं", "माझ्या", "मला", "तुम्ही", "पाहिजे", "करायचं", "कुठे", "कधी",
+]);
 
 function detectLang(text) {
   const s = String(text || "");
   if (!/[\u0900-\u097F]/.test(s)) return "en";
-  return MARATHI_MARKERS.test(s) ? "mr" : "hi";
+  const words = s.split(/[^\u0900-\u097F]+/).filter(Boolean);
+  return words.some((w) => MARATHI_WORDS.has(w)) ? "mr" : "hi";
 }
 
 // Translates arbitrary text to a target language (en/hi/mr) for spoken notices

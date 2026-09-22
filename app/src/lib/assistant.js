@@ -2,7 +2,7 @@ import { api } from "./api";
 import { answerFromHelp } from "./helpGuide";
 import { findHomeService, HOME_SERVICE_SLOTS, inr as svcInr } from "./homeServices";
 import { isPreschool } from "./org";
-import { detectLang, isIndic } from "./lang";
+import { detectLang, isIndic, hasDevanagari, indicToEnglishQuestion } from "./lang";
 
 const inr = (n) => `₹${Math.round(n || 0).toLocaleString("en-IN")}`;
 
@@ -554,6 +554,10 @@ export async function askAssistant(question, user, { lang: knownLang, textEn } =
   let english = asked;
   if (isIndic(lang)) {
     english = (textEn || "").trim() || (await translateSafely(asked, "en"));
+    // Translation needs the AI provider. When it is off or unreachable the text
+    // comes back unchanged, so route the question by keyword instead of handing
+    // Devanagari to an English intent matcher that can only shrug at it.
+    if (hasDevanagari(english)) english = indicToEnglishQuestion(asked) || english;
   }
 
   const result = await resolveAssistant(english, user);
