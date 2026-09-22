@@ -2,6 +2,7 @@ import { api } from "./api";
 import { answerFromHelp } from "./helpGuide";
 import { findHomeService, HOME_SERVICE_SLOTS, inr as svcInr } from "./homeServices";
 import { isPreschool } from "./org";
+import { detectLang, isIndic } from "./lang";
 
 const inr = (n) => `₹${Math.round(n || 0).toLocaleString("en-IN")}`;
 
@@ -527,6 +528,42 @@ export async function resolveAssistant(question, userOrRole) {
     autoOpen: false,
     source: "app",
     preferLocal: true,
+  };
+}
+
+async function translateSafely(text, lang) {
+  const src = String(text || "").trim();
+  if (!src) return src;
+  try {
+    const { text: out } = await api.translate(src, lang);
+    return out?.trim() || src;
+  } catch {
+    // Translation is a nicety; never lose the answer over it.
+    return src;
+  }
+}
+
+// Ask in English, हिंदी or मराठी. Everything that resolves an answer — intent
+// keywords, the help guide, bill/visitor lookups — is written in English, so a
+// Devanagari question is translated in, answered, and translated back out. Voice
+// input already knows the language and its English text, so it skips a hop.
+export async function askAssistant(question, user, { lang: knownLang, textEn } = {}) {
+  const asked = String(question || "").trim();
+  const lang = knownLang || detectLang(asked);
+
+  let english = asked;
+  if (isIndic(lang)) {
+    english = (textEn || "").trim() || (await translateSafely(asked, "en"));
+  }
+
+  const result = await resolveAssistant(english, user);
+  if (!isIndic(lang)) return { ...result, lang, question: asked };
+
+  return {
+    ...result,
+    reply: await translateSafely(result.reply, lang),
+    lang,
+    question: asked,
   };
 }
 

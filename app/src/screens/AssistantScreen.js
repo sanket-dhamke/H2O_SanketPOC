@@ -15,7 +15,7 @@ import { api } from "../lib/api";
 import { isPreschool } from "../lib/org";
 import { brand } from "../lib/brand";
 import ScreenHeader from "../components/ScreenHeader";
-import { resolveAssistant, looksLikeAiFailure } from "../lib/assistant";
+import { askAssistant, looksLikeAiFailure } from "../lib/assistant";
 
 // Org-aware starter questions so preschools never see "flat/society/maintenance".
 function suggestionsFor(role, preschool) {
@@ -54,9 +54,10 @@ export default function AssistantScreen() {
     setMessages((m) => [...m, { role: "user", text: question }]);
     setBusy(true);
     try {
-      const local = await resolveAssistant(question, user);
+      const local = await askAssistant(question, user);
       let text = local.reply;
-      if (!local.preferLocal) {
+      // Remote chat answers in English, so only use it for English questions.
+      if (!local.preferLocal && local.lang === "en") {
         const remote = await api.aiAssistant(question);
         if (remote?.answer && !looksLikeAiFailure(remote.answer)) {
           text = remote.answer;
@@ -64,7 +65,7 @@ export default function AssistantScreen() {
       }
       setMessages((m) => [...m, { role: "assistant", text }]);
     } catch (e) {
-      const local = await resolveAssistant(question, user);
+      const local = await askAssistant(question, user);
       setMessages((m) => [...m, { role: "assistant", text: local.reply }]);
     } finally {
       setBusy(false);

@@ -659,8 +659,62 @@ export async function transcribeAudio(buffer, filename = "audio.m4a", { english 
   throw lastErr || new Error("No transcription model available");
 }
 
+// Assistant voice input, unlike guard dictation, keeps the speech in the
+// language it was spoken: a resident who asks in Hindi or Marathi should be
+// answered in that language, not in English. Whisper's verbose response names
+// the language it heard; when a provider doesn't support that format we fall
+// back to plain text and guess from the script.
+export async function transcribeAudioLocalized(buffer, filename = "audio.m4a") {
+  const models = workingTranscribeModel
+    ? [workingTranscribeModel, ...transcriptionCandidates().filter((m) => m !== workingTranscribeModel)]
+    : transcriptionCandidates();
+
+  let lastErr = null;
+  for (const model of models) {
+    try {
+      let text = "";
+      let reported = "";
+      try {
+        const file = await OpenAI.toFile(buffer, filename);
+        const r = await openai.audio.transcriptions.create({ model, file, response_format: "verbose_json" });
+        text = r.text || "";
+        reported = r.language || "";
+      } catch (err) {
+        if (isModelMissing(err)) throw err;
+        console.warn(`transcribeAudioLocalized: verbose_json unavailable (${err.message}); using plain text.`);
+        const retry = await OpenAI.toFile(buffer, filename);
+        const r = await openai.audio.transcriptions.create({ model, file: retry });
+        text = r.text || "";
+      }
+      workingTranscribeModel = model;
+      const lang = WHISPER_LANGS[String(reported).toLowerCase()] || detectLang(text);
+      return { text, lang };
+    } catch (err) {
+      lastErr = err;
+      if (!isModelMissing(err)) throw err;
+      console.warn(`transcribeAudioLocalized: model "${model}" not available, trying next…`);
+    }
+  }
+  throw lastErr || new Error("No transcription model available");
+}
+
 // Human language names for the codes the app offers.
 const LANG_NAMES = { en: "English", hi: "Hindi (Devanagari)", mr: "Marathi (Devanagari)" };
+
+// Whisper reports the language it heard, as a name or an ISO code depending on
+// the provider. Only the three the app speaks matter; anything else is treated
+// as English so the assistant still answers.
+const WHISPER_LANGS = { english: "en", en: "en", hindi: "hi", hi: "hi", marathi: "mr", mr: "mr" };
+
+// Words that separate Marathi from Hindi in the same script. Both languages use
+// Devanagari, so without this every Marathi question would be answered in Hindi.
+const MARATHI_MARKERS = /(आहे|आहेत|नाही|काय|कसं|कसे|किती|माझ्या|माझा|माझी|तुम्ही|मला|करायच|पाहिजे)/;
+
+function detectLang(text) {
+  const s = String(text || "");
+  if (!/[\u0900-\u097F]/.test(s)) return "en";
+  return MARATHI_MARKERS.test(s) ? "mr" : "hi";
+}
 
 // Translates arbitrary text to a target language (en/hi/mr) for spoken notices
 // and vernacular announcements. Returns the original text unchanged if AI is off
