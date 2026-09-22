@@ -283,6 +283,7 @@ superadminRouter.get("/backup/status", async (_req, res) => {
     take: 20,
   });
   const last = logs[0] || null;
+  const settings = await prisma.platformSetting.findUnique({ where: { id: "platform" } }).catch(() => null);
   res.json({
     readiness: {
       offsiteStorage: storageEnabled,
@@ -290,6 +291,7 @@ superadminRouter.get("/backup/status", async (_req, res) => {
       email: emailConfigured,
       externalCron: !!process.env.CRON_SECRET,
     },
+    contactEmail: settings?.contactEmail || null,
     last,
     history: logs,
   });
