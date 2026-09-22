@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -56,8 +56,25 @@ export default function CommunityScreen() {
   const [postModal, setPostModal] = useState(false);
 
   const preschool = isPreschool(user);
-  const isAdmin = user?.role === "admin";
-  const canPost = user?.role === "resident" || user?.role === "admin";
+  const role = user?.role;
+  const isAdmin = role === "admin";
+  const canPost = role === "resident" || role === "admin";
+
+  // Guards read notices and call people; booking a clubhouse or buying a sofa
+  // is not their job, so those links are not shown to them at all.
+  const quickLinks = useMemo(() => {
+    const everyone = ["resident", "admin", "guard"];
+    return [
+      { id: "homeServices", label: "Home Services", icon: "construct", color: "#0B6E8F", screen: "HomeServices", roles: ["resident", "admin"], societyOnly: true },
+      { id: "market", label: "Buy & Sell", icon: "pricetags", color: "#C99000", screen: "Marketplace", roles: ["resident", "admin"] },
+      { id: "helpdesk", label: "Helpdesk", icon: "help-buoy", color: "#1E7A3D", screen: "Helpdesk", roles: everyone },
+      { id: "directory", label: "Directory", icon: "people", color: "#0B6E8F", screen: "Directory", roles: everyone },
+      { id: "services", label: "Helplines", icon: "call", color: "#7A5AF8", screen: "Services", roles: everyone },
+      { id: "amenities", label: preschool ? "Book hall" : "Book clubhouse", icon: "calendar", color: "#0B6E8F", screen: "Amenities", roles: ["resident", "admin"] },
+      { id: "assistant", label: "Assistant", icon: "sparkles", color: "#6D3BD1", screen: "Assistant", roles: everyone },
+      { id: "help", label: "Help & how-to", icon: "book", color: "#0B6E8F", screen: "Help", roles: everyone },
+    ].filter((l) => l.roles.includes(role) && !(l.societyOnly && preschool));
+  }, [role, preschool]);
 
   const load = useCallback(async () => {
     try {
@@ -136,6 +153,21 @@ export default function CommunityScreen() {
         right={addBtn}
       />
 
+      {/* A launcher, not tab content: these used to sit inside the Announcements
+          list, so a guard reading notices saw Buy & Sell above them. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.quickRow}
+      >
+        {quickLinks.map((l) => (
+          <TouchableOpacity key={l.id} style={styles.quickChip} onPress={() => navigation.navigate(l.screen)}>
+            <Ionicons name={l.icon} size={15} color={l.color} />
+            <Text style={styles.quickChipText}>{l.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
       <View style={styles.segment}>
         <Seg label="Announcements" active={tab === "announcements"} onPress={() => setTab("announcements")} />
         <Seg label={`Board${posts.length ? ` (${posts.length})` : ""}`} active={tab === "posts"} onPress={() => setTab("posts")} />
@@ -145,43 +177,6 @@ export default function CommunityScreen() {
         contentContainerStyle={{ padding: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <View style={styles.shortcutRow}>
-          {!preschool ? (
-            <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("HomeServices")}>
-              <Ionicons name="construct" size={20} color="#0B6E8F" />
-              <Text style={styles.shortcutText}>Home Services</Text>
-            </TouchableOpacity>
-          ) : null}
-          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Marketplace")}>
-            <Ionicons name="pricetags" size={20} color="#C99000" />
-            <Text style={styles.shortcutText}>Buy & Sell</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Helpdesk")}>
-            <Ionicons name="help-buoy" size={20} color="#1E7A3D" />
-            <Text style={styles.shortcutText}>Helpdesk</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Directory")}>
-            <Ionicons name="people" size={20} color="#0B6E8F" />
-            <Text style={styles.shortcutText}>Directory</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Services")}>
-            <Ionicons name="construct" size={20} color="#7A5AF8" />
-            <Text style={styles.shortcutText}>Services & help</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Amenities")}>
-            <Ionicons name="calendar" size={20} color="#0B6E8F" />
-            <Text style={styles.shortcutText}>{preschool ? "Book hall" : "Book clubhouse"}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Assistant")}>
-            <Ionicons name="sparkles" size={20} color="#6D3BD1" />
-            <Text style={styles.shortcutText}>Assistant</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Help")}>
-            <Ionicons name="book" size={20} color="#0B6E8F" />
-            <Text style={styles.shortcutText}>Help & how-to</Text>
-          </TouchableOpacity>
-        </View>
-        <OffersRail slot="community" navigation={navigation} compact />
         {tab === "announcements" ? (
           <>
             <View style={styles.scopeNote}>
@@ -226,13 +221,15 @@ export default function CommunityScreen() {
           </>
         ) : (
           <>
-            <TouchableOpacity style={styles.scopeNote} onPress={() => navigation.navigate("Marketplace")}>
-              <Ionicons name="pricetags-outline" size={16} color="#0B6E8F" />
-              <Text style={styles.scopeNoteText}>
-                Neighbour talk — questions, lost & found and recommendations. Selling or renting something? Post it in Community market instead.
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color="#0B6E8F" />
-            </TouchableOpacity>
+            {canPost ? (
+              <TouchableOpacity style={styles.scopeNote} onPress={() => navigation.navigate("Marketplace")}>
+                <Ionicons name="pricetags-outline" size={16} color="#0B6E8F" />
+                <Text style={styles.scopeNoteText}>
+                  Neighbour talk — questions, lost & found and recommendations. Selling or renting something? Post it in Community market instead.
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color="#0B6E8F" />
+              </TouchableOpacity>
+            ) : null}
             {posts.length === 0 && <Empty text="No posts yet. Be the first to share something!" />}
             {posts.map((p) => {
               const meta = catMeta(p.category);
@@ -267,6 +264,7 @@ export default function CommunityScreen() {
             })}
           </>
         )}
+        {canPost ? <OffersRail slot="community" navigation={navigation} compact /> : null}
       </ScrollView>
 
       <AnnouncementModal visible={annModal} onClose={() => setAnnModal(false)} onDone={load} />
@@ -494,9 +492,19 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   sellLinkText: { flex: 1, color: "#0B3A49", fontSize: 12.5, fontWeight: "700" },
-  shortcutRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 14 },
-  shortcut: { minWidth: "47%", flexGrow: 1, backgroundColor: "#fff", borderRadius: 12, paddingVertical: 14, alignItems: "center", gap: 6 },
-  shortcutText: { color: "#334", fontWeight: "700", fontSize: 12 },
+  quickRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingTop: 14 },
+  quickChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E2EAEE",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    height: 36,
+  },
+  quickChipText: { color: "#334", fontWeight: "700", fontSize: 12.5 },
   card: { backgroundColor: "#fff", borderRadius: 14, padding: 16, marginBottom: 12 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
   pin: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#FBEadd", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
