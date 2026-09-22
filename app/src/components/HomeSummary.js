@@ -293,7 +293,7 @@ function Stat({ label, value, tint = "#1B2B33" }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { overflow: "hidden", width: "100%" },
+  wrap: { width: "100%" },
   card: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -360,11 +360,16 @@ const styles = StyleSheet.create({
   alertLabel: { fontSize: 13.5, ...head(700), color: "#1B2B33" },
   alertDetail: { fontSize: 12, color: "#6B7B85", marginTop: 1, ...body(400)},
   vizRow: { gap: 16 },
+  // The donut is an SVG of a fixed size. If any ancestor ever computes to zero
+  // height again (flex:1 inside an auto-height column does exactly that on
+  // Android), it would paint outside the card and over Emergency SOS below —
+  // so the rows that hold a chart reserve its height outright.
   vizMain: {
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
+    minHeight: CHART_SIZE,
   },
   donutSlot: { width: CHART_SIZE, height: CHART_SIZE, flexShrink: 0, overflow: "hidden" },
   vizTrend: { width: "100%", marginTop: 4 },
