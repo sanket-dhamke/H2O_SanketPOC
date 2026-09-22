@@ -16,6 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { payBill } from "../lib/pay";
+import { loadPaymentMethods, payMethodsHint } from "../lib/payMethods";
 import { useAuth } from "../lib/auth";
 import { labelsFor } from "../lib/org";
 import { buildReceipt } from "../lib/receiptHtml";
@@ -43,6 +44,7 @@ export default function MaintenanceScreen() {
   const [downloading, setDownloading] = useState(false);
   const [cashBill, setCashBill] = useState(null);
   const [monthFilter, setMonthFilter] = useState("");
+  const [payMethods, setPayMethods] = useState(null);
   const isAdmin = user?.role === "admin";
 
   // When a month is chosen, show only that period's bills (period is "YYYY-MM").
@@ -87,6 +89,7 @@ export default function MaintenanceScreen() {
     } catch {
       // Payee info is optional; ignore if it fails.
     }
+    setPayMethods(await loadPaymentMethods());
     return loadedBills;
   }, []);
 
@@ -162,8 +165,10 @@ export default function MaintenanceScreen() {
         onBack={canGoBack ? () => navigation.goBack() : undefined}
         right={
           <View style={styles.headerStat}>
-            <Text style={styles.headerStatLabel}>Outstanding</Text>
-            <Text style={styles.headerStatValue}>₹{totalDue}</Text>
+            <Text style={styles.headerStatLabel} numberOfLines={1}>Outstanding</Text>
+            <Text style={styles.headerStatValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              ₹{totalDue}
+            </Text>
           </View>
         }
       />
@@ -176,9 +181,7 @@ export default function MaintenanceScreen() {
             {payee.last4 ? ` · A/c ••${payee.last4}` : ""}
           </Text>
         ) : null}
-        <Text style={styles.upiHint}>
-          Pay opens with UPI first — Google Pay, PhonePe, Paytm or a UPI ID. Card and net banking stay available.
-        </Text>
+        <Text style={styles.upiHint}>{payMethodsHint(payMethods)}</Text>
         {payee?.upiId ? <Text style={styles.upiId}>Society UPI · {payee.upiId}</Text> : null}
       </View>
       <FlatList
@@ -452,7 +455,7 @@ const styles = StyleSheet.create({
   breakdown: { color: "#8895A0", fontSize: 11, marginTop: 3 },
   emptyBox: { alignItems: "center", paddingVertical: 48, gap: 10 },
   emptyText: { color: "#8895A0", fontSize: 14, fontWeight: "600" },
-  headerStat: { alignItems: "flex-end" },
+  headerStat: { alignItems: "flex-end", maxWidth: 120 },
   headerStatLabel: { color: "#CDE9F2", fontSize: 11, fontWeight: "600" },
   headerStatValue: { color: "#fff", fontSize: 24, fontWeight: "800", marginTop: 2 },
   payee: { backgroundColor: "#EAF6FA", paddingHorizontal: 16, paddingVertical: 10 },

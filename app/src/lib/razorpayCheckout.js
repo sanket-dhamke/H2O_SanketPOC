@@ -1,18 +1,25 @@
 import { Platform } from "react-native";
 import { brand } from "./brand";
 
-// Shared Razorpay Checkout options. Native ignores web-only `config.display`
-// blocks (those were hiding UPI on Android). Web keeps an explicit UPI block.
+// Shared Razorpay Checkout options.
+//
+// There is exactly one payment screen: Razorpay's. We used to show our own
+// "Pay via UPI" sheet first, which listed Google Pay / PhonePe / Paytm even on
+// accounts where UPI is switched off — tapping one then landed on a checkout
+// with cards and net banking only. `methods` comes from the server (the real
+// instruments this Razorpay account can charge) so the sheet that opens is the
+// only thing the resident ever sees.
 
 const UPI_APPS = ["google_pay", "phonepe", "paytm", "bhim"];
 
-export function checkoutOptions(order, preference = {}) {
+export function checkoutOptions(order, methods) {
   const digits = String(order.prefill?.contact || order.prefill?.phone || "").replace(/\D/g, "");
   const contact = digits.length >= 10 ? digits.slice(-10) : undefined;
-  const method = preference.method || "upi";
-  const apps = preference.app ? [preference.app] : UPI_APPS;
+  const upi = methods ? methods.upi !== false : true;
 
-  const prefill = { method };
+  const prefill = {};
+  // Landing straight on UPI only makes sense when the account has UPI.
+  if (upi) prefill.method = "upi";
   if (order.prefill?.email) prefill.email = order.prefill.email;
   if (contact) prefill.contact = contact;
 
@@ -29,30 +36,34 @@ export function checkoutOptions(order, preference = {}) {
       contact: true,
     },
     method: {
-      upi: 1,
-      card: 1,
-      netbanking: 1,
-      wallet: 0,
+      upi: upi ? 1 : 0,
+      card: methods && methods.card === false ? 0 : 1,
+      netbanking: methods && methods.netbanking === false ? 0 : 1,
+      wallet: methods && methods.wallet ? 1 : 0,
       emi: 0,
       paylater: 0,
     },
     theme: { color: "#0B6E8F" },
   };
 
-  if (Platform.OS === "web") {
+  // Desktop checkout buries UPI intent apps unless they are spelled out.
+  if (Platform.OS === "web" && upi) {
+    const sequence = ["block.upi_apps", "upi"];
+    if (options.method.card) sequence.push("card");
+    if (options.method.netbanking) sequence.push("netbanking");
     options.config = {
       display: {
         blocks: {
           upi_apps: {
             name: "Pay via UPI",
             instruments: [
-              { method: "upi", flows: ["intent"], apps },
+              { method: "upi", flows: ["intent"], apps: UPI_APPS },
               { method: "upi", flows: ["qr"] },
             ],
           },
         },
-        hide: [{ method: "wallet" }],
-        sequence: ["block.upi_apps", "upi", "card", "netbanking"],
+        hide: options.method.wallet ? [] : [{ method: "wallet" }],
+        sequence,
         preferences: { show_default_blocks: false },
       },
     };

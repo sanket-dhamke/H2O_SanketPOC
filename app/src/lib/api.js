@@ -130,6 +130,8 @@ export const api = {
     request(`/api/maintenance/${id}/pay`, { method: "POST", body: amount != null ? { amount } : {} }),
   createOrder: (id, amount) =>
     request(`/api/maintenance/${id}/create-order`, { method: "POST", body: amount != null ? { amount } : {} }),
+  // What checkout can actually charge (UPI / card / net banking / wallet).
+  paymentMethods: () => request("/api/payments/methods"),
   verifyPayment: (id, payload) =>
     request(`/api/maintenance/${id}/verify`, { method: "POST", body: payload }),
 

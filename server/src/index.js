@@ -33,6 +33,7 @@ import { sustainabilityRouter } from "./routes/sustainability.js";
 import { aiRouter } from "./routes/ai.js";
 import { homeRouter } from "./routes/home.js";
 import { homeServicesRouter } from "./routes/homeServices.js";
+import { paymentsRouter } from "./routes/payments.js";
 import { globalLimiter, authLimiter, aiLimiter } from "./rateLimit.js";
 import { startQueueWorkers, queueBackend } from "./queue.js";
 import { cacheBackend } from "./cache.js";
@@ -110,6 +111,7 @@ app.get("/api/health", (_req, res) =>
 app.use("/api", authRouter);
 app.use("/api", homeRouter);
 app.use("/api", maintenanceRouter);
+app.use("/api", paymentsRouter);
 app.use("/api", visitorsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/superadmin", superadminRouter);

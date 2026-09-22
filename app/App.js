@@ -61,7 +61,6 @@ import PayToH2OScreen from "./src/screens/admin/PayToH2OScreen";
 import SuperAdminDashboardScreen from "./src/screens/superadmin/SuperAdminDashboardScreen";
 import SocietiesScreen from "./src/screens/superadmin/SocietiesScreen";
 import BackupRecoveryScreen from "./src/screens/superadmin/BackupRecoveryScreen";
-import PayMethodSheet from "./src/components/PayMethodSheet";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -357,7 +356,6 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <AppInner />
-        <PayMethodSheet />
       </AuthProvider>
     </SafeAreaProvider>
   );
