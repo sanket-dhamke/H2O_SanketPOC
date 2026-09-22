@@ -33,14 +33,17 @@ const timeAgo = (iso) => {
   return `${Math.floor(h / 24)}d ago`;
 };
 
+// Board categories are neighbour talk only. Selling lives in Community market
+// (listings with photos, prices and group-buy), so "For sale" is not offered
+// here — older sale posts still render through SALE_META.
 const CATEGORIES = [
   { id: "general", label: "General", icon: "chatbubbles-outline" },
-  { id: "sale", label: "For sale", icon: "pricetag-outline" },
   { id: "query", label: "Question", icon: "help-circle-outline" },
   { id: "lost_found", label: "Lost & found", icon: "search-outline" },
   { id: "recommend", label: "Recommend", icon: "thumbs-up-outline" },
 ];
-const catMeta = (id) => CATEGORIES.find((c) => c.id === id) || CATEGORIES[0];
+const SALE_META = { id: "sale", label: "For sale", icon: "pricetag-outline" };
+const catMeta = (id) => (id === "sale" ? SALE_META : CATEGORIES.find((c) => c.id === id) || CATEGORIES[0]);
 
 export default function CommunityScreen() {
   const { user } = useAuth();
@@ -223,6 +226,13 @@ export default function CommunityScreen() {
           </>
         ) : (
           <>
+            <TouchableOpacity style={styles.scopeNote} onPress={() => navigation.navigate("Marketplace")}>
+              <Ionicons name="pricetags-outline" size={16} color="#0B6E8F" />
+              <Text style={styles.scopeNoteText}>
+                Neighbour talk — questions, lost & found and recommendations. Selling or renting something? Post it in Community market instead.
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color="#0B6E8F" />
+            </TouchableOpacity>
             {posts.length === 0 && <Empty text="No posts yet. Be the first to share something!" />}
             {posts.map((p) => {
               const meta = catMeta(p.category);
@@ -260,7 +270,12 @@ export default function CommunityScreen() {
       </ScrollView>
 
       <AnnouncementModal visible={annModal} onClose={() => setAnnModal(false)} onDone={load} />
-      <PostModal visible={postModal} onClose={() => setPostModal(false)} onDone={load} />
+      <PostModal
+        visible={postModal}
+        onClose={() => setPostModal(false)}
+        onDone={load}
+        onSell={() => navigation.navigate("Marketplace")}
+      />
     </View>
   );
 }
@@ -320,11 +335,10 @@ function AnnouncementModal({ visible, onClose, onDone }) {
   );
 }
 
-function PostModal({ visible, onClose, onDone }) {
+function PostModal({ visible, onClose, onDone, onSell }) {
   const [category, setCategory] = useState("general");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [price, setPrice] = useState("");
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
@@ -334,16 +348,10 @@ function PostModal({ visible, onClose, onDone }) {
     }
     setBusy(true);
     try {
-      await api.createPost({
-        category,
-        title: title.trim(),
-        body: body.trim(),
-        price: category === "sale" && price ? Number(price) : undefined,
-      });
+      await api.createPost({ category, title: title.trim(), body: body.trim() });
       setCategory("general");
       setTitle("");
       setBody("");
-      setPrice("");
       onClose();
       onDone();
     } catch (e) {
@@ -354,7 +362,21 @@ function PostModal({ visible, onClose, onDone }) {
   };
 
   return (
-    <FormModal visible={visible} onClose={onClose} title="New post" icon="create-outline" busy={busy} onSubmit={submit}>
+    <FormModal visible={visible} onClose={onClose} title="New board post" icon="create-outline" busy={busy} onSubmit={submit}>
+      <Text style={styles.formHint}>
+        For neighbour talk — questions, lost & found, recommendations.
+      </Text>
+      <TouchableOpacity
+        style={styles.sellLink}
+        onPress={() => {
+          onClose();
+          onSell?.();
+        }}
+      >
+        <Ionicons name="pricetags-outline" size={16} color="#0B6E8F" />
+        <Text style={styles.sellLinkText}>Selling something? List it in Community market</Text>
+        <Ionicons name="chevron-forward" size={16} color="#0B6E8F" />
+      </TouchableOpacity>
       <Label>Category</Label>
       <View style={styles.catPick}>
         {CATEGORIES.map((c) => (
@@ -369,13 +391,7 @@ function PostModal({ visible, onClose, onDone }) {
         ))}
       </View>
       <Label>Title</Label>
-      <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Sofa set for sale" />
-      {category === "sale" && (
-        <>
-          <Label>Price (Rs.)</Label>
-          <TextInput style={styles.input} value={price} onChangeText={setPrice} placeholder="12000" keyboardType="numeric" />
-        </>
-      )}
+      <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Lost keys near D wing" />
       <Label>Details</Label>
       <TextInput style={[styles.input, styles.multiline]} value={body} onChangeText={setBody} placeholder="Describe your post…" multiline />
     </FormModal>
@@ -467,6 +483,17 @@ const styles = StyleSheet.create({
   },
   scopeNoteText: { flex: 1, color: "#0B3A49", fontSize: 13, lineHeight: 18, fontWeight: "600" },
   formHint: { color: "#5C7380", fontSize: 13, lineHeight: 18, marginBottom: 4 },
+  sellLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#EAF4F8",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 10,
+  },
+  sellLinkText: { flex: 1, color: "#0B3A49", fontSize: 12.5, fontWeight: "700" },
   shortcutRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 14 },
   shortcut: { minWidth: "47%", flexGrow: 1, backgroundColor: "#fff", borderRadius: 12, paddingVertical: 14, alignItems: "center", gap: 6 },
   shortcutText: { color: "#334", fontWeight: "700", fontSize: 12 },
