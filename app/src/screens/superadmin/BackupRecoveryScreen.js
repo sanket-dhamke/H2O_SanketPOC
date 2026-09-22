@@ -283,7 +283,7 @@ export default function BackupRecoveryScreen() {
                   <Text style={styles.readHint}>{ok ? r.hintReady : r.hintTodo}</Text>
                 </View>
                 <Text style={[styles.readState, { color: ok ? "#2E9E52" : "#0B6E8F" }]}>
-                  {ok ? "Ready" : r.compose ? "Open Gmail" : "Learn more"}
+                  {ok ? "Ready" : "Learn more"}
                 </Text>
                 <Ionicons name="chevron-forward" size={16} color="#C5D0D6" />
               </TouchableOpacity>
