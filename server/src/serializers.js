@@ -85,6 +85,7 @@ export function serializeVisitor(v) {
     status: v.status,
     createdAt: v.createdAt,
     decidedAt: v.decidedAt,
+    decisionNote: v.decisionNote || null,
     exitAt: v.exitAt || null,
   };
 }

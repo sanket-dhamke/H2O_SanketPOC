@@ -8,13 +8,16 @@ import {
   Alert,
   RefreshControl,
   Image,
+  Platform,
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { labelsFor, isPreschool } from "../lib/org";
+import { isParcelVisit, presentVisitor } from "../lib/visitorWait";
 import ScreenHeader from "../components/ScreenHeader";
 import OffersRail from "../components/OffersRail";
+import AppTextInput from "../components/AppTextInput";
 
 function timeAt(iso) {
   if (!iso) return "";
@@ -37,13 +40,27 @@ const STATUS_META = {
   approved: { label: "Approved", color: "#2E9E52", bg: "#E3F5E8" },
   rejected: { label: "Rejected", color: "#C0392B", bg: "#FBE7E4" },
   leave_at_gate: { label: "Left at gate", color: "#7A5AC2", bg: "#EEE8FA" },
+  no_response: { label: "No response", color: "#8A5A00", bg: "#FBF3D5" },
+  allowed_by_guard: { label: "Allowed by guard", color: "#0B6E8F", bg: "#E7F3F8" },
+  sent_back: { label: "Sent back", color: "#6B7B85", bg: "#EEF2F4" },
 };
+
+function waitLabel(ms) {
+  const mins = Math.ceil((ms || 0) / 60000);
+  if (mins <= 1) return "Waiting · under 1 min";
+  return `Waiting · ${mins} min left`;
+}
 
 export default function VisitorsScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
   const [visitors, setVisitors] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  const [reasonFor, setReasonFor] = useState(null);
+  const [reason, setReason] = useState("");
+  const [busyId, setBusyId] = useState(null);
+  const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -57,6 +74,12 @@ export default function VisitorsScreen() {
   useFocusEffect(
     useCallback(() => {
       load();
+      const refresh = setInterval(load, 20000);
+      const clock = setInterval(() => setNow(Date.now()), 15000);
+      return () => {
+        clearInterval(refresh);
+        clearInterval(clock);
+      };
     }, [load])
   );
 
@@ -66,12 +89,48 @@ export default function VisitorsScreen() {
     setRefreshing(false);
   };
 
+  const fail = (e) => {
+    const message = e.message || "Could not update this visit.";
+    setNotice(message);
+    if (Platform.OS !== "web") Alert.alert("Error", message);
+  };
+
   const decide = async (visitor, status) => {
+    setNotice("");
     try {
       await api.decideVisitor(visitor.id, status);
+      setReasonFor(null);
       await load();
     } catch (e) {
-      Alert.alert("Error", e.message);
+      fail(e);
+    }
+  };
+
+  const guardAct = async (visitor, action, note) => {
+    setNotice("");
+    setBusyId(visitor.id);
+    try {
+      try {
+        await api.guardVisitorAction(visitor.id, { action, reason: note });
+      } catch (e) {
+        // The current hosted API only knows Leave at gate. Use that until the
+        // new gate action is deployed, and keep the other choices honest.
+        const missing = /404|failed \(404\)|Cannot (GET|POST)/i.test(e.message || "");
+        if (missing && action === "leave_at_gate") {
+          await api.decideVisitor(visitor.id, "leave_at_gate");
+        } else if (missing) {
+          throw new Error("This visit is already off Waiting. Allowed by guard and Send back save once the gate server is updated.");
+        } else {
+          throw e;
+        }
+      }
+      setReasonFor(null);
+      setReason("");
+      await load();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -94,8 +153,9 @@ export default function VisitorsScreen() {
         title={isResident ? L.visitors : L.gate}
         subtitle={isResident ? "Approve or review your gate entries" : `All ${preschool ? "preschool" : "society"} gate entries`}
       />
+      {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       <FlatList
-        data={visitors}
+        data={visitors.map((v) => presentVisitor(v, now))}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -112,6 +172,9 @@ export default function VisitorsScreen() {
           const meta = STATUS_META[item.status] || STATUS_META.pending;
           const isResident = user.role === "resident";
           const canDecide = isResident && item.status === "pending";
+          const canGuard = !isResident && !preschool && item.status === "no_response";
+          const parcel = isParcelVisit(item.purpose);
+          const badgeLabel = item.status === "pending" && item.waitMsLeft ? waitLabel(item.waitMsLeft) : meta.label;
           // Preschool: guard/admin can mark a visitor out once they've entered.
           const canExit = preschool && !isResident && !item.exitAt && item.status !== "rejected";
           return (
@@ -140,9 +203,16 @@ export default function VisitorsScreen() {
                   </Text>
                 </View>
                 <View style={[styles.badge, { backgroundColor: meta.bg }]}>
-                  <Text style={[styles.badgeText, { color: meta.color }]}>{meta.label}</Text>
+                  <Text style={[styles.badgeText, { color: meta.color }]}>{badgeLabel}</Text>
                 </View>
               </View>
+
+              {item.status === "allowed_by_guard" && item.decisionNote ? (
+                <Text style={styles.note}>Guard reason: {item.decisionNote}</Text>
+              ) : null}
+              {item.status === "pending" && !isResident ? (
+                <Text style={styles.note}>The resident has 3 minutes to answer. One phone call goes out if they do not.</Text>
+              ) : null}
 
               {canDecide && (
                 <View style={styles.actions}>
@@ -164,6 +234,68 @@ export default function VisitorsScreen() {
                   >
                     <Text style={styles.actionText}>Leave at gate</Text>
                   </TouchableOpacity>
+                </View>
+              )}
+
+              {canGuard && (
+                <View>
+                  <Text style={styles.note}>
+                    {parcel
+                      ? "No one answered. Leave this at the gate, or send them back. Do not send them up."
+                      : "No one answered. Call the flat. Let them in only if you record why."}
+                  </Text>
+                  {reasonFor === item.id ? (
+                    <View style={styles.reasonBox}>
+                      <AppTextInput
+                        style={styles.reasonInput}
+                        value={reason}
+                        onChangeText={setReason}
+                        placeholder="Why are you letting them in?"
+                      />
+                      <View style={styles.actions}>
+                        <TouchableOpacity
+                          style={[styles.action, { backgroundColor: "#0B6E8F" }]}
+                          disabled={busyId === item.id}
+                          onPress={() => guardAct(item, "allow", reason)}
+                        >
+                          <Text style={styles.actionText}>Save reason</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.action, styles.actionQuiet]} onPress={() => setReasonFor(null)}>
+                          <Text style={styles.actionQuietText}>Cancel</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={styles.actions}>
+                      {parcel ? (
+                        <TouchableOpacity
+                          style={[styles.action, { backgroundColor: "#7A5AC2" }]}
+                          disabled={busyId === item.id}
+                          onPress={() => guardAct(item, "leave_at_gate")}
+                        >
+                          <Text style={styles.actionText}>Leave at gate</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.action, { backgroundColor: "#0B6E8F" }]}
+                          disabled={busyId === item.id}
+                          onPress={() => {
+                            setReasonFor(item.id);
+                            setReason("");
+                          }}
+                        >
+                          <Text style={styles.actionText}>Allowed by guard</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={[styles.action, styles.actionQuiet]}
+                        disabled={busyId === item.id}
+                        onPress={() => guardAct(item, "send_back")}
+                      >
+                        <Text style={styles.actionQuietText}>Send back</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               )}
 
@@ -191,11 +323,25 @@ const styles = StyleSheet.create({
   name: { fontSize: 16, fontWeight: "700", color: "#1B2B33" },
   meta: { color: "#6B7B85", marginTop: 2, fontSize: 13 },
   time: { color: "#9AA7B0", marginTop: 3, fontSize: 11 },
-  badge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-  badgeText: { fontSize: 12, fontWeight: "700" },
-  actions: { flexDirection: "row", gap: 8, marginTop: 14 },
-  action: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: "center" },
-  actionText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  badge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, maxWidth: 118, flexShrink: 1 },
+  badgeText: { fontSize: 12, fontWeight: "700", textAlign: "center" },
+  notice: { color: "#B42318", paddingHorizontal: 16, paddingTop: 12, fontSize: 13 },
+  note: { color: "#6B7B85", marginTop: 10, fontSize: 12, lineHeight: 17 },
+  reasonBox: { marginTop: 8 },
+  reasonInput: {
+    borderWidth: 1,
+    borderColor: "#D6DEE3",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    backgroundColor: "#fff",
+  },
+  actions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
+  action: { flexGrow: 1, flexBasis: "46%", paddingVertical: 10, paddingHorizontal: 8, borderRadius: 8, alignItems: "center" },
+  actionText: { color: "#fff", fontWeight: "700", fontSize: 13, textAlign: "center" },
+  actionQuiet: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#D6DEE3" },
+  actionQuietText: { color: "#1B2B33", fontWeight: "700", fontSize: 13, textAlign: "center" },
   exitBtn: { marginTop: 12, borderWidth: 1, borderColor: "#0B6E8F", borderRadius: 8, paddingVertical: 10, alignItems: "center" },
   exitText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
 });

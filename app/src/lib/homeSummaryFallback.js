@@ -2,6 +2,8 @@
 // the live API (bills + visitors). Used when GET /api/home-summary 404s —
 // that route is new and has not been deployed to Render yet.
 
+import { presentVisitor } from "./visitorWait";
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const pad2 = (n) => String(n).padStart(2, "0");
 
@@ -17,8 +19,9 @@ function lastPeriods(count) {
 
 function visitorDonut(visitors) {
   const since = Date.now() - 30 * 864e5;
-  const counts = { approved: 0, pending: 0, leave_at_gate: 0, rejected: 0, other: 0 };
-  for (const v of visitors || []) {
+  const counts = { approved: 0, pending: 0, leave_at_gate: 0, rejected: 0, no_response: 0, allowed_by_guard: 0, sent_back: 0, other: 0 };
+  for (const raw of visitors || []) {
+    const v = presentVisitor(raw);
     const t = v.createdAt ? new Date(v.createdAt).getTime() : Date.now();
     if (t < since) continue;
     if (counts[v.status] != null) counts[v.status] += 1;
@@ -29,9 +32,12 @@ function visitorDonut(visitors) {
     pending: "Pending",
     leave_at_gate: "Left at gate",
     rejected: "Rejected",
+    no_response: "No response",
+    allowed_by_guard: "Allowed by guard",
+    sent_back: "Sent back",
     other: "Other",
   };
-  const segments = ["approved", "pending", "rejected", "leave_at_gate", "other"]
+  const segments = ["approved", "pending", "rejected", "leave_at_gate", "no_response", "allowed_by_guard", "sent_back", "other"]
     .map((key) => ({ key, label: labels[key], value: counts[key] }))
     .filter((s) => s.value > 0 || s.key === "approved" || s.key === "pending" || s.key === "rejected");
   return {
@@ -43,7 +49,8 @@ function visitorDonut(visitors) {
 
 function visitorTrend(visitors) {
   const byPeriod = new Map();
-  for (const v of visitors || []) {
+  for (const raw of visitors || []) {
+    const v = presentVisitor(raw);
     if (!v.createdAt) continue;
     const d = new Date(v.createdAt);
     const period = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;

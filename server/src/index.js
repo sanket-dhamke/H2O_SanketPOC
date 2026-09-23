@@ -44,6 +44,7 @@ import { backfillSlugs } from "./slug.js";
 import { recordPayment } from "./billing.js";
 import { runFeeReminders } from "./feeReminders.js";
 import { runRentExpiryChecks } from "./rentReminders.js";
+import { ensureVisitorWaitColumns, sweepVisitorWaits } from "./visitorWait.js";
 
 const app = express();
 // Behind Render/other proxies: trust the first proxy hop so req.ip (used by the
@@ -285,4 +286,8 @@ app.listen(PORT, "0.0.0.0", () => {
     .catch((e) => console.error("Platform settings init failed:", e.message));
   // Seed national helplines into the platform-curated services layer (idempotent).
   ensureDefaultHelplines().catch((e) => console.error("Helpline seed failed:", e.message));
+  // Close unanswered gate visits after 3 minutes, and place the one follow-up call.
+  const sweep = () => sweepVisitorWaits().catch((e) => console.error("Visitor wait sweep failed:", e.message));
+  ensureVisitorWaitColumns().then(sweep).catch((e) => console.error("Visitor wait columns failed:", e.message));
+  setInterval(sweep, 30 * 1000);
 });
