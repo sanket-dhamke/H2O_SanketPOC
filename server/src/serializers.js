@@ -41,6 +41,8 @@ export function serializeStaffAttendance(s) {
     date: s.date,
     inAt: s.inAt,
     outAt: s.outAt,
+    inPhotoUrl: s.inPhotoUrl || null,
+    outPhotoUrl: s.outPhotoUrl || null,
     createdAt: s.createdAt,
   };
 }

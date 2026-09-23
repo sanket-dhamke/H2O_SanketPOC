@@ -18,6 +18,7 @@ import { api } from "../lib/api";
 import { brand } from "../lib/brand";
 import ScreenHeader from "../components/ScreenHeader";
 import ModalClose from "../components/ModalClose";
+import OptionalPhoto from "../components/OptionalPhoto";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 
 export const WORKER_CATS = [
@@ -171,6 +172,7 @@ function RegisterWorkerModal({ visible, onClose, onDone }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [idProof, setIdProof] = useState("");
+  const [photo, setPhoto] = useState(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -180,6 +182,7 @@ function RegisterWorkerModal({ visible, onClose, onDone }) {
       setName("");
       setPhone("");
       setIdProof("");
+      setPhoto(null);
     }
   }, [visible]);
 
@@ -188,7 +191,14 @@ function RegisterWorkerModal({ visible, onClose, onDone }) {
     if (phone.replace(/\D/g, "").length < 10) return Alert.alert("Phone needed", "A 10-digit phone number is the worker's portable identity.");
     setBusy(true);
     try {
-      const r = await api.registerWorker({ name: name.trim(), phone, category, subtype: subtype.trim() || undefined, idProof: idProof.trim() || undefined });
+      const r = await api.registerWorker({
+        name: name.trim(),
+        phone,
+        category,
+        subtype: subtype.trim() || undefined,
+        idProof: idProof.trim() || undefined,
+        photoUrl: photo?.base64 || undefined,
+      });
       if (r.existed) {
         Alert.alert(`Already on ${brand.name}`, `${r.worker.name} already has a Trust Passport — opening it so you can add your rating.`);
       }
@@ -236,6 +246,8 @@ function RegisterWorkerModal({ visible, onClose, onDone }) {
             <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="10-digit mobile" keyboardType="phone-pad" />
             <Label>ID note (optional)</Label>
             <TextInput style={styles.input} value={idProof} onChangeText={setIdProof} placeholder="e.g. Aadhaar verified, police-verified" />
+            <OptionalPhoto value={photo} onChange={setPhoto} />
+            <Text style={styles.formHint}>Photo is optional. Adding someone does not check them in.</Text>
             <View style={styles.modalActions}>
               <TouchableOpacity style={[styles.mBtn, styles.cancelBtn]} onPress={onClose}>
                 <Text style={styles.cancelText}>Cancel</Text>
@@ -280,6 +292,7 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 17, fontWeight: "800", color: "#fff", flex: 1 },
   modalBody: { padding: 18 },
   label: { fontSize: 13, fontWeight: "700", color: "#334", marginBottom: 6, marginTop: 12 },
+  formHint: { color: "#6B7B85", fontSize: 12.5, lineHeight: 18, marginTop: 8 },
   input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, backgroundColor: "#F8FAFB" },
   pickRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   pick: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: "#CFE0E6", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },

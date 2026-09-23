@@ -14,10 +14,11 @@ test("a registered helper stays on the list when they are not inside", () => {
 test("an open visit marks that helper inside and keeps the checkout id", () => {
   const rows = mergeHelperDirectory(
     [{ id: "k", name: "Kusum", subtype: "Maid" }],
-    [{ id: "att-1", workerId: "k", inAt: "2026-09-23T11:02:00.000Z", outAt: null }]
+    [{ id: "att-1", workerId: "k", inAt: "2026-09-23T11:02:00.000Z", outAt: null, inPhotoUrl: "https://cdn.example/in.jpg" }]
   );
   assert.equal(rows[0].inside, true);
   assert.equal(rows[0].attendanceId, "att-1");
+  assert.equal(rows[0].inPhotoUrl, "https://cdn.example/in.jpg");
   const left = mergeHelperDirectory(
     [{ id: "k", name: "Kusum" }],
     [{ id: "att-2", workerId: "k", outAt: "2026-09-23T12:00:00.000Z" }]

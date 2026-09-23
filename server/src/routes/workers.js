@@ -2,6 +2,7 @@ import { Router } from "express";
 import { randomBytes } from "crypto";
 import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
+import { uploadVisitorPhoto } from "../storage.js";
 
 // Portable Helper & Vendor "Trust Passport". Workers are network-wide (not
 // scoped to a society) so their rating & attendance travel across every
@@ -11,6 +12,34 @@ export const workersRouter = Router();
 const cleanPhone = (p) => String(p || "").replace(/[^\d]/g, "").slice(-10);
 
 // Society gates run on India time. UTC midnight would mark a 1 AM arrival as yesterday.
+let photoColumnsReady = false;
+
+export async function ensureAttendancePhotoColumns() {
+  if (photoColumnsReady) return;
+  await prisma.$executeRawUnsafe(`ALTER TABLE "WorkerAttendance" ADD COLUMN IF NOT EXISTS "inPhotoUrl" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "WorkerAttendance" ADD COLUMN IF NOT EXISTS "outPhotoUrl" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "StaffAttendance" ADD COLUMN IF NOT EXISTS "inPhotoUrl" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "StaffAttendance" ADD COLUMN IF NOT EXISTS "outPhotoUrl" TEXT`);
+  photoColumnsReady = true;
+}
+
+// Storage keeps a normal web address. A missing photo never blocks check-in.
+async function saveGatePhoto(base64, id) {
+  if (!base64 || typeof base64 !== "string" || !base64.startsWith("data:image/")) return null;
+  const uploaded = await uploadVisitorPhoto(base64, id);
+  if (uploaded) return uploaded;
+  if (base64.length <= 350000) return base64;
+  return null;
+}
+
+// A registration photo is optional. Keep a web address, or a small camera
+// picture. A picture that cannot be stored is dropped so registration still saves.
+async function storeIdentityPhoto(photoUrl, id) {
+  if (!photoUrl || typeof photoUrl !== "string") return null;
+  if (/^https?:\/\//.test(photoUrl)) return photoUrl;
+  return saveGatePhoto(photoUrl, id);
+}
+
 function indiaDate(d = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",
@@ -117,11 +146,12 @@ workersRouter.post("/workers", authRequired, async (req, res) => {
   const p = cleanPhone(phone);
   if (p.length !== 10) return res.status(400).json({ message: "A valid 10-digit phone is required (it's the worker's portable identity)." });
   const existing = await prisma.worker.findUnique({ where: { phone: p } });
+  const storedPhoto = await storeIdentityPhoto(photoUrl, `worker-${p}`);
   if (existing) {
     // Backfill any missing details, but never overwrite an existing photo/subtype.
     const data = {};
     if (!existing.subtype && subtype) data.subtype = String(subtype).trim();
-    if (!existing.photoUrl && photoUrl) data.photoUrl = photoUrl;
+    if (!existing.photoUrl && storedPhoto) data.photoUrl = storedPhoto;
     if (!existing.idProof && idProof) data.idProof = String(idProof).trim();
     const updated = Object.keys(data).length ? await prisma.worker.update({ where: { id: existing.id }, data }) : existing;
     return res.json({ worker: await buildPassport(updated, req.user.id), existed: true });
@@ -132,7 +162,7 @@ workersRouter.post("/workers", authRequired, async (req, res) => {
       phone: p,
       category: String(category || "helpers"),
       subtype: subtype ? String(subtype).trim() : null,
-      photoUrl: photoUrl || null,
+      photoUrl: storedPhoto,
       idProof: idProof ? String(idProof).trim() : null,
       code: await uniqueWorkerCode(),
       createdById: req.user.id,
@@ -171,6 +201,7 @@ workersRouter.post("/workers/:id/ratings", authRequired, async (req, res) => {
 // Today's helper movement at this society: who is inside now, who has left.
 // The gate screen needs one list; per-worker history is the route below.
 workersRouter.get("/workers/attendance/today", authRequired, roleRequired("guard", "admin"), async (req, res) => {
+  await ensureAttendancePhotoColumns().catch(() => {});
   const societyId = req.user.societyId || "__none__";
   const date = String(req.query.date || indiaDate());
   const rows = await prisma.workerAttendance.findMany({
@@ -205,6 +236,8 @@ workersRouter.get("/workers/attendance/today", authRequired, roleRequired("guard
       flatNo: r.flatId ? flatById.get(r.flatId) || null : null,
       inAt: r.inAt,
       outAt: r.outAt,
+      inPhotoUrl: r.inPhotoUrl || null,
+      outPhotoUrl: r.outPhotoUrl || null,
     };
   });
 
@@ -228,6 +261,7 @@ workersRouter.get("/workers/:id/attendance", authRequired, async (req, res) => {
 });
 
 workersRouter.post("/workers/:id/attendance/checkin", authRequired, roleRequired("guard", "admin"), async (req, res) => {
+  await ensureAttendancePhotoColumns().catch(() => {});
   const worker = await prisma.worker.findUnique({ where: { id: req.params.id } });
   if (!worker) return res.status(404).json({ message: "Worker not found" });
   const societyId = req.user.societyId;
@@ -235,16 +269,29 @@ workersRouter.post("/workers/:id/attendance/checkin", authRequired, roleRequired
   // Re-use an open (not checked-out) row for today if one exists.
   const open = await prisma.workerAttendance.findFirst({ where: { workerId: worker.id, societyId, date, outAt: null } });
   if (open) return res.json({ attendance: open, alreadyIn: true });
+  const inPhotoUrl = await saveGatePhoto(req.body?.photoBase64, `in-${worker.id}-${Date.now()}`);
   const row = await prisma.workerAttendance.create({
-    data: { workerId: worker.id, societyId, date, flatId: req.body?.flatId || null, markedBy: req.user.id },
+    data: {
+      workerId: worker.id,
+      societyId,
+      date,
+      flatId: req.body?.flatId || null,
+      markedBy: req.user.id,
+      ...(inPhotoUrl ? { inPhotoUrl } : {}),
+    },
   });
   res.status(201).json({ attendance: row });
 });
 
 workersRouter.post("/workers/attendance/:id/checkout", authRequired, roleRequired("guard", "admin"), async (req, res) => {
+  await ensureAttendancePhotoColumns().catch(() => {});
   const row = await prisma.workerAttendance.findFirst({ where: { id: req.params.id, societyId: req.user.societyId } });
   if (!row) return res.status(404).json({ message: "Attendance record not found" });
   if (row.outAt) return res.json({ attendance: row });
-  const updated = await prisma.workerAttendance.update({ where: { id: row.id }, data: { outAt: new Date() } });
+  const outPhotoUrl = await saveGatePhoto(req.body?.photoBase64, `out-${row.id}-${Date.now()}`);
+  const updated = await prisma.workerAttendance.update({
+    where: { id: row.id },
+    data: { outAt: new Date(), ...(outPhotoUrl ? { outPhotoUrl } : {}) },
+  });
   res.json({ attendance: updated });
 });

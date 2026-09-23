@@ -370,7 +370,8 @@ export const api = {
   // Gate desk: every helper in/out logged at this society today.
   workerAttendanceToday: (date) => request(`/api/workers/attendance/today${qs({ date })}`),
   workerCheckIn: (id, payload) => request(`/api/workers/${id}/attendance/checkin`, { method: "POST", body: payload || {} }),
-  workerCheckOut: (attendanceId) => request(`/api/workers/attendance/${attendanceId}/checkout`, { method: "POST" }),
+  workerCheckOut: (attendanceId, payload) =>
+    request(`/api/workers/attendance/${attendanceId}/checkout`, { method: "POST", body: payload || {} }),
 
   // Services & helplines catalog (daily help, trades, medical, utilities…)
   services: () => request("/api/services"),

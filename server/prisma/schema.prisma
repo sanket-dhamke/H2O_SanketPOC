@@ -328,6 +328,8 @@ model StaffAttendance {
   inAt      DateTime  @default(now())
   outAt     DateTime?
   markedBy  String?
+  inPhotoUrl  String?
+  outPhotoUrl String?
   createdAt DateTime  @default(now())
 
   @@index([societyId, date])
@@ -981,6 +983,8 @@ model WorkerAttendance {
   inAt      DateTime  @default(now())
   outAt     DateTime?
   markedBy  String?
+  inPhotoUrl  String?
+  outPhotoUrl String?
   createdAt DateTime  @default(now())
 
   @@index([workerId, date])

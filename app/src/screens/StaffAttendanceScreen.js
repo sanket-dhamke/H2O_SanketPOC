@@ -1,11 +1,12 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Alert,
+  Image,
+  Modal,
   RefreshControl,
 } from "react-native";
 import TextInput from "../components/AppTextInput";
@@ -14,29 +15,39 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { isPreschool } from "../lib/org";
-import { openScreen } from "../lib/nav";
 import { indiaDate, insideVisits, mergeHelperDirectory } from "../lib/helperGate";
 import ScreenHeader from "../components/ScreenHeader";
+import OptionalPhoto from "../components/OptionalPhoto";
+import ModalClose from "../components/ModalClose";
 
-// Two kinds of people come through the gate every day and neither is a visitor:
-//   Staff   — the society's or school's own people (security, housekeeping,
-//             teachers). Logged by name, no standing record needed.
-//   Helpers — registered maids, cooks, drivers and vendors who carry a portable
-//             identity (Worker), so their attendance follows them between
-//             societies and feeds their Trust Passport.
+// Two kinds of people come through the gate, and neither is a visitor:
+//   Staff   — guards and the society's or school's own people. Registered once,
+//             then checked in and out from this list.
+//   Helpers — maids, cooks, drivers and vendors. Same list, then check-in
+//             and check-out. Registering never marks them present.
 const PRESCHOOL_ROLES = ["Teacher", "Helper", "Security", "Admin", "Other"];
-const SOCIETY_ROLES = ["Security", "Housekeeping", "Gardener", "Technician", "Office", "Other"];
+const SOCIETY_ROLES = ["Security / guard", "Housekeeping", "Gardener", "Technician", "Office", "Other"];
 
 const timeAt = (iso) =>
   iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) : "";
 
 // The hosted gate server may not have the one-list attendance route yet.
 // The directory and each helper's own log are older and still answer.
-async function loadHelperGate() {
-  const workers = await api.workers({ category: "helpers" }).then((r) => r.workers || []).catch(() => []);
+async function loadPeople(category) {
+  const workers = await api.workers({ category }).then((r) => r.workers || []).catch(() => []);
   try {
     const today = await api.workerAttendanceToday(indiaDate());
-    return { workers, today };
+    const mine = new Set(workers.map((worker) => worker.id));
+    const records = (today.records || []).filter((row) => row.category === category || mine.has(row.workerId));
+    return {
+      workers,
+      today: {
+        ...today,
+        records,
+        onPremise: records.filter((row) => !row.outAt).length,
+        total: records.length,
+      },
+    };
   } catch (e) {
     const missing = /404|failed \(404\)|Cannot GET/i.test(e.message || "");
     if (!missing) return { workers, today: { records: [], onPremise: 0, total: 0 } };
@@ -54,6 +65,9 @@ async function loadHelperGate() {
               phone: worker.phone || null,
               category: worker.category || null,
               subtype: worker.subtype || null,
+              photoUrl: worker.photoUrl || null,
+              inPhotoUrl: row.inPhotoUrl || null,
+              outPhotoUrl: row.outPhotoUrl || null,
               inAt: row.inAt,
               outAt: row.outAt,
             }));
@@ -84,30 +98,29 @@ export default function StaffAttendanceScreen() {
   const [tab, setTab] = useState("staff");
   const [staff, setStaff] = useState({ records: [], onPremise: 0, total: 0 });
   const [helpers, setHelpers] = useState({ records: [], onPremise: 0, total: 0 });
+  const [staffDirectory, setStaffDirectory] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-
-  const [name, setName] = useState("");
-  const [role, setRole] = useState(roles[0]);
-  const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
 
   const [query, setQuery] = useState("");
   const [directory, setDirectory] = useState([]);
   const [helperView, setHelperView] = useState("directory");
+  const [staffView, setStaffView] = useState("directory");
   const [notice, setNotice] = useState("");
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [pending, setPending] = useState(null);
+  const [snap, setSnap] = useState(null);
+  const [snapError, setSnapError] = useState("");
 
   const load = useCallback(async () => {
-    const [s, gate] = await Promise.all([
-      api.staffAttendance().catch((e) => {
-        setNotice(e.message || "Could not load staff.");
-        return null;
-      }),
-      loadHelperGate(),
-    ]);
-    if (s) setStaff(s);
-    if (gate) {
-      setHelpers(gate.today);
-      setDirectory(mergeHelperDirectory(gate.workers, gate.today.records));
+    const [staffGate, helperGate] = await Promise.all([loadPeople("staff"), loadPeople("helpers")]);
+    if (staffGate) {
+      setStaff(staffGate.today);
+      setStaffDirectory(mergeHelperDirectory(staffGate.workers, staffGate.today.records));
+    }
+    if (helperGate) {
+      setHelpers(helperGate.today);
+      setDirectory(mergeHelperDirectory(helperGate.workers, helperGate.today.records));
     }
   }, []);
 
@@ -123,34 +136,8 @@ export default function StaffAttendanceScreen() {
     setRefreshing(false);
   };
 
-  const checkInStaff = async () => {
-    if (!name.trim()) {
-      Alert.alert("Missing info", `Enter the ${preschool ? "staff member's" : "staff member's"} name.`);
-      return;
-    }
-    setBusy(true);
-    try {
-      await api.staffCheckIn({ name: name.trim(), role, phone: phone.trim() || undefined });
-      setName("");
-      setPhone("");
-      await load();
-    } catch (e) {
-      Alert.alert("Error", e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const checkOutStaff = async (rec) => {
-    try {
-      await api.staffCheckOut(rec.id);
-      await load();
-    } catch (e) {
-      Alert.alert("Error", e.message);
-    }
-  };
-
   const inside = useMemo(() => insideVisits(helpers.records), [helpers.records]);
+  const staffInside = useMemo(() => insideVisits(staff.records), [staff.records]);
   const shownHelpers = useMemo(() => {
     const q = query.trim().toLowerCase();
     const rows = directory.filter((worker) => {
@@ -160,33 +147,50 @@ export default function StaffAttendanceScreen() {
     return rows;
   }, [directory, query]);
 
-  const checkInHelper = async (worker) => {
-    if (worker.inside) return;
+  const showNotice = (message) => setNotice(message || "");
+
+  const beginGate = (person, action, attendanceId) => {
+    setPending({ id: person.id, name: person.name, action, attendanceId: attendanceId || null });
+    setSnap(null);
+    setSnapError("");
+    showNotice("");
+  };
+
+  const confirmGate = async () => {
+    if (!pending || busy) return;
     setBusy(true);
-    setNotice("");
+    showNotice("");
     try {
-      const r = await api.workerCheckIn(worker.id);
+      const photoBase64 = snap?.base64 || undefined;
+      if (pending.action === "in") {
+        const r = await api.workerCheckIn(pending.id, { photoBase64 });
+        if (r?.alreadyIn) showNotice(`${pending.name} is already inside.`);
+      } else {
+        await api.workerCheckOut(pending.attendanceId, { photoBase64 });
+      }
+      setPending(null);
+      setSnap(null);
       await load();
-      if (r?.alreadyIn) setNotice(`${worker.name} is already inside.`);
     } catch (e) {
-      setNotice(e.message || "Could not check them in.");
+      setSnapError(e.message || "Could not update attendance.");
     } finally {
       setBusy(false);
     }
   };
 
-  const checkOutHelper = async (attendanceId, name) => {
-    setNotice("");
-    try {
-      await api.workerCheckOut(attendanceId);
-      await load();
-    } catch (e) {
-      setNotice(e.message || `Could not check ${name || "them"} out.`);
-    }
-  };
+  const shownStaff = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return staffDirectory.filter((worker) => {
+      if (!q) return true;
+      return `${worker.name} ${worker.phone || ""} ${worker.subtype || ""}`.toLowerCase().includes(q);
+    });
+  }, [staffDirectory, query]);
 
   const staffTab = tab === "staff";
-  const rows = staffTab ? staff.records : helperView === "inside" ? inside : shownHelpers;
+  const view = staffTab ? staffView : helperView;
+  const rows = staffTab ? (staffView === "inside" ? staffInside : shownStaff) : helperView === "inside" ? inside : shownHelpers;
+  const peopleCount = staffTab ? staffDirectory.length : directory.length;
+  const insideCount = staffTab ? staffInside.length : inside.length;
 
   return (
     <View style={styles.container}>
@@ -217,124 +221,212 @@ export default function StaffAttendanceScreen() {
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={
-          staffTab ? (
-            <View style={styles.form}>
-              <Text style={styles.formTitle}>Check in staff</Text>
-              <Text style={styles.formHint}>
-                {preschool
-                  ? "Teachers, helpers and office staff."
-                  : "The society's own people — security, housekeeping, gardeners, technicians."}
-              </Text>
-              <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Staff name" />
-              <View style={styles.roleRow}>
-                {roles.map((r) => (
-                  <TouchableOpacity key={r} style={[styles.roleChip, role === r && styles.roleChipActive]} onPress={() => setRole(r)}>
-                    <Text style={[styles.roleText, role === r && { color: "#fff" }]}>{r}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Phone (optional)" keyboardType="phone-pad" />
-              <TouchableOpacity style={[styles.primaryBtn, busy && { opacity: 0.6 }]} onPress={checkInStaff} disabled={busy}>
-                <Ionicons name="log-in-outline" size={18} color="#fff" />
-                <Text style={styles.primaryBtnText}>{busy ? "Saving…" : "Check in"}</Text>
-              </TouchableOpacity>
+          <View style={styles.form}>
+            <View style={styles.subSeg}>
+              <Seg
+                label={`${staffTab ? "All staff" : "All helpers"}${peopleCount ? ` (${peopleCount})` : ""}`}
+                active={view === "directory"}
+                onPress={() => (staffTab ? setStaffView("directory") : setHelperView("directory"))}
+              />
+              <Seg
+                label={`Inside${insideCount ? ` (${insideCount})` : ""}`}
+                active={view === "inside"}
+                onPress={() => (staffTab ? setStaffView("inside") : setHelperView("inside"))}
+              />
             </View>
-          ) : (
-            <View style={styles.form}>
-              <View style={styles.subSeg}>
-                <Seg
-                  label={`All helpers${directory.length ? ` (${directory.length})` : ""}`}
-                  active={helperView === "directory"}
-                  onPress={() => setHelperView("directory")}
-                />
-                <Seg
-                  label={`Inside${inside.length ? ` (${inside.length})` : ""}`}
-                  active={helperView === "inside"}
-                  onPress={() => setHelperView("inside")}
-                />
-              </View>
-              <Text style={styles.formHint}>
-                {helperView === "inside"
-                  ? "Who is inside now. Check them out when they leave."
-                  : "Everyone registered. Check them in when they arrive. Registering a helper does not check them in."}
-              </Text>
-              {helperView === "directory" ? (
-                <>
-                  <View style={styles.searchWrap}>
-                    <Ionicons name="search" size={18} color="#8895A0" />
-                    <TextInput
-                      style={styles.search}
-                      value={query}
-                      onChangeText={setQuery}
-                      placeholder="Search name or phone"
-                    />
-                  </View>
-                  <TouchableOpacity
-                    style={styles.registerLink}
-                    onPress={() => openScreen(navigation, "Community", { screen: "Workers" })}
-                  >
-                    <Ionicons name="person-add-outline" size={16} color="#0B6E8F" />
-                    <Text style={styles.registerLinkText}>Register a new helper</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#0B6E8F" />
-                  </TouchableOpacity>
-                </>
-              ) : null}
-            </View>
-          )
+            <Text style={styles.formHint}>
+              {view === "inside"
+                ? "Who is inside now. Check them out when they leave. A photo is optional."
+                : staffTab
+                  ? "Guards and working staff, registered once. Check them in from this list. A photo is optional."
+                  : "Helpers, registered once. Check them in from this list. Registering does not check them in. A photo is optional."}
+            </Text>
+            {view === "directory" ? (
+              <>
+                <View style={styles.searchWrap}>
+                  <Ionicons name="search" size={18} color="#8895A0" />
+                  <TextInput style={styles.search} value={query} onChangeText={setQuery} placeholder="Search name or phone" />
+                </View>
+                <TouchableOpacity style={styles.registerLink} onPress={() => setRegisterOpen(true)}>
+                  <Ionicons name="person-add-outline" size={16} color="#0B6E8F" />
+                  <Text style={styles.registerLinkText}>{staffTab ? "Register a guard or staff member" : "Register a new helper"}</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#0B6E8F" />
+                </TouchableOpacity>
+              </>
+            ) : null}
+          </View>
         }
         ListEmptyComponent={
           <Text style={styles.empty}>
-            {staffTab
-              ? "No staff checked in today."
-              : helperView === "inside"
-                ? "Nobody is inside. Open All helpers to check someone in."
-                : query.trim()
-                  ? `No helper matches “${query.trim()}”.`
+            {view === "inside"
+              ? `Nobody is inside. Open All ${staffTab ? "staff" : "helpers"} to check someone in.`
+              : query.trim()
+                ? `No match for “${query.trim()}”.`
+                : staffTab
+                  ? "No guards or staff registered yet."
                   : "No helpers registered yet."}
           </Text>
         }
         renderItem={({ item }) => {
-          const helper = !staffTab;
-          const visitId = helperView === "inside" ? item.id : item.attendanceId;
-          const isInside = helper && (helperView === "inside" || item.inside);
+          const visitId = view === "inside" ? item.id : item.attendanceId;
+          const isInside = view === "inside" || item.inside;
+          const photo =
+            (typeof item.photoUrl === "string" && item.photoUrl) ||
+            (typeof item.inPhotoUrl === "string" && item.inPhotoUrl) ||
+            null;
           return (
             <View style={styles.card}>
+              {photo ? (
+                <Image source={{ uri: photo }} style={styles.avatar} />
+              ) : (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{item.name?.charAt(0)?.toUpperCase() || "?"}</Text>
+                </View>
+              )}
               <View style={{ flex: 1 }}>
                 <Text style={styles.name}>{item.name}</Text>
                 <Text style={styles.meta}>
-                  {staffTab ? item.role || "Staff" : item.subtype || item.category || "Helper"}
+                  {item.subtype || item.role || item.category || (staffTab ? "Staff" : "Helper")}
                   {item.phone ? ` · ${item.phone}` : ""}
                   {item.inAt ? ` · In ${timeAt(item.inAt)}` : ""}
                   {item.outAt ? ` · Out ${timeAt(item.outAt)}` : ""}
-                  {helper && helperView === "directory" && !item.inside ? " · Not in" : ""}
+                  {view === "directory" && !item.inside ? " · Not in" : ""}
                 </Text>
               </View>
-              {staffTab && item.outAt ? (
-                <View style={styles.doneBadge}>
-                  <Text style={styles.doneText}>Left</Text>
-                </View>
-              ) : isInside ? (
-                <TouchableOpacity style={styles.outBtn} onPress={() => checkOutHelper(visitId, item.name)}>
+              {isInside ? (
+                <TouchableOpacity style={styles.outBtn} onPress={() => beginGate(item, "out", visitId)} disabled={busy}>
                   <Text style={styles.outText}>Check out</Text>
-                </TouchableOpacity>
-              ) : helper ? (
-                <TouchableOpacity
-                  style={[styles.inBtn, busy && { opacity: 0.5 }]}
-                  onPress={() => checkInHelper(item)}
-                  disabled={busy}
-                >
-                  <Text style={styles.inBtnText}>Check in</Text>
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={styles.outBtn} onPress={() => checkOutStaff(item)}>
-                  <Text style={styles.outText}>Check out</Text>
+                <TouchableOpacity style={[styles.inBtn, busy && { opacity: 0.5 }]} onPress={() => beginGate(item, "in")} disabled={busy}>
+                  <Text style={styles.inBtnText}>Check in</Text>
                 </TouchableOpacity>
               )}
             </View>
           );
         }}
       />
+      <RegisterPerson
+        visible={registerOpen}
+        category={staffTab ? "staff" : "helpers"}
+        roles={roles}
+        title={staffTab ? "Register staff" : "Register a helper"}
+        onClose={() => setRegisterOpen(false)}
+        onDone={async (message) => {
+          setRegisterOpen(false);
+          showNotice(message);
+          setStaffView("directory");
+          setHelperView("directory");
+          await load();
+        }}
+      />
+      {pending ? (
+        <Modal visible transparent animationType="fade" onRequestClose={() => { setPending(null); setSnap(null); }}>
+          <View style={styles.overlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHead}>
+                <Text style={[styles.formTitle, { flex: 1 }]}>
+                  {pending.action === "in" ? "Check in" : "Check out"} {pending.name}
+                </Text>
+                <ModalClose light={false} onPress={() => { setPending(null); setSnap(null); }} />
+              </View>
+              <Text style={styles.formHint}>A photo helps recognise them at the gate. Skip it and the check-in or check-out still saves.</Text>
+              <OptionalPhoto value={snap} onChange={setSnap} onError={setSnapError} />
+              {snapError ? <Text style={styles.error}>{snapError}</Text> : null}
+              <View style={styles.pendingActions}>
+                <TouchableOpacity style={[styles.primaryBtn, { flex: 1 }, busy && { opacity: 0.6 }]} onPress={confirmGate} disabled={busy}>
+                  <Text style={styles.primaryBtnText}>{busy ? "Saving…" : pending.action === "in" ? "Confirm check in" : "Confirm check out"}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quietBtn} onPress={() => { setPending(null); setSnap(null); }}>
+                  <Text style={styles.quietText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
     </View>
+  );
+}
+
+function RegisterPerson({ visible, category, roles, title, onClose, onDone }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [role, setRole] = useState(roles[0]);
+  const [photo, setPhoto] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!visible) return;
+    setName("");
+    setPhone("");
+    setRole(roles[0]);
+    setPhoto(null);
+    setError("");
+  }, [visible, roles]);
+
+  const submit = async () => {
+    if (!name.trim()) {
+      setError("Enter their name.");
+      return;
+    }
+    if (phone.replace(/\D/g, "").length < 10) {
+      setError("A 10-digit phone is how we recognise them next time.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const r = await api.registerWorker({
+        name: name.trim(),
+        phone,
+        category,
+        subtype: role,
+        photoUrl: photo?.base64 || undefined,
+      });
+      setName("");
+      setPhone("");
+      setPhoto(null);
+      onDone(r.existed ? `${r.worker.name} is already registered. Check them in from the list.` : `${r.worker.name} is registered. Check them in from the list when they arrive.`);
+    } catch (e) {
+      setError(e.message || "Could not register.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <View style={styles.modalCard}>
+          <View style={styles.modalHead}>
+            <Text style={[styles.formTitle, { flex: 1 }]}>{title}</Text>
+            <ModalClose light={false} onPress={onClose} />
+          </View>
+          <Text style={styles.formHint}>This only adds them to the list. It does not check them in. Photo is optional.</Text>
+          <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Name" />
+          <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="10-digit phone" keyboardType="phone-pad" />
+          <View style={styles.roleRow}>
+            {roles.map((item) => (
+              <TouchableOpacity key={item} style={[styles.roleChip, role === item && styles.roleChipActive]} onPress={() => setRole(item)}>
+                <Text style={[styles.roleText, role === item && { color: "#fff" }]}>{item}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <OptionalPhoto value={photo} onChange={setPhoto} onError={setError} />
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <View style={styles.pendingActions}>
+            <TouchableOpacity style={[styles.primaryBtn, busy && { opacity: 0.6 }]} onPress={submit} disabled={busy}>
+              <Text style={styles.primaryBtnText}>{busy ? "Saving…" : "Register"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quietBtn} onPress={onClose}>
+              <Text style={styles.quietText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -353,7 +445,8 @@ const styles = StyleSheet.create({
   segActive: { backgroundColor: "#0B6E8F" },
   segText: { color: "#6B7B85", fontWeight: "700", fontSize: 13 },
   segTextActive: { color: "#fff" },
-  notice: { color: "#B42318", fontWeight: "700", fontSize: 13, marginHorizontal: 16, marginTop: 10 },
+  notice: { color: "#0B6E8F", fontWeight: "700", fontSize: 13, lineHeight: 18, marginHorizontal: 16, marginTop: 10 },
+  error: { color: "#B42318", fontWeight: "700", fontSize: 13, marginTop: 8 },
   subSeg: { flexDirection: "row", backgroundColor: "#F1F5F7", borderRadius: 10, padding: 3, marginBottom: 10 },
   form: { backgroundColor: "#fff", borderRadius: 14, padding: 16, marginBottom: 14 },
   formTitle: { fontSize: 16, fontWeight: "800", color: "#1B2B33" },
@@ -376,7 +469,16 @@ const styles = StyleSheet.create({
   registerLink: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#EAF4F8", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginTop: 14 },
   registerLinkText: { flex: 1, color: "#0B3A49", fontWeight: "700", fontSize: 12.5 },
   empty: { textAlign: "center", color: "#6B7B85", marginTop: 20 },
-  card: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 12, padding: 16, marginBottom: 10 },
+  card: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", borderRadius: 12, padding: 16, marginBottom: 10 },
+  avatar: { width: 42, height: 42, borderRadius: 12, backgroundColor: "#E7F3F8", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  avatarText: { color: "#0B6E8F", fontWeight: "800" },
+  pending: { marginTop: 14, borderTopWidth: 1, borderTopColor: "#E6EEF2", paddingTop: 12 },
+  pendingActions: { flexDirection: "row", gap: 10, marginTop: 12 },
+  quietBtn: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, alignItems: "center", justifyContent: "center" },
+  quietText: { color: "#5C7380", fontWeight: "800" },
+  overlay: { flex: 1, backgroundColor: "rgba(15, 30, 40, 0.45)", justifyContent: "center", padding: 20 },
+  modalCard: { backgroundColor: "#fff", borderRadius: 16, padding: 16 },
+  modalHead: { flexDirection: "row", alignItems: "center", gap: 8 },
   name: { fontSize: 16, fontWeight: "700", color: "#1B2B33" },
   meta: { color: "#6B7B85", marginTop: 2, fontSize: 13 },
   outBtn: { borderWidth: 1, borderColor: "#0B6E8F", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },

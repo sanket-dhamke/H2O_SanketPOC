@@ -22,7 +22,7 @@ import { gatePassRouter } from "./routes/gatepass.js";
 import { marketplaceRouter } from "./routes/marketplace.js";
 import { gateRouter } from "./routes/gate.js";
 import { servicesRouter, ensureDefaultHelplines } from "./routes/services.js";
-import { workersRouter } from "./routes/workers.js";
+import { workersRouter, ensureAttendancePhotoColumns } from "./routes/workers.js";
 import { preschoolRouter } from "./routes/preschool.js";
 import { sosRouter } from "./routes/sos.js";
 import { ivrRouter } from "./routes/ivr.js";
@@ -289,5 +289,6 @@ app.listen(PORT, "0.0.0.0", () => {
   // Close unanswered gate visits after 3 minutes, and place the one follow-up call.
   const sweep = () => sweepVisitorWaits().catch((e) => console.error("Visitor wait sweep failed:", e.message));
   ensureVisitorWaitColumns().then(sweep).catch((e) => console.error("Visitor wait columns failed:", e.message));
+  ensureAttendancePhotoColumns().catch((e) => console.error("Attendance photo columns failed:", e.message));
   setInterval(sweep, 30 * 1000);
 });

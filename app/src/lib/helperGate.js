@@ -28,6 +28,7 @@ export function mergeHelperDirectory(workers, records) {
       inside: !!row,
       attendanceId: row?.id || null,
       inAt: row?.inAt || null,
+      inPhotoUrl: visit?.inPhotoUrl || null,
     };
   });
 }
