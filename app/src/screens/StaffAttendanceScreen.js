@@ -16,7 +16,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { isPreschool } from "../lib/org";
-import { indiaDate, mergeHelperDirectory } from "../lib/helperGate";
+import { mergeHelperDirectory, retainInside } from "../lib/helperGate";
+import { fetchDirectory, fetchGateAttendance, peekDirectory, readCachedDirectory, rememberDirectory } from "../lib/gateDirectory";
 import ScreenHeader from "../components/ScreenHeader";
 import OptionalPhoto from "../components/OptionalPhoto";
 import ModalClose from "../components/ModalClose";
@@ -42,60 +43,13 @@ const timeAt = (iso) =>
 
 const kindOf = (category) => KIND_LABEL[category] || "Helper";
 
-// The hosted gate server may not have the one-list attendance route yet.
-// The directory and each person's own log are older and still answer.
-async function loadDirectory() {
-  const workers = await api.workers().then((r) => r.workers || []).catch(() => []);
-  try {
-    const today = await api.workerAttendanceToday(indiaDate());
-    return { workers, today };
-  } catch (e) {
-    const missing = /404|failed \(404\)|Cannot GET/i.test(e.message || "");
-    if (!missing) return { workers, today: { records: [], onPremise: 0, total: 0 } };
-    const date = indiaDate();
-    const lists = await Promise.all(
-      workers.slice(0, 40).map(async (worker) => {
-        try {
-          const res = await api.workerAttendance(worker.id);
-          return (res.attendance || [])
-            .filter((row) => row.date === date)
-            .map((row) => ({
-              id: row.id,
-              workerId: worker.id,
-              name: worker.name,
-              phone: worker.phone || null,
-              category: worker.category || null,
-              subtype: worker.subtype || null,
-              photoUrl: worker.photoUrl || null,
-              inPhotoUrl: row.inPhotoUrl || null,
-              outPhotoUrl: row.outPhotoUrl || null,
-              inAt: row.inAt,
-              outAt: row.outAt,
-            }));
-        } catch {
-          return [];
-        }
-      })
-    );
-    const records = lists.flat();
-    return {
-      workers,
-      today: {
-        date,
-        records,
-        onPremise: records.filter((row) => !row.outAt).length,
-        total: records.length,
-      },
-    };
-  }
-}
-
 export default function StaffAttendanceScreen() {
   const { user } = useAuth();
   const preschool = isPreschool(user);
 
   const [today, setToday] = useState({ records: [], onPremise: 0, total: 0 });
-  const [directory, setDirectory] = useState([]);
+  const [directory, setDirectory] = useState(() => peekDirectory(user?.id) || []);
+  const [waiting, setWaiting] = useState(() => !(peekDirectory(user?.id)?.length));
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
@@ -106,10 +60,34 @@ export default function StaffAttendanceScreen() {
   const [snapError, setSnapError] = useState("");
 
   const load = useCallback(async () => {
-    const gate = await loadDirectory();
-    setToday(gate.today);
-    setDirectory(mergeHelperDirectory(gate.workers, gate.today.records));
-  }, []);
+    const userId = user?.id;
+    const cached = peekDirectory(userId) || (await readCachedDirectory(userId));
+    if (cached?.length) {
+      setDirectory((current) => (current.length ? current : cached));
+      setWaiting(false);
+    }
+    let workers = [];
+    try {
+      workers = await fetchDirectory(userId);
+    } catch {
+      workers = cached || [];
+    }
+    if (!workers.length && !cached?.length) {
+      setWaiting(false);
+      return;
+    }
+    setDirectory((current) => retainInside(mergeHelperDirectory(workers, []), current.length ? current : cached || []));
+    setWaiting(false);
+    const attendance = await fetchGateAttendance(workers);
+    const rows = mergeHelperDirectory(workers, attendance?.records || []);
+    setToday({
+      records: attendance?.records || [],
+      onPremise: attendance?.onPremise || 0,
+      total: attendance?.total || 0,
+    });
+    setDirectory(rows);
+    rememberDirectory(userId, rows);
+  }, [user?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -151,9 +129,20 @@ export default function StaffAttendanceScreen() {
       const photoBase64 = snap?.base64 || undefined;
       if (pending.action === "in") {
         const r = await api.workerCheckIn(pending.id, { photoBase64 });
+        const created = r?.attendance;
+        setDirectory((rows) =>
+          rows.map((row) =>
+            row.id === pending.id
+              ? { ...row, inside: true, attendanceId: created?.id || row.attendanceId, inAt: created?.inAt || new Date().toISOString() }
+              : row
+          )
+        );
         if (r?.alreadyIn) showNotice(`${pending.name} is already inside.`);
       } else {
         await api.workerCheckOut(pending.attendanceId, { photoBase64 });
+        setDirectory((rows) =>
+          rows.map((row) => (row.attendanceId === pending.attendanceId ? { ...row, inside: false, attendanceId: null, inAt: null } : row))
+        );
       }
       setPending(null);
       setSnap(null);
@@ -198,7 +187,7 @@ export default function StaffAttendanceScreen() {
         }
         ListEmptyComponent={
           <Text style={styles.empty}>
-            {query.trim() ? `No match for “${query.trim()}”.` : "No one is registered yet."}
+            {waiting ? "Loading registered people…" : query.trim() ? `No match for “${query.trim()}”.` : "No one is registered yet."}
           </Text>
         }
         renderItem={({ item }) => {

@@ -11,6 +11,7 @@ import { useFonts } from "expo-font";
 
 import { AuthProvider, useAuth } from "./src/lib/auth";
 import { fetchVisitorLog, readCachedVisitors } from "./src/lib/visitorLogCache";
+import { fetchDirectory, readCachedDirectory } from "./src/lib/gateDirectory";
 import { FONTS, body } from "./src/lib/type";
 import { registerForPushNotifications } from "./src/lib/push";
 import LoginScreen from "./src/screens/LoginScreen";
@@ -309,7 +310,11 @@ function AppInner() {
     // already in memory instead of waiting on the server.
     readCachedVisitors(user.id).catch(() => {});
     fetchVisitorLog(user.id).catch(() => {});
-  }, [user?.id]);
+    if (user.role === "guard" || user.role === "admin") {
+      readCachedDirectory(user.id).catch(() => {});
+      fetchDirectory(user.id).catch(() => {});
+    }
+  }, [user?.id, user?.role]);
 
   useEffect(() => {
     if (!user) return;

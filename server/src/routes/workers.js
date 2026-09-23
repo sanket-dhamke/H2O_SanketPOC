@@ -126,7 +126,7 @@ workersRouter.get("/workers", authRequired, async (req, res) => {
         phone: w.phone,
         category: w.category,
         subtype: w.subtype,
-        photoUrl: w.photoUrl,
+        photoUrl: typeof w.photoUrl === "string" && w.photoUrl.startsWith("data:") ? null : w.photoUrl,
         rating: Math.round(r.avg * 10) / 10,
         reviewCount: r.count,
         inside: !!visit,
