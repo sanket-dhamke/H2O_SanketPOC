@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
   Modal,
+  useWindowDimensions,
 } from "react-native";
 import TextInput from "../components/AppTextInput";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -17,9 +18,11 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { isPreschool } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 import OffersRail from "../components/OffersRail";
 import { translateAndSpeak, stopSpeaking, speechSupported } from "../lib/speak";
+import { body, head } from "../lib/type";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 const timeAgo = (iso) => {
@@ -48,6 +51,8 @@ const catMeta = (id) => (id === "sale" ? SALE_META : CATEGORIES.find((c) => c.id
 export default function CommunityScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
+  const { width } = useWindowDimensions();
+  const compact = width < 420;
   const [tab, setTab] = useState("announcements");
   const [announcements, setAnnouncements] = useState([]);
   const [posts, setPosts] = useState([]);
@@ -65,14 +70,14 @@ export default function CommunityScreen() {
   const quickLinks = useMemo(() => {
     const everyone = ["resident", "admin", "guard"];
     return [
-      { id: "homeServices", label: "Home Services", icon: "construct", color: "#0B6E8F", screen: "HomeServices", roles: ["resident", "admin"], societyOnly: true },
-      { id: "market", label: "Buy & Sell", icon: "pricetags", color: "#C99000", screen: "Marketplace", roles: ["resident", "admin"] },
-      { id: "helpdesk", label: "Helpdesk", icon: "help-buoy", color: "#1E7A3D", screen: "Helpdesk", roles: everyone },
-      { id: "directory", label: "Directory", icon: "people", color: "#0B6E8F", screen: "Directory", roles: everyone },
-      { id: "services", label: "Helplines", icon: "call", color: "#7A5AF8", screen: "Services", roles: everyone },
-      { id: "amenities", label: preschool ? "Book hall" : "Book clubhouse", icon: "calendar", color: "#0B6E8F", screen: "Amenities", roles: ["resident", "admin"] },
-      { id: "assistant", label: "Assistant", icon: "sparkles", color: "#6D3BD1", screen: "Assistant", roles: everyone },
-      { id: "help", label: "Help & how-to", icon: "book", color: "#0B6E8F", screen: "Help", roles: everyone },
+      { id: "homeServices", label: "Home services", subtitle: "Cleaning, AC, painting, movers", icon: "construct", color: "#0B6E8F", screen: "HomeServices", roles: ["resident", "admin"], societyOnly: true },
+      { id: "market", label: "Buy & Sell", subtitle: "Listings, rentals & group-buy", icon: "pricetags", color: "#C99000", ink: "#8A6200", screen: "Marketplace", roles: ["resident", "admin"] },
+      { id: "helpdesk", label: "Helpdesk", subtitle: "Raise a request or call the office", icon: "help-buoy", color: "#1E7A3D", screen: "Helpdesk", roles: everyone },
+      { id: "directory", label: "Directory", subtitle: preschool ? "Parents, staff & office" : "Neighbours, staff & committee", icon: "people", color: "#2B6CB0", ink: "#1E4E89", screen: "Directory", roles: everyone },
+      { id: "services", label: "Helplines", subtitle: "Security, office & emergency", icon: "call", color: "#B42318", screen: "Services", roles: everyone },
+      { id: "amenities", label: preschool ? "Book hall" : "Book clubhouse", subtitle: preschool ? "Hall & event slots" : "Hall, party slot & amenities", icon: "calendar", color: "#C2571A", ink: "#9A3F10", screen: "Amenities", roles: ["resident", "admin"] },
+      { id: "assistant", label: "Assistant", subtitle: preschool ? "Ask about your school" : "Ask about your society", icon: "sparkles", color: "#6D3BD1", screen: "Assistant", roles: everyone },
+      { id: "help", label: "Help & how-to", subtitle: "How each feature works", icon: "book", color: "#BE185D", screen: "Help", roles: everyone },
     ].filter((l) => l.roles.includes(role) && !(l.societyOnly && preschool));
   }, [role, preschool]);
 
@@ -153,28 +158,14 @@ export default function CommunityScreen() {
         right={addBtn}
       />
 
-      {/* A launcher, not tab content: these used to sit inside the Announcements
-          list, so a guard reading notices saw Buy & Sell above them. */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.quickRow}
-      >
-        {quickLinks.map((l) => (
-          <TouchableOpacity key={l.id} style={styles.quickChip} onPress={() => navigation.navigate(l.screen)}>
-            <Ionicons name={l.icon} size={15} color={l.color} />
-            <Text style={styles.quickChipText}>{l.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
       <View style={styles.segment}>
         <Seg label="Announcements" active={tab === "announcements"} onPress={() => setTab("announcements")} />
         <Seg label={`Board${posts.length ? ` (${posts.length})` : ""}`} active={tab === "posts"} onPress={() => setTab("posts")} />
       </View>
 
       <ScrollView
-        contentContainerStyle={{ padding: 16 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {tab === "announcements" ? (
@@ -183,8 +174,8 @@ export default function CommunityScreen() {
               <Ionicons name="megaphone-outline" size={16} color="#0B6E8F" />
               <Text style={styles.scopeNoteText}>
                 {preschool
-                  ? "Official school notices from the office only. Parent chat, sales and questions go on the Board."
-                  : "Official society notices from the committee only — water, AGM, security, lifts. Sales, questions and neighbour chat go on the Board."}
+                  ? "Official school notices from the office only. Use the Board for parent chat, sales and questions."
+                  : "Official society notices from the committee only, such as water, AGM, security and lifts. Use the Board for sales, questions and neighbour chat."}
               </Text>
             </View>
             {announcements.length === 0 && (
@@ -221,16 +212,22 @@ export default function CommunityScreen() {
           </>
         ) : (
           <>
-            {canPost ? (
+            {posts.length === 0 ? (
+              <BoardEmpty
+                preschool={preschool}
+                canPost={canPost}
+                onWrite={() => setPostModal(true)}
+                onMarket={() => navigation.navigate("Marketplace")}
+              />
+            ) : canPost ? (
               <TouchableOpacity style={styles.scopeNote} onPress={() => navigation.navigate("Marketplace")}>
                 <Ionicons name="pricetags-outline" size={16} color="#0B6E8F" />
                 <Text style={styles.scopeNoteText}>
-                  Neighbour talk — questions, lost & found and recommendations. Selling or renting something? Post it in Community market instead.
+                  Questions, lost & found and recommendations. Selling or renting something? Post it in Buy & Sell.
                 </Text>
                 <Ionicons name="chevron-forward" size={16} color="#0B6E8F" />
               </TouchableOpacity>
             ) : null}
-            {posts.length === 0 && <Empty text="No posts yet. Be the first to share something!" />}
             {posts.map((p) => {
               const meta = catMeta(p.category);
               const canDelete = isAdmin || p.authorId === user?.id;
@@ -264,6 +261,43 @@ export default function CommunityScreen() {
             })}
           </>
         )}
+        <View style={styles.toolsCard}>
+          <View style={styles.toolsHead}>
+            <View style={styles.toolsMark}>
+              <Ionicons name="grid-outline" size={20} color="#0B6E8F" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.toolsTitle}>Services & help</Text>
+              <Text style={styles.toolsHint}>
+                {preschool ? "School tools, helpdesk & directory" : "Home services, helpdesk & directory"}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.optionGrid}>
+            {quickLinks.map((l) => (
+              <TouchableOpacity
+                key={l.id}
+                style={[
+                  styles.optionCard,
+                  compact && styles.optionCardFull,
+                  { borderColor: `${l.color}33` },
+                ]}
+                onPress={() => navigation.navigate(l.screen)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.optionIcon, { backgroundColor: `${l.color}1F` }]}>
+                  <Ionicons name={l.icon} size={20} color={l.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.optionLabel, { color: l.ink || l.color }]}>{l.label}</Text>
+                  <Text style={styles.optionSub} numberOfLines={2}>
+                    {l.subtitle}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
         {canPost ? <OffersRail slot="community" navigation={navigation} compact /> : null}
       </ScrollView>
 
@@ -288,6 +322,33 @@ function Seg({ label, active, onPress }) {
 
 function Empty({ text }) {
   return <Text style={styles.empty}>{text}</Text>;
+}
+
+function BoardEmpty({ preschool, canPost, onWrite, onMarket }) {
+  return (
+    <View style={styles.emptyCard}>
+      <View style={styles.emptyIcon}>
+        <Ionicons name="chatbubbles-outline" size={22} color="#0B6E8F" />
+      </View>
+      <Text style={styles.emptyTitle}>Nothing on the board yet</Text>
+      <Text style={styles.emptyBody}>
+        {preschool
+          ? "Parents post questions, lost & found and recommendations here. Nobody has posted yet. Official notices stay on Announcements."
+          : "Neighbours post questions, lost & found and recommendations here. Nobody has posted yet. Official notices stay on Announcements."}
+        {canPost ? " Sales go in Buy & Sell." : ""}
+      </Text>
+      {canPost ? (
+        <View style={styles.emptyActions}>
+          <TouchableOpacity style={styles.emptyBtn} onPress={onWrite}>
+            <Text style={styles.emptyBtnText}>Write the first post</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.emptyBtnGhost} onPress={onMarket}>
+            <Text style={styles.emptyBtnGhostText}>Open Buy & Sell</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 function AnnouncementModal({ visible, onClose, onDone }) {
@@ -431,6 +492,7 @@ function FormModal({ visible, onClose, title, icon, children, busy, onSubmit }) 
               <Ionicons name={icon || "create-outline"} size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>{title}</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 480 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             {children}
@@ -482,19 +544,94 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   sellLinkText: { flex: 1, color: "#0B3A49", fontSize: 12.5, fontWeight: "700" },
-  quickRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingTop: 14 },
-  quickChip: {
+  toolsCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: "#E6EEF2",
+    overflow: "hidden",
+  },
+  toolsHead: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#E2EAEE",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    height: 36,
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
   },
-  quickChipText: { color: "#334", fontWeight: "700", fontSize: 12.5 },
+  toolsMark: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "#0B6E8F18",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toolsTitle: { fontSize: 15.5, ...head(800), color: "#1B2B33" },
+  toolsHint: { fontSize: 12, color: "#6B7B85", marginTop: 2, ...body(400) },
+  optionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingBottom: 12,
+    paddingTop: 2,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F7",
+  },
+  optionCard: {
+    width: "48%",
+    flexGrow: 1,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: "#F7FAFB",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#E6EEF2",
+  },
+  optionCardFull: { width: "100%", flexGrow: 0 },
+  optionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  optionLabel: { fontSize: 13, lineHeight: 18, ...head(700), color: "#1B2B33" },
+  optionSub: { fontSize: 11, color: "#6B7B85", marginTop: 2, lineHeight: 14, ...body(400) },
+  emptyCard: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 14,
+    alignItems: "flex-start",
+  },
+  emptyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#EAF4F8",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  emptyTitle: { color: "#1B2B33", fontSize: 16, fontWeight: "800" },
+  emptyBody: { color: "#48606B", fontSize: 13.5, lineHeight: 20, marginTop: 6 },
+  emptyActions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
+  emptyBtn: { backgroundColor: "#0B6E8F", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
+  emptyBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  emptyBtnGhost: {
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#CFE0E6",
+    backgroundColor: "#fff",
+  },
+  emptyBtnGhostText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
   card: { backgroundColor: "#fff", borderRadius: 14, padding: 16, marginBottom: 12 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
   pin: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#FBEadd", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },

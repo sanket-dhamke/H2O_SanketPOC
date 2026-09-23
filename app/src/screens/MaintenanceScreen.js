@@ -22,6 +22,8 @@ import { labelsFor } from "../lib/org";
 import { buildReceipt } from "../lib/receiptHtml";
 import { downloadReceipt } from "../lib/receipt";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
+import MobileNumberEditor from "../components/MobileNumberEditor";
 import MonthField from "../components/MonthField";
 import OffersRail from "../components/OffersRail";
 
@@ -32,10 +34,14 @@ function formatDateTime(iso) {
 }
 
 export default function MaintenanceScreen() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const L = labelsFor(user);
   const navigation = useNavigation();
-  const canGoBack = navigation.canGoBack();
+  // canGoBack() is also true when the parent tab has history (Home → Maintenance).
+  // That is not a page to go back to. Back belongs only on a screen pushed
+  // onto this stack, such as Collections opened from Finance.
+  const stackIndex = navigation.getState?.()?.index ?? 0;
+  const canGoBack = stackIndex > 0;
   const [bills, setBills] = useState([]);
   const [totalDue, setTotalDue] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -192,6 +198,11 @@ export default function MaintenanceScreen() {
         ListHeaderComponent={
           <View>
             {!isAdmin ? (
+              <View style={styles.mobileCard}>
+                <MobileNumberEditor user={user} updateUser={updateUser} />
+              </View>
+            ) : null}
+            {!isAdmin ? (
               <TouchableOpacity style={styles.rentLink} onPress={() => navigation.navigate("RentAgreements")}>
                 <Ionicons name="document-text-outline" size={18} color="#0B6E8F" />
                 <Text style={styles.rentLinkText}>Rent agreement — submit & track (rented flats)</Text>
@@ -313,6 +324,7 @@ export default function MaintenanceScreen() {
                 <View style={styles.paidBadge}>
                   <Text style={styles.paidBadgeText}>PAID</Text>
                 </View>
+                <ModalClose onPress={() => setReceipt(null)} />
               </View>
               <Text style={styles.receiptAmount}>₹{receipt?.amount}</Text>
             </LinearGradient>
@@ -402,6 +414,7 @@ function CashModal({ bill, onClose, onSubmit, labels }) {
                 <Ionicons name="cash" size={18} color="#fff" />
               </View>
               <Text style={styles.receiptTitle}>Record cash payment</Text>
+              <ModalClose onPress={onClose} />
             </View>
             <Text style={styles.cashSub}>
               {bill ? `${labels?.unit || "Flat"} ${bill.flatNo} · ${bill.period} · ₹${bill.amount}` : ""}
@@ -438,6 +451,7 @@ function ReceiptRow({ label, value }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
+  mobileCard: { backgroundColor: "#fff", borderRadius: 12, paddingHorizontal: 14, marginBottom: 12, borderWidth: 1, borderColor: "#E6EEF2" },
   rentLink: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#EAF4F8", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, marginBottom: 14 },
   rentLinkText: { flex: 1, color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
   filterRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },

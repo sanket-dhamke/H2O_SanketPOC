@@ -211,10 +211,6 @@ export default function AskGateMate({ navigation }) {
           </View>
         </View>
 
-        <Text style={styles.langHint}>
-          Ask in English, हिंदी or मराठी — {VOICE_SUPPORTED ? "type or tap the mic" : "typed questions"}. You get the answer back in the same language.
-        </Text>
-
         {result ? (
           <View style={styles.answer}>
             <Text style={styles.question}>
@@ -291,7 +287,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   aiPillText: { color: "#fff", fontSize: 9, letterSpacing: 0.6, ...head(700) },
-  langHint: { color: "#7A93A0", fontSize: 11.5, lineHeight: 16, marginTop: 8, ...body(400) },
   input: {
     width: "100%",
     minHeight: 44,

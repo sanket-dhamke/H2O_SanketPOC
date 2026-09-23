@@ -150,9 +150,14 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
       ]);
       if (cancelled) return;
       dismissedRef.current = dismissed;
-      const me = getCurrentUser();
+      let residentId = null;
+      try {
+        residentId = typeof getCurrentUser === "function" ? getCurrentUser()?.id : null;
+      } catch {
+        residentId = null;
+      }
       const withNotices = withAnnouncementNotices(data, announcements, { dismissed });
-      setNoticeSummary(withBookingNotices(withNotices, bookings, { residentId: me?.id }));
+      setNoticeSummary(withBookingNotices(withNotices, bookings, { residentId }));
     })();
     return () => {
       cancelled = true;

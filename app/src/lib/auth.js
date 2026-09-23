@@ -1,7 +1,15 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { api, setToken, getToken, setOrgMode } from "./api";
+import { applyRememberedMobile } from "./mobileNumber";
 
 const AuthContext = createContext(null);
+
+// Payment checkout runs outside React, but it still needs the signed-in
+// person's saved mobile so Razorpay does not stop and ask for one.
+let currentUser = null;
+export function getCurrentUser() {
+  return currentUser;
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -13,7 +21,7 @@ export function AuthProvider({ children }) {
         const token = await getToken();
         if (token) {
           const { user } = await api.me();
-          setUser(user);
+          setUser(await applyRememberedMobile(user));
         }
       } catch {
         await setToken(null);
@@ -28,8 +36,9 @@ export function AuthProvider({ children }) {
     await setToken(token);
     // Remember tenant type so next launch shows the right branded login.
     if (user?.societyOrgType) await setOrgMode(user.societyOrgType);
-    setUser(user);
-    return user;
+    const full = await applyRememberedMobile(user);
+    setUser(full);
+    return full;
   };
 
   const logout = async () => {
@@ -39,6 +48,8 @@ export function AuthProvider({ children }) {
 
   // Merge partial updates into the signed-in user (e.g. after changing prefs).
   const updateUser = (patch) => setUser((u) => (u ? { ...u, ...patch } : u));
+
+  currentUser = user;
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
