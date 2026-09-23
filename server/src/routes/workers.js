@@ -10,6 +10,16 @@ export const workersRouter = Router();
 
 const cleanPhone = (p) => String(p || "").replace(/[^\d]/g, "").slice(-10);
 
+// Society gates run on India time. UTC midnight would mark a 1 AM arrival as yesterday.
+function indiaDate(d = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
 async function uniqueWorkerCode() {
   for (let i = 0; i < 6; i++) {
     const code = "GW" + randomBytes(4).toString("hex").toUpperCase();
@@ -70,12 +80,32 @@ workersRouter.get("/workers", authRequired, async (req, res) => {
   };
   const workers = await prisma.worker.findMany({ where, orderBy: { createdAt: "desc" }, take: 60 });
   const ratings = await ratingMap(workers.map((w) => w.id));
+  let openByWorker = new Map();
+  if (req.user.role === "guard" || req.user.role === "admin") {
+    const open = await prisma.workerAttendance.findMany({
+      where: { societyId: req.user.societyId || "__none__", date: indiaDate(), outAt: null },
+    });
+    openByWorker = new Map(open.map((row) => [row.workerId, row]));
+  }
   const list = workers
     .map((w) => {
       const r = ratings.get(w.id) || { avg: 0, count: 0 };
-      return { id: w.id, name: w.name, phone: w.phone, category: w.category, subtype: w.subtype, photoUrl: w.photoUrl, rating: Math.round(r.avg * 10) / 10, reviewCount: r.count };
+      const visit = openByWorker.get(w.id) || null;
+      return {
+        id: w.id,
+        name: w.name,
+        phone: w.phone,
+        category: w.category,
+        subtype: w.subtype,
+        photoUrl: w.photoUrl,
+        rating: Math.round(r.avg * 10) / 10,
+        reviewCount: r.count,
+        inside: !!visit,
+        attendanceId: visit?.id || null,
+        inAt: visit?.inAt || null,
+      };
     })
-    .sort((a, b) => b.reviewCount - a.reviewCount || b.rating - a.rating);
+    .sort((a, b) => b.reviewCount - a.reviewCount || b.rating - a.rating || a.name.localeCompare(b.name));
   res.json({ workers: list });
 });
 
@@ -142,7 +172,7 @@ workersRouter.post("/workers/:id/ratings", authRequired, async (req, res) => {
 // The gate screen needs one list; per-worker history is the route below.
 workersRouter.get("/workers/attendance/today", authRequired, roleRequired("guard", "admin"), async (req, res) => {
   const societyId = req.user.societyId || "__none__";
-  const date = String(req.query.date || new Date().toISOString().slice(0, 10));
+  const date = String(req.query.date || indiaDate());
   const rows = await prisma.workerAttendance.findMany({
     where: { societyId, date },
     orderBy: { inAt: "desc" },
@@ -201,7 +231,7 @@ workersRouter.post("/workers/:id/attendance/checkin", authRequired, roleRequired
   const worker = await prisma.worker.findUnique({ where: { id: req.params.id } });
   if (!worker) return res.status(404).json({ message: "Worker not found" });
   const societyId = req.user.societyId;
-  const date = new Date().toISOString().slice(0, 10);
+  const date = indiaDate();
   // Re-use an open (not checked-out) row for today if one exists.
   const open = await prisma.workerAttendance.findFirst({ where: { workerId: worker.id, societyId, date, outAt: null } });
   if (open) return res.json({ attendance: open, alreadyIn: true });

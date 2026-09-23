@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { brand } from "../lib/brand";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 
 export const WORKER_CATS = [
@@ -53,6 +54,7 @@ export default function WorkersScreen() {
   const [cat, setCat] = useState("all");
   const [refreshing, setRefreshing] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [banner, setBanner] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -105,6 +107,8 @@ export default function WorkersScreen() {
         </ScrollView>
       </View>
 
+      {banner ? <Text style={styles.banner}>{banner}</Text> : null}
+
       <FlatList
         data={workers}
         keyExtractor={(w) => w.id}
@@ -113,7 +117,7 @@ export default function WorkersScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="ribbon-outline" size={30} color="#B7C2C9" />
-            <Text style={styles.emptyText}>No rated helpers yet. Tap + to add one — their rating will then follow them everywhere.</Text>
+            <Text style={styles.emptyText}>No helpers registered yet. Tap + to add one. Check-in is on the Staff tab, not here.</Text>
           </View>
         }
         renderItem={({ item: w }) => {
@@ -144,7 +148,8 @@ export default function WorkersScreen() {
         onClose={() => setAdding(false)}
         onDone={(w) => {
           setAdding(false);
-          if (w?.id) navigation.navigate("WorkerPassport", { id: w.id });
+          setBanner(w?.name ? `${w.name} is registered. Check them in from Staff → Helpers.` : "Helper registered.");
+          load();
         }}
       />
     </View>
@@ -204,6 +209,7 @@ function RegisterWorkerModal({ visible, onClose, onDone }) {
               <Ionicons name="ribbon-outline" size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>Add a helper</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 480 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             <Label>Category</Label>
@@ -265,6 +271,7 @@ const styles = StyleSheet.create({
   ratingText: { color: "#8895A0", fontSize: 12, fontWeight: "600" },
   empty: { alignItems: "center", paddingVertical: 40, gap: 10, paddingHorizontal: 30 },
   emptyText: { color: "#8895A0", fontSize: 14, fontWeight: "600", textAlign: "center", lineHeight: 20 },
+  banner: { color: "#0B6E8F", fontWeight: "700", fontSize: 13.5, lineHeight: 19, marginHorizontal: 16, marginBottom: 4 },
 
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 20 },
   modalCard: { backgroundColor: "#fff", borderRadius: 18, overflow: "hidden" },

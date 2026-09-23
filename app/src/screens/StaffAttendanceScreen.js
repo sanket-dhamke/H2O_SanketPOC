@@ -15,6 +15,7 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { isPreschool } from "../lib/org";
 import { openScreen } from "../lib/nav";
+import { indiaDate, insideVisits, mergeHelperDirectory } from "../lib/helperGate";
 import ScreenHeader from "../components/ScreenHeader";
 
 // Two kinds of people come through the gate every day and neither is a visitor:
@@ -28,6 +29,51 @@ const SOCIETY_ROLES = ["Security", "Housekeeping", "Gardener", "Technician", "Of
 
 const timeAt = (iso) =>
   iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) : "";
+
+// The hosted gate server may not have the one-list attendance route yet.
+// The directory and each helper's own log are older and still answer.
+async function loadHelperGate() {
+  const workers = await api.workers({ category: "helpers" }).then((r) => r.workers || []).catch(() => []);
+  try {
+    const today = await api.workerAttendanceToday(indiaDate());
+    return { workers, today };
+  } catch (e) {
+    const missing = /404|failed \(404\)|Cannot GET/i.test(e.message || "");
+    if (!missing) return { workers, today: { records: [], onPremise: 0, total: 0 } };
+    const date = indiaDate();
+    const lists = await Promise.all(
+      workers.slice(0, 40).map(async (worker) => {
+        try {
+          const res = await api.workerAttendance(worker.id);
+          return (res.attendance || [])
+            .filter((row) => row.date === date)
+            .map((row) => ({
+              id: row.id,
+              workerId: worker.id,
+              name: worker.name,
+              phone: worker.phone || null,
+              category: worker.category || null,
+              subtype: worker.subtype || null,
+              inAt: row.inAt,
+              outAt: row.outAt,
+            }));
+        } catch {
+          return [];
+        }
+      })
+    );
+    const records = lists.flat();
+    return {
+      workers,
+      today: {
+        date,
+        records,
+        onPremise: records.filter((row) => !row.outAt).length,
+        total: records.length,
+      },
+    };
+  }
+}
 
 export default function StaffAttendanceScreen() {
   const { user } = useAuth();
@@ -46,19 +92,23 @@ export default function StaffAttendanceScreen() {
   const [busy, setBusy] = useState(false);
 
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
-  const [searching, setSearching] = useState(false);
+  const [directory, setDirectory] = useState([]);
+  const [helperView, setHelperView] = useState("directory");
+  const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
-    const [s, h] = await Promise.all([
+    const [s, gate] = await Promise.all([
       api.staffAttendance().catch((e) => {
-        Alert.alert("Error", e.message);
+        setNotice(e.message || "Could not load staff.");
         return null;
       }),
-      api.workerAttendanceToday().catch(() => null),
+      loadHelperGate(),
     ]);
     if (s) setStaff(s);
-    if (h) setHelpers(h);
+    if (gate) {
+      setHelpers(gate.today);
+      setDirectory(mergeHelperDirectory(gate.workers, gate.today.records));
+    }
   }, []);
 
   useFocusEffect(
@@ -100,60 +150,43 @@ export default function StaffAttendanceScreen() {
     }
   };
 
-  const search = async () => {
-    const q = query.trim();
-    if (!q) {
-      setResults([]);
-      return;
-    }
-    setSearching(true);
-    try {
-      const r = await api.workers({ query: q });
-      setResults(r.workers || []);
-    } catch (e) {
-      Alert.alert("Error", e.message);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  // Ids already inside, so a second tap says "already in" instead of silently
-  // re-using the open row the API returns.
-  const insideIds = useMemo(
-    () => new Set(helpers.records.filter((r) => !r.outAt).map((r) => r.workerId)),
-    [helpers.records]
-  );
+  const inside = useMemo(() => insideVisits(helpers.records), [helpers.records]);
+  const shownHelpers = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const rows = directory.filter((worker) => {
+      if (!q) return true;
+      return `${worker.name} ${worker.phone || ""} ${worker.subtype || ""}`.toLowerCase().includes(q);
+    });
+    return rows;
+  }, [directory, query]);
 
   const checkInHelper = async (worker) => {
-    if (insideIds.has(worker.id)) {
-      Alert.alert("Already inside", `${worker.name} is already checked in today.`);
-      return;
-    }
+    if (worker.inside) return;
     setBusy(true);
+    setNotice("");
     try {
       const r = await api.workerCheckIn(worker.id);
-      setQuery("");
-      setResults([]);
       await load();
-      if (r?.alreadyIn) Alert.alert("Already inside", `${worker.name} was already checked in.`);
+      if (r?.alreadyIn) setNotice(`${worker.name} is already inside.`);
     } catch (e) {
-      Alert.alert("Error", e.message);
+      setNotice(e.message || "Could not check them in.");
     } finally {
       setBusy(false);
     }
   };
 
-  const checkOutHelper = async (rec) => {
+  const checkOutHelper = async (attendanceId, name) => {
+    setNotice("");
     try {
-      await api.workerCheckOut(rec.id);
+      await api.workerCheckOut(attendanceId);
       await load();
     } catch (e) {
-      Alert.alert("Error", e.message);
+      setNotice(e.message || `Could not check ${name || "them"} out.`);
     }
   };
 
   const staffTab = tab === "staff";
-  const rows = staffTab ? staff.records : helpers.records;
+  const rows = staffTab ? staff.records : helperView === "inside" ? inside : shownHelpers;
 
   return (
     <View style={styles.container}>
@@ -175,6 +208,7 @@ export default function StaffAttendanceScreen() {
           onPress={() => setTab("helpers")}
         />
       </View>
+      {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
       <FlatList
         data={rows}
@@ -207,93 +241,98 @@ export default function StaffAttendanceScreen() {
             </View>
           ) : (
             <View style={styles.form}>
-              <Text style={styles.formTitle}>Check in a helper</Text>
-              <Text style={styles.formHint}>
-                Maids, cooks, drivers and vendors. Search by name or phone — their rating and attendance follow them across societies.
-              </Text>
-              <View style={styles.searchWrap}>
-                <Ionicons name="search" size={18} color="#8895A0" />
-                <TextInput
-                  style={styles.search}
-                  value={query}
-                  onChangeText={setQuery}
-                  onSubmitEditing={search}
-                  returnKeyType="search"
-                  placeholder="Name or phone"
+              <View style={styles.subSeg}>
+                <Seg
+                  label={`All helpers${directory.length ? ` (${directory.length})` : ""}`}
+                  active={helperView === "directory"}
+                  onPress={() => setHelperView("directory")}
                 />
-                <TouchableOpacity style={styles.searchBtn} onPress={search} disabled={searching}>
-                  <Text style={styles.searchBtnText}>{searching ? "…" : "Find"}</Text>
-                </TouchableOpacity>
+                <Seg
+                  label={`Inside${inside.length ? ` (${inside.length})` : ""}`}
+                  active={helperView === "inside"}
+                  onPress={() => setHelperView("inside")}
+                />
               </View>
-
-              {results.map((w) => {
-                const inside = insideIds.has(w.id);
-                return (
-                  <View key={w.id} style={styles.resultRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.name}>{w.name}</Text>
-                      <Text style={styles.meta}>
-                        {w.subtype || w.category || "Helper"}
-                        {w.phone ? ` · ${w.phone}` : ""}
-                        {w.reviewCount ? ` · ★ ${w.rating} (${w.reviewCount})` : ""}
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      style={[styles.inBtn, (inside || busy) && { opacity: 0.5 }]}
-                      onPress={() => checkInHelper(w)}
-                      disabled={inside || busy}
-                    >
-                      <Text style={styles.inBtnText}>{inside ? "Inside" : "Check in"}</Text>
-                    </TouchableOpacity>
+              <Text style={styles.formHint}>
+                {helperView === "inside"
+                  ? "Who is inside now. Check them out when they leave."
+                  : "Everyone registered. Check them in when they arrive. Registering a helper does not check them in."}
+              </Text>
+              {helperView === "directory" ? (
+                <>
+                  <View style={styles.searchWrap}>
+                    <Ionicons name="search" size={18} color="#8895A0" />
+                    <TextInput
+                      style={styles.search}
+                      value={query}
+                      onChangeText={setQuery}
+                      placeholder="Search name or phone"
+                    />
                   </View>
-                );
-              })}
-
-              {query.trim() && !searching && results.length === 0 ? (
-                <Text style={styles.searchEmpty}>No helper matches “{query.trim()}”.</Text>
+                  <TouchableOpacity
+                    style={styles.registerLink}
+                    onPress={() => openScreen(navigation, "Community", { screen: "Workers" })}
+                  >
+                    <Ionicons name="person-add-outline" size={16} color="#0B6E8F" />
+                    <Text style={styles.registerLinkText}>Register a new helper</Text>
+                    <Ionicons name="chevron-forward" size={16} color="#0B6E8F" />
+                  </TouchableOpacity>
+                </>
               ) : null}
-
-              <TouchableOpacity
-                style={styles.registerLink}
-                onPress={() => openScreen(navigation, "Community", { screen: "Workers" })}
-              >
-                <Ionicons name="person-add-outline" size={16} color="#0B6E8F" />
-                <Text style={styles.registerLinkText}>New helper? Register them first</Text>
-                <Ionicons name="chevron-forward" size={16} color="#0B6E8F" />
-              </TouchableOpacity>
             </View>
           )
         }
         ListEmptyComponent={
           <Text style={styles.empty}>
-            {staffTab ? "No staff checked in today." : "No helpers checked in today."}
+            {staffTab
+              ? "No staff checked in today."
+              : helperView === "inside"
+                ? "Nobody is inside. Open All helpers to check someone in."
+                : query.trim()
+                  ? `No helper matches “${query.trim()}”.`
+                  : "No helpers registered yet."}
           </Text>
         }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.meta}>
-                {staffTab ? item.role || "Staff" : item.subtype || item.category || "Helper"}
-                {!staffTab && item.flatNo ? ` · ${item.flatNo}` : ""}
-                {` · In ${timeAt(item.inAt)}`}
-                {item.outAt ? ` · Out ${timeAt(item.outAt)}` : ""}
-              </Text>
-            </View>
-            {item.outAt ? (
-              <View style={styles.doneBadge}>
-                <Text style={styles.doneText}>Left</Text>
+        renderItem={({ item }) => {
+          const helper = !staffTab;
+          const visitId = helperView === "inside" ? item.id : item.attendanceId;
+          const isInside = helper && (helperView === "inside" || item.inside);
+          return (
+            <View style={styles.card}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.name}>{item.name}</Text>
+                <Text style={styles.meta}>
+                  {staffTab ? item.role || "Staff" : item.subtype || item.category || "Helper"}
+                  {item.phone ? ` · ${item.phone}` : ""}
+                  {item.inAt ? ` · In ${timeAt(item.inAt)}` : ""}
+                  {item.outAt ? ` · Out ${timeAt(item.outAt)}` : ""}
+                  {helper && helperView === "directory" && !item.inside ? " · Not in" : ""}
+                </Text>
               </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.outBtn}
-                onPress={() => (staffTab ? checkOutStaff(item) : checkOutHelper(item))}
-              >
-                <Text style={styles.outText}>Check out</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+              {staffTab && item.outAt ? (
+                <View style={styles.doneBadge}>
+                  <Text style={styles.doneText}>Left</Text>
+                </View>
+              ) : isInside ? (
+                <TouchableOpacity style={styles.outBtn} onPress={() => checkOutHelper(visitId, item.name)}>
+                  <Text style={styles.outText}>Check out</Text>
+                </TouchableOpacity>
+              ) : helper ? (
+                <TouchableOpacity
+                  style={[styles.inBtn, busy && { opacity: 0.5 }]}
+                  onPress={() => checkInHelper(item)}
+                  disabled={busy}
+                >
+                  <Text style={styles.inBtnText}>Check in</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={styles.outBtn} onPress={() => checkOutStaff(item)}>
+                  <Text style={styles.outText}>Check out</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        }}
       />
     </View>
   );
@@ -314,6 +353,8 @@ const styles = StyleSheet.create({
   segActive: { backgroundColor: "#0B6E8F" },
   segText: { color: "#6B7B85", fontWeight: "700", fontSize: 13 },
   segTextActive: { color: "#fff" },
+  notice: { color: "#B42318", fontWeight: "700", fontSize: 13, marginHorizontal: 16, marginTop: 10 },
+  subSeg: { flexDirection: "row", backgroundColor: "#F1F5F7", borderRadius: 10, padding: 3, marginBottom: 10 },
   form: { backgroundColor: "#fff", borderRadius: 14, padding: 16, marginBottom: 14 },
   formTitle: { fontSize: 16, fontWeight: "800", color: "#1B2B33" },
   formHint: { fontSize: 12.5, color: "#6B7B85", lineHeight: 18, marginTop: 4, marginBottom: 10 },
