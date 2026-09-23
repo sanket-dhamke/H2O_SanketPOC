@@ -252,10 +252,19 @@ workersRouter.get("/workers/attendance/today", authRequired, roleRequired("guard
 // Guard/admin: log a worker's gate entry/exit at THIS society (portable attendance).
 workersRouter.get("/workers/:id/attendance", authRequired, async (req, res) => {
   const societyId = req.user.societyId || "__none__";
+  const from = String(req.query.from || "");
+  const to = String(req.query.to || "");
+  const date = {};
+  if (/^\d{4}-\d{2}-\d{2}$/.test(from)) date.gte = from;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(to)) date.lte = to;
   const rows = await prisma.workerAttendance.findMany({
-    where: { workerId: req.params.id, societyId },
+    where: {
+      workerId: req.params.id,
+      societyId,
+      ...(Object.keys(date).length ? { date } : {}),
+    },
     orderBy: { inAt: "desc" },
-    take: 30,
+    take: 200,
   });
   res.json({ attendance: rows });
 });

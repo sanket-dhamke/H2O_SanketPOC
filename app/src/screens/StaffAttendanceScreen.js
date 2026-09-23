@@ -18,6 +18,7 @@ import { useAuth } from "../lib/auth";
 import { isPreschool } from "../lib/org";
 import { mergeHelperDirectory, retainInside } from "../lib/helperGate";
 import { fetchDirectory, fetchGateAttendance, peekDirectory, readCachedDirectory, rememberDirectory } from "../lib/gateDirectory";
+import { formatHours, periodBounds, summarizeVisits, visitsInPeriod } from "../lib/attendancePeriod";
 import ScreenHeader from "../components/ScreenHeader";
 import OptionalPhoto from "../components/OptionalPhoto";
 import ModalClose from "../components/ModalClose";
@@ -55,6 +56,7 @@ export default function StaffAttendanceScreen() {
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState("");
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [history, setHistory] = useState(null);
   const [pending, setPending] = useState(null);
   const [snap, setSnap] = useState(null);
   const [snapError, setSnapError] = useState("");
@@ -172,7 +174,7 @@ export default function StaffAttendanceScreen() {
         ListHeaderComponent={
           <View style={styles.form}>
             <Text style={styles.formHint}>
-              Everyone registered is on this list. Check them in when they arrive, and check them out when they leave. A photo is optional.
+              Everyone registered is on this list. Tap a name for today, this week, or this month. A photo on check-in is optional.
             </Text>
             <View style={styles.searchWrap}>
               <Ionicons name="search" size={18} color="#8895A0" />
@@ -205,7 +207,7 @@ export default function StaffAttendanceScreen() {
                   <Text style={styles.avatarText}>{item.name?.charAt(0)?.toUpperCase() || "?"}</Text>
                 </View>
               )}
-              <View style={{ flex: 1 }}>
+              <TouchableOpacity style={{ flex: 1 }} onPress={() => setHistory(item)}>
                 <Text style={styles.name}>{item.name}</Text>
                 <Text style={styles.meta}>
                   {kindOf(item.category)}
@@ -214,7 +216,7 @@ export default function StaffAttendanceScreen() {
                   {item.inside && item.inAt ? ` · In ${timeAt(item.inAt)}` : ""}
                   {item.inside ? " · Inside" : " · Not in"}
                 </Text>
-              </View>
+              </TouchableOpacity>
               {item.inside ? (
                 <TouchableOpacity style={styles.outBtn} onPress={() => beginGate(item, "out", item.attendanceId)} disabled={busy}>
                   <Text style={styles.outText}>Check out</Text>
@@ -228,6 +230,7 @@ export default function StaffAttendanceScreen() {
           );
         }}
       />
+      <PersonHistory person={history} onClose={() => setHistory(null)} />
       <RegisterPerson
         visible={registerOpen}
         preschool={preschool}
@@ -265,6 +268,87 @@ export default function StaffAttendanceScreen() {
         </Modal>
       ) : null}
     </View>
+  );
+}
+
+const PERIODS = [
+  { id: "day", label: "Today" },
+  { id: "week", label: "Week" },
+  { id: "month", label: "Month" },
+];
+
+function PersonHistory({ person, onClose }) {
+  const [period, setPeriod] = useState("day");
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!person?.id) return;
+    let cancel = false;
+    setPeriod("day");
+    setRows([]);
+    setError("");
+    setLoading(true);
+    const month = periodBounds("month");
+    api.workerAttendance(person.id, { from: month.from, to: month.to })
+      .then((res) => {
+        if (!cancel) setRows(res.attendance || []);
+      })
+      .catch((e) => {
+        if (!cancel) setError(e.message || "Could not load their visits.");
+      })
+      .finally(() => {
+        if (!cancel) setLoading(false);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [person?.id]);
+
+  const shown = visitsInPeriod(rows, period);
+  const summary = summarizeVisits(shown);
+  const summaryText = loading
+    ? "Loading their visits…"
+    : `${summary.days} day${summary.days === 1 ? "" : "s"} · ${summary.visits} visit${summary.visits === 1 ? "" : "s"} · ${formatHours(summary.minutes)}${summary.open ? ` · ${summary.open} still inside` : ""}`;
+
+  return (
+    <Modal visible={!!person} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <View style={styles.modalCard}>
+          <View style={styles.modalHead}>
+            <Text style={[styles.formTitle, { flex: 1 }]}>{person?.name || "Attendance"}</Text>
+            <ModalClose light={false} onPress={onClose} />
+          </View>
+          <Text style={styles.formHint}>
+            {kindOf(person?.category)}
+            {person?.subtype ? ` · ${person.subtype}` : ""}
+            {person?.phone ? ` · ${person.phone}` : ""}
+          </Text>
+          <View style={styles.roleRow}>
+            {PERIODS.map((item) => (
+              <TouchableOpacity key={item.id} style={[styles.roleChip, period === item.id && styles.roleChipActive]} onPress={() => setPeriod(item.id)}>
+                <Text style={[styles.roleText, period === item.id && { color: "#fff" }]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={styles.summary}>{summaryText}</Text>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <ScrollView style={{ maxHeight: 320 }} keyboardShouldPersistTaps="handled">
+            {!loading && shown.length === 0 ? <Text style={styles.empty}>No visits in this period.</Text> : null}
+            {shown.map((row) => (
+              <View key={row.id} style={styles.visit}>
+                <Text style={styles.name}>{row.date}</Text>
+                <Text style={styles.meta}>
+                  In {timeAt(row.inAt)}
+                  {row.outAt ? ` · Out ${timeAt(row.outAt)}` : " · Still inside"}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -406,6 +490,8 @@ const styles = StyleSheet.create({
   modalHead: { flexDirection: "row", alignItems: "center", gap: 8 },
   name: { fontSize: 16, fontWeight: "700", color: "#1B2B33" },
   meta: { color: "#6B7B85", marginTop: 2, fontSize: 13 },
+  summary: { color: "#1B2B33", fontWeight: "700", fontSize: 13, marginBottom: 8 },
+  visit: { borderTopWidth: 1, borderTopColor: "#E6EEF2", paddingVertical: 10 },
   outBtn: { borderWidth: 1, borderColor: "#0B6E8F", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
   outText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
 });

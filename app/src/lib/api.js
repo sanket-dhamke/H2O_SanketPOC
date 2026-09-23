@@ -366,7 +366,7 @@ export const api = {
   workerByCode: (code) => request(`/api/workers/code/${encodeURIComponent(code)}`),
   registerWorker: (payload) => request("/api/workers", { method: "POST", body: payload }),
   rateWorker: (id, payload) => request(`/api/workers/${id}/ratings`, { method: "POST", body: payload }),
-  workerAttendance: (id) => request(`/api/workers/${id}/attendance`),
+  workerAttendance: (id, params) => request(`/api/workers/${id}/attendance${qs(params)}`),
   // Gate desk: every helper in/out logged at this society today.
   workerAttendanceToday: (date) => request(`/api/workers/attendance/today${qs({ date })}`),
   workerCheckIn: (id, payload) => request(`/api/workers/${id}/attendance/checkin`, { method: "POST", body: payload || {} }),
