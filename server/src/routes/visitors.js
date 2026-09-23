@@ -126,12 +126,23 @@ visitorsRouter.get("/visitors", authRequired, async (req, res) => {
   const paging = parsePaging(req, { def: 200, max: 500 });
   const visitors = await prisma.visitor.findMany({
     where,
-    include: { flat: true },
+    include: { flat: { select: { flatNo: true } } },
     orderBy: { createdAt: "desc" },
     take: paging.take,
     skip: paging.skip,
   });
-  res.json({ visitors: visitors.map(serializeVisitor), hasMore: visitors.length >= paging.limit });
+  res.json({
+    visitors: visitors.map((v) => {
+      const row = serializeVisitor(v);
+      // Inline camera photos make this list take seconds to download.
+      if (typeof row.photo === "string" && row.photo.startsWith("data:")) {
+        row.photo = null;
+        row.photoUrl = null;
+      }
+      return row;
+    }),
+    hasMore: visitors.length >= paging.limit,
+  });
 });
 
 // Guard/admin marks a visitor as having left (entry/exit tracking). Records the

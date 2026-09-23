@@ -10,6 +10,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-cont
 import { useFonts } from "expo-font";
 
 import { AuthProvider, useAuth } from "./src/lib/auth";
+import { fetchVisitorLog, readCachedVisitors } from "./src/lib/visitorLogCache";
 import { FONTS, body } from "./src/lib/type";
 import { registerForPushNotifications } from "./src/lib/push";
 import LoginScreen from "./src/screens/LoginScreen";
@@ -301,6 +302,14 @@ function GuardTabs() {
 function AppInner() {
   const { user, loading } = useAuth();
   const navRef = useRef();
+
+  useEffect(() => {
+    if (!user?.id) return;
+    // Start the gate log while Home is on screen, so the tab opens with rows
+    // already in memory instead of waiting on the server.
+    readCachedVisitors(user.id).catch(() => {});
+    fetchVisitorLog(user.id).catch(() => {});
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) return;

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyGuardMemory, presentVisitor, validateGuardAction, isParcelVisit, VISITOR_WAIT_MS } from "../../app/src/lib/visitorWait.js";
+import { applyGuardMemory, listVisitor, presentVisitor, validateGuardAction, isParcelVisit, VISITOR_WAIT_MS } from "../../app/src/lib/visitorWait.js";
 
 const now = Date.parse("2026-09-23T10:00:00Z");
 
@@ -64,6 +64,14 @@ test("a guard close saved on the current server still shows as the guard's decis
   assert.equal(sent.status, "sent_back");
   const residentApproved = applyGuardMemory(presentVisitor(visit({ id: "other", status: "approved" }), now), memory);
   assert.equal(residentApproved.status, "approved");
+});
+
+test("a gate-log row drops an inline camera photo and keeps a web photo", () => {
+  const bulky = listVisitor(visit({ photo: "data:image/jpeg;base64,AAAA", photoUrl: "data:image/jpeg;base64,AAAA" }));
+  assert.equal(bulky.photo, null);
+  assert.equal(bulky.photoUrl, null);
+  const remote = listVisitor(visit({ photo: "https://cdn.example/a.jpg", photoUrl: "https://cdn.example/a.jpg" }));
+  assert.equal(remote.photo, "https://cdn.example/a.jpg");
 });
 
 test("the guard cannot close a visit while the resident still has time", () => {

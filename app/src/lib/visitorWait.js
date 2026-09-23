@@ -21,6 +21,15 @@ export function visitorWaitState(visitor, now = Date.now()) {
   return { status: "pending", waitMsLeft: VISITOR_WAIT_MS - age };
 }
 
+// A camera photo stored inline can be hundreds of kilobytes. The gate log
+// only needs a normal web address, and shows initials otherwise.
+export function listVisitor(visitor) {
+  if (!visitor) return visitor;
+  const photo = typeof visitor.photo === "string" && /^https?:\/\//.test(visitor.photo) ? visitor.photo : null;
+  if (photo === (visitor.photo || null) && photo === (visitor.photoUrl || null)) return visitor;
+  return { ...visitor, photo, photoUrl: photo };
+}
+
 // The live gate API may still say "pending" after the 3 minutes. The screen
 // treats that as No response so a missed visit does not stay on Waiting.
 export function presentVisitor(visitor, now = Date.now()) {

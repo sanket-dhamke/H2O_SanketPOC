@@ -140,7 +140,7 @@ export const api = {
   verifyPayment: (id, payload) =>
     request(`/api/maintenance/${id}/verify`, { method: "POST", body: payload }),
 
-  visitors: () => request("/api/visitors"),
+  visitors: (params) => request(`/api/visitors${qs(params)}`),
   addVisitor: (payload) =>
     request("/api/visitors", { method: "POST", body: payload }),
   decideVisitor: (id, status) =>

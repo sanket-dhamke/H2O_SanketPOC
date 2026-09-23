@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { useAuth } from "../lib/auth";
 import { labelsFor, isPreschool } from "../lib/org";
 import { applyGuardMemory, isParcelVisit, presentVisitor } from "../lib/visitorWait";
 import { loadGuardCloses, rememberGuardClose } from "../lib/guardVisitMemory";
+import { fetchVisitorLog, peekVisitors, readCachedVisitors } from "../lib/visitorLogCache";
 import ScreenHeader from "../components/ScreenHeader";
 import OffersRail from "../components/OffersRail";
 import AppTextInput from "../components/AppTextInput";
@@ -55,7 +56,8 @@ function waitLabel(ms) {
 export default function VisitorsScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
-  const [visitors, setVisitors] = useState([]);
+  const [visitors, setVisitors] = useState(() => peekVisitors(user?.id) || []);
+  const [booting, setBooting] = useState(() => peekVisitors(user?.id) == null);
   const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [reasonFor, setReasonFor] = useState(null);
@@ -64,13 +66,28 @@ export default function VisitorsScreen() {
   const [notice, setNotice] = useState("");
   const [guardCloses, setGuardCloses] = useState({});
 
+  useEffect(() => {
+    let live = true;
+    readCachedVisitors(user?.id).then((rows) => {
+      if (!live || !rows) return;
+      setVisitors((current) => (current.length ? current : rows));
+      setBooting(false);
+    });
+    return () => {
+      live = false;
+    };
+  }, [user?.id]);
+
   const load = useCallback(async () => {
     try {
-      const [{ visitors }, saved] = await Promise.all([api.visitors(), loadGuardCloses(user?.id)]);
+      const [rows, saved] = await Promise.all([fetchVisitorLog(user?.id), loadGuardCloses(user?.id)]);
       setGuardCloses(saved);
-      setVisitors(visitors);
+      setVisitors(rows);
+      setBooting(false);
     } catch (e) {
-      Alert.alert("Error", e.message);
+      setBooting(false);
+      if (Platform.OS !== "web") Alert.alert("Error", e.message);
+      else setNotice((current) => current || e.message || "Could not load the gate log.");
     }
   }, [user?.id]);
 
@@ -174,7 +191,9 @@ export default function VisitorsScreen() {
         contentContainerStyle={{ padding: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
-          <Text style={styles.empty}>No visitors yet. Pull down to refresh.</Text>
+          <Text style={styles.empty}>
+            {booting ? "Loading the gate log…" : "No visitors yet. Pull down to refresh."}
+          </Text>
         }
         ListFooterComponent={
           <View style={{ width: "100%", alignSelf: "stretch" }}>
