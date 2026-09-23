@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { presentVisitor, validateGuardAction, isParcelVisit, VISITOR_WAIT_MS } from "../../app/src/lib/visitorWait.js";
+import { applyGuardMemory, presentVisitor, validateGuardAction, isParcelVisit, VISITOR_WAIT_MS } from "../../app/src/lib/visitorWait.js";
 
 const now = Date.parse("2026-09-23T10:00:00Z");
 
@@ -50,6 +50,20 @@ test("a delivery is left at the gate or sent back, not sent up", () => {
   assert.equal(validateGuardAction(parcel, "allow", "they insisted", now).ok, false);
   assert.equal(validateGuardAction(parcel, "leave_at_gate", "", now).status, "leave_at_gate");
   assert.equal(validateGuardAction(parcel, "send_back", "", now).status, "sent_back");
+});
+
+test("a guard close saved on the current server still shows as the guard's decision", () => {
+  const memory = {
+    "old-guest": { status: "allowed_by_guard", decisionNote: "called resident" },
+    "turned-away": { status: "sent_back", decisionNote: "" },
+  };
+  const allowed = applyGuardMemory(presentVisitor(visit({ id: "old-guest", status: "approved" }), now), memory);
+  assert.equal(allowed.status, "allowed_by_guard");
+  assert.equal(allowed.decisionNote, "called resident");
+  const sent = applyGuardMemory(presentVisitor(visit({ id: "turned-away", status: "rejected" }), now), memory);
+  assert.equal(sent.status, "sent_back");
+  const residentApproved = applyGuardMemory(presentVisitor(visit({ id: "other", status: "approved" }), now), memory);
+  assert.equal(residentApproved.status, "approved");
 });
 
 test("the guard cannot close a visit while the resident still has time", () => {

@@ -30,6 +30,23 @@ export function presentVisitor(visitor, now = Date.now()) {
   return { ...visitor, status: next.status, waitMsLeft: 0 };
 }
 
+// The hosted gate API can only store approved, rejected, or left at the gate.
+// A guard close made through that API is remembered here so the log still says
+// Allowed by guard or Sent back, including the reason they typed.
+export function applyGuardMemory(visitor, memory) {
+  if (!visitor || !memory) return visitor;
+  const saved = memory[visitor.id];
+  if (!saved) return visitor;
+  if (visitor.status === "allowed_by_guard" || visitor.status === "sent_back") return visitor;
+  if (saved.status === "allowed_by_guard" && visitor.status === "approved") {
+    return { ...visitor, status: "allowed_by_guard", decisionNote: saved.decisionNote || visitor.decisionNote || null };
+  }
+  if (saved.status === "sent_back" && visitor.status === "rejected") {
+    return { ...visitor, status: "sent_back" };
+  }
+  return visitor;
+}
+
 export function validateGuardAction(visitor, action, reason, now = Date.now()) {
   if (!visitor) return { ok: false, message: "Visitor not found." };
   if (visitor.status !== "pending" && visitor.status !== "no_response") {

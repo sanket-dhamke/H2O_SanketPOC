@@ -14,7 +14,8 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { labelsFor, isPreschool } from "../lib/org";
-import { isParcelVisit, presentVisitor } from "../lib/visitorWait";
+import { applyGuardMemory, isParcelVisit, presentVisitor } from "../lib/visitorWait";
+import { loadGuardCloses, rememberGuardClose } from "../lib/guardVisitMemory";
 import ScreenHeader from "../components/ScreenHeader";
 import OffersRail from "../components/OffersRail";
 import AppTextInput from "../components/AppTextInput";
@@ -61,15 +62,17 @@ export default function VisitorsScreen() {
   const [reason, setReason] = useState("");
   const [busyId, setBusyId] = useState(null);
   const [notice, setNotice] = useState("");
+  const [guardCloses, setGuardCloses] = useState({});
 
   const load = useCallback(async () => {
     try {
-      const { visitors } = await api.visitors();
+      const [{ visitors }, saved] = await Promise.all([api.visitors(), loadGuardCloses(user?.id)]);
+      setGuardCloses(saved);
       setVisitors(visitors);
     } catch (e) {
       Alert.alert("Error", e.message);
     }
-  }, []);
+  }, [user?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -108,20 +111,31 @@ export default function VisitorsScreen() {
 
   const guardAct = async (visitor, action, note) => {
     setNotice("");
+    const trimmed = String(note || "").trim();
+    if (action === "allow" && trimmed.length < 3) {
+      fail(new Error("Add a short reason for letting them in."));
+      return;
+    }
     setBusyId(visitor.id);
     try {
+      let closedOnCurrentServer = false;
       try {
-        await api.guardVisitorAction(visitor.id, { action, reason: note });
+        await api.guardVisitorAction(visitor.id, { action, reason: trimmed });
       } catch (e) {
-        // The current hosted API only knows Leave at gate. Use that until the
-        // new gate action is deployed, and keep the other choices honest.
+        // The hosted API has no guard-action yet. It can still close the row
+        // as approved, rejected, or left at the gate. Remember the guard's
+        // own outcome so this log does not call that a resident decision.
         const missing = /404|failed \(404\)|Cannot (GET|POST)/i.test(e.message || "");
-        if (missing && action === "leave_at_gate") {
-          await api.decideVisitor(visitor.id, "leave_at_gate");
-        } else if (missing) {
-          throw new Error("This visit is already off Waiting. Allowed by guard and Send back save once the gate server is updated.");
-        } else {
-          throw e;
+        if (!missing) throw e;
+        const liveStatus = action === "allow" ? "approved" : action === "send_back" ? "rejected" : "leave_at_gate";
+        await api.decideVisitor(visitor.id, liveStatus);
+        closedOnCurrentServer = action === "allow" || action === "send_back";
+        if (closedOnCurrentServer) {
+          const saved = await rememberGuardClose(user?.id, visitor.id, {
+            status: action === "allow" ? "allowed_by_guard" : "sent_back",
+            decisionNote: action === "allow" ? trimmed : "",
+          });
+          setGuardCloses(saved);
         }
       }
       setReasonFor(null);
@@ -155,7 +169,7 @@ export default function VisitorsScreen() {
       />
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       <FlatList
-        data={visitors.map((v) => presentVisitor(v, now))}
+        data={visitors.map((v) => applyGuardMemory(presentVisitor(v, now), guardCloses))}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -242,7 +256,7 @@ export default function VisitorsScreen() {
                   <Text style={styles.note}>
                     {parcel
                       ? "No one answered. Leave this at the gate, or send them back. Do not send them up."
-                      : "No one answered. Call the flat. Let them in only if you record why."}
+                      : "No one answered in the app. Call the flat. If they say yes, tap Allowed by guard and write that. Otherwise send them back."}
                   </Text>
                   {reasonFor === item.id ? (
                     <View style={styles.reasonBox}>
