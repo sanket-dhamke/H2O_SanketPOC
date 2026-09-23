@@ -8,46 +8,47 @@ import {
   Image,
   Modal,
   RefreshControl,
+  ScrollView,
 } from "react-native";
 import TextInput from "../components/AppTextInput";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { isPreschool } from "../lib/org";
-import { indiaDate, insideVisits, mergeHelperDirectory } from "../lib/helperGate";
+import { indiaDate, mergeHelperDirectory } from "../lib/helperGate";
 import ScreenHeader from "../components/ScreenHeader";
 import OptionalPhoto from "../components/OptionalPhoto";
 import ModalClose from "../components/ModalClose";
 
-// Two kinds of people come through the gate, and neither is a visitor:
-//   Staff   — guards and the society's or school's own people. Registered once,
-//             then checked in and out from this list.
-//   Helpers — maids, cooks, drivers and vendors. Same list, then check-in
-//             and check-out. Registering never marks them present.
+// One directory for everyone who comes through the gate and is not a visitor.
+// Staff and helpers share the list. The role sits on the person, not on a tab.
+// Registering adds them. It does not check them in.
 const PRESCHOOL_ROLES = ["Teacher", "Helper", "Security", "Admin", "Other"];
 const SOCIETY_ROLES = ["Security / guard", "Housekeeping", "Gardener", "Technician", "Office", "Other"];
+const HELPER_ROLES = ["Maid", "Cook", "Driver", "Nanny", "Car cleaner", "Gardener", "Other"];
+
+const KIND_LABEL = {
+  staff: "Staff",
+  helpers: "Helper",
+  trades: "Home service",
+  medical: "Medical",
+  utilities: "Utility",
+  lifestyle: "Lifestyle",
+};
 
 const timeAt = (iso) =>
   iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) : "";
 
+const kindOf = (category) => KIND_LABEL[category] || "Helper";
+
 // The hosted gate server may not have the one-list attendance route yet.
-// The directory and each helper's own log are older and still answer.
-async function loadPeople(category) {
-  const workers = await api.workers({ category }).then((r) => r.workers || []).catch(() => []);
+// The directory and each person's own log are older and still answer.
+async function loadDirectory() {
+  const workers = await api.workers().then((r) => r.workers || []).catch(() => []);
   try {
     const today = await api.workerAttendanceToday(indiaDate());
-    const mine = new Set(workers.map((worker) => worker.id));
-    const records = (today.records || []).filter((row) => row.category === category || mine.has(row.workerId));
-    return {
-      workers,
-      today: {
-        ...today,
-        records,
-        onPremise: records.filter((row) => !row.outAt).length,
-        total: records.length,
-      },
-    };
+    return { workers, today };
   } catch (e) {
     const missing = /404|failed \(404\)|Cannot GET/i.test(e.message || "");
     if (!missing) return { workers, today: { records: [], onPremise: 0, total: 0 } };
@@ -91,21 +92,13 @@ async function loadPeople(category) {
 
 export default function StaffAttendanceScreen() {
   const { user } = useAuth();
-  const navigation = useNavigation();
   const preschool = isPreschool(user);
-  const roles = preschool ? PRESCHOOL_ROLES : SOCIETY_ROLES;
 
-  const [tab, setTab] = useState("staff");
-  const [staff, setStaff] = useState({ records: [], onPremise: 0, total: 0 });
-  const [helpers, setHelpers] = useState({ records: [], onPremise: 0, total: 0 });
-  const [staffDirectory, setStaffDirectory] = useState([]);
+  const [today, setToday] = useState({ records: [], onPremise: 0, total: 0 });
+  const [directory, setDirectory] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
-
   const [query, setQuery] = useState("");
-  const [directory, setDirectory] = useState([]);
-  const [helperView, setHelperView] = useState("directory");
-  const [staffView, setStaffView] = useState("directory");
   const [notice, setNotice] = useState("");
   const [registerOpen, setRegisterOpen] = useState(false);
   const [pending, setPending] = useState(null);
@@ -113,15 +106,9 @@ export default function StaffAttendanceScreen() {
   const [snapError, setSnapError] = useState("");
 
   const load = useCallback(async () => {
-    const [staffGate, helperGate] = await Promise.all([loadPeople("staff"), loadPeople("helpers")]);
-    if (staffGate) {
-      setStaff(staffGate.today);
-      setStaffDirectory(mergeHelperDirectory(staffGate.workers, staffGate.today.records));
-    }
-    if (helperGate) {
-      setHelpers(helperGate.today);
-      setDirectory(mergeHelperDirectory(helperGate.workers, helperGate.today.records));
-    }
+    const gate = await loadDirectory();
+    setToday(gate.today);
+    setDirectory(mergeHelperDirectory(gate.workers, gate.today.records));
   }, []);
 
   useFocusEffect(
@@ -136,15 +123,15 @@ export default function StaffAttendanceScreen() {
     setRefreshing(false);
   };
 
-  const inside = useMemo(() => insideVisits(helpers.records), [helpers.records]);
-  const staffInside = useMemo(() => insideVisits(staff.records), [staff.records]);
-  const shownHelpers = useMemo(() => {
+  const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const rows = directory.filter((worker) => {
-      if (!q) return true;
-      return `${worker.name} ${worker.phone || ""} ${worker.subtype || ""}`.toLowerCase().includes(q);
-    });
-    return rows;
+    return directory
+      .filter((worker) => {
+        if (!q) return true;
+        const kind = kindOf(worker.category);
+        return `${worker.name} ${worker.phone || ""} ${worker.subtype || ""} ${kind}`.toLowerCase().includes(q);
+      })
+      .sort((a, b) => Number(!!b.inside) - Number(!!a.inside) || String(a.name).localeCompare(String(b.name)));
   }, [directory, query]);
 
   const showNotice = (message) => setNotice(message || "");
@@ -178,40 +165,13 @@ export default function StaffAttendanceScreen() {
     }
   };
 
-  const shownStaff = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return staffDirectory.filter((worker) => {
-      if (!q) return true;
-      return `${worker.name} ${worker.phone || ""} ${worker.subtype || ""}`.toLowerCase().includes(q);
-    });
-  }, [staffDirectory, query]);
-
-  const staffTab = tab === "staff";
-  const view = staffTab ? staffView : helperView;
-  const rows = staffTab ? (staffView === "inside" ? staffInside : shownStaff) : helperView === "inside" ? inside : shownHelpers;
-  const peopleCount = staffTab ? staffDirectory.length : directory.length;
-  const insideCount = staffTab ? staffInside.length : inside.length;
-
   return (
     <View style={styles.container}>
       <ScreenHeader
         icon="id-card"
         title="Staff & helpers"
-        subtitle={`${staff.onPremise + helpers.onPremise} on premise · ${staff.total + helpers.total} today`}
+        subtitle={`${today.onPremise || 0} on premise · ${today.total || 0} today`}
       />
-
-      <View style={styles.segment}>
-        <Seg
-          label={`${preschool ? "Staff" : "Society staff"}${staff.onPremise ? ` (${staff.onPremise})` : ""}`}
-          active={staffTab}
-          onPress={() => setTab("staff")}
-        />
-        <Seg
-          label={`Helpers${helpers.onPremise ? ` (${helpers.onPremise})` : ""}`}
-          active={!staffTab}
-          onPress={() => setTab("helpers")}
-        />
-      </View>
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
       <FlatList
@@ -222,58 +182,31 @@ export default function StaffAttendanceScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={
           <View style={styles.form}>
-            <View style={styles.subSeg}>
-              <Seg
-                label={`${staffTab ? "All staff" : "All helpers"}${peopleCount ? ` (${peopleCount})` : ""}`}
-                active={view === "directory"}
-                onPress={() => (staffTab ? setStaffView("directory") : setHelperView("directory"))}
-              />
-              <Seg
-                label={`Inside${insideCount ? ` (${insideCount})` : ""}`}
-                active={view === "inside"}
-                onPress={() => (staffTab ? setStaffView("inside") : setHelperView("inside"))}
-              />
-            </View>
             <Text style={styles.formHint}>
-              {view === "inside"
-                ? "Who is inside now. Check them out when they leave. A photo is optional."
-                : staffTab
-                  ? "Guards and working staff, registered once. Check them in from this list. A photo is optional."
-                  : "Helpers, registered once. Check them in from this list. Registering does not check them in. A photo is optional."}
+              Everyone registered is on this list. Check them in when they arrive, and check them out when they leave. A photo is optional.
             </Text>
-            {view === "directory" ? (
-              <>
-                <View style={styles.searchWrap}>
-                  <Ionicons name="search" size={18} color="#8895A0" />
-                  <TextInput style={styles.search} value={query} onChangeText={setQuery} placeholder="Search name or phone" />
-                </View>
-                <TouchableOpacity style={styles.registerLink} onPress={() => setRegisterOpen(true)}>
-                  <Ionicons name="person-add-outline" size={16} color="#0B6E8F" />
-                  <Text style={styles.registerLinkText}>{staffTab ? "Register a guard or staff member" : "Register a new helper"}</Text>
-                  <Ionicons name="chevron-forward" size={16} color="#0B6E8F" />
-                </TouchableOpacity>
-              </>
-            ) : null}
+            <View style={styles.searchWrap}>
+              <Ionicons name="search" size={18} color="#8895A0" />
+              <TextInput style={styles.search} value={query} onChangeText={setQuery} placeholder="Search name, phone or role" />
+            </View>
+            <TouchableOpacity style={styles.registerLink} onPress={() => setRegisterOpen(true)}>
+              <Ionicons name="person-add-outline" size={16} color="#0B6E8F" />
+              <Text style={styles.registerLinkText}>Add a person</Text>
+              <Ionicons name="chevron-forward" size={16} color="#0B6E8F" />
+            </TouchableOpacity>
           </View>
         }
         ListEmptyComponent={
           <Text style={styles.empty}>
-            {view === "inside"
-              ? `Nobody is inside. Open All ${staffTab ? "staff" : "helpers"} to check someone in.`
-              : query.trim()
-                ? `No match for “${query.trim()}”.`
-                : staffTab
-                  ? "No guards or staff registered yet."
-                  : "No helpers registered yet."}
+            {query.trim() ? `No match for “${query.trim()}”.` : "No one is registered yet."}
           </Text>
         }
         renderItem={({ item }) => {
-          const visitId = view === "inside" ? item.id : item.attendanceId;
-          const isInside = view === "inside" || item.inside;
           const photo =
             (typeof item.photoUrl === "string" && item.photoUrl) ||
             (typeof item.inPhotoUrl === "string" && item.inPhotoUrl) ||
             null;
+          const role = item.subtype || item.role || "";
           return (
             <View style={styles.card}>
               {photo ? (
@@ -286,15 +219,15 @@ export default function StaffAttendanceScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.name}>{item.name}</Text>
                 <Text style={styles.meta}>
-                  {item.subtype || item.role || item.category || (staffTab ? "Staff" : "Helper")}
+                  {kindOf(item.category)}
+                  {role ? ` · ${role}` : ""}
                   {item.phone ? ` · ${item.phone}` : ""}
-                  {item.inAt ? ` · In ${timeAt(item.inAt)}` : ""}
-                  {item.outAt ? ` · Out ${timeAt(item.outAt)}` : ""}
-                  {view === "directory" && !item.inside ? " · Not in" : ""}
+                  {item.inside && item.inAt ? ` · In ${timeAt(item.inAt)}` : ""}
+                  {item.inside ? " · Inside" : " · Not in"}
                 </Text>
               </View>
-              {isInside ? (
-                <TouchableOpacity style={styles.outBtn} onPress={() => beginGate(item, "out", visitId)} disabled={busy}>
+              {item.inside ? (
+                <TouchableOpacity style={styles.outBtn} onPress={() => beginGate(item, "out", item.attendanceId)} disabled={busy}>
                   <Text style={styles.outText}>Check out</Text>
                 </TouchableOpacity>
               ) : (
@@ -308,15 +241,12 @@ export default function StaffAttendanceScreen() {
       />
       <RegisterPerson
         visible={registerOpen}
-        category={staffTab ? "staff" : "helpers"}
-        roles={roles}
-        title={staffTab ? "Register staff" : "Register a helper"}
+        preschool={preschool}
         onClose={() => setRegisterOpen(false)}
         onDone={async (message) => {
           setRegisterOpen(false);
+          setQuery("");
           showNotice(message);
-          setStaffView("directory");
-          setHelperView("directory");
           await load();
         }}
       />
@@ -349,7 +279,15 @@ export default function StaffAttendanceScreen() {
   );
 }
 
-function RegisterPerson({ visible, category, roles, title, onClose, onDone }) {
+function RegisterPerson({ visible, preschool, onClose, onDone }) {
+  const kinds = preschool
+    ? [{ id: "staff", label: "Staff", roles: PRESCHOOL_ROLES }]
+    : [
+        { id: "helpers", label: "Helper", roles: HELPER_ROLES },
+        { id: "staff", label: "Staff", roles: SOCIETY_ROLES },
+      ];
+  const [kind, setKind] = useState(kinds[0].id);
+  const roles = kinds.find((item) => item.id === kind)?.roles || kinds[0].roles;
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState(roles[0]);
@@ -359,12 +297,13 @@ function RegisterPerson({ visible, category, roles, title, onClose, onDone }) {
 
   useEffect(() => {
     if (!visible) return;
+    setKind(kinds[0].id);
     setName("");
     setPhone("");
-    setRole(roles[0]);
+    setRole(kinds[0].roles[0]);
     setPhoto(null);
     setError("");
-  }, [visible, roles]);
+  }, [visible, preschool]);
 
   const submit = async () => {
     if (!name.trim()) {
@@ -381,7 +320,7 @@ function RegisterPerson({ visible, category, roles, title, onClose, onDone }) {
       const r = await api.registerWorker({
         name: name.trim(),
         phone,
-        category,
+        category: kind,
         subtype: role,
         photoUrl: photo?.base64 || undefined,
       });
@@ -401,10 +340,25 @@ function RegisterPerson({ visible, category, roles, title, onClose, onDone }) {
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
           <View style={styles.modalHead}>
-            <Text style={[styles.formTitle, { flex: 1 }]}>{title}</Text>
+            <Text style={[styles.formTitle, { flex: 1 }]}>Add a person</Text>
             <ModalClose light={false} onPress={onClose} />
           </View>
+          <ScrollView style={{ maxHeight: 480 }} keyboardShouldPersistTaps="handled">
           <Text style={styles.formHint}>This only adds them to the list. It does not check them in. Photo is optional.</Text>
+          <View style={styles.roleRow}>
+            {kinds.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.roleChip, kind === item.id && styles.roleChipActive]}
+                onPress={() => {
+                  setKind(item.id);
+                  setRole(item.roles[0]);
+                }}
+              >
+                <Text style={[styles.roleText, kind === item.id && { color: "#fff" }]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Name" />
           <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="10-digit phone" keyboardType="phone-pad" />
           <View style={styles.roleRow}>
@@ -424,30 +378,17 @@ function RegisterPerson({ visible, category, roles, title, onClose, onDone }) {
               <Text style={styles.quietText}>Cancel</Text>
             </TouchableOpacity>
           </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
   );
 }
 
-function Seg({ label, active, onPress }) {
-  return (
-    <TouchableOpacity style={[styles.seg, active && styles.segActive]} onPress={onPress}>
-      <Text style={[styles.segText, active && styles.segTextActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
-  segment: { flexDirection: "row", backgroundColor: "#fff", margin: 16, marginBottom: 0, borderRadius: 12, padding: 4 },
-  seg: { flex: 1, paddingVertical: 10, borderRadius: 9, alignItems: "center" },
-  segActive: { backgroundColor: "#0B6E8F" },
-  segText: { color: "#6B7B85", fontWeight: "700", fontSize: 13 },
-  segTextActive: { color: "#fff" },
   notice: { color: "#0B6E8F", fontWeight: "700", fontSize: 13, lineHeight: 18, marginHorizontal: 16, marginTop: 10 },
   error: { color: "#B42318", fontWeight: "700", fontSize: 13, marginTop: 8 },
-  subSeg: { flexDirection: "row", backgroundColor: "#F1F5F7", borderRadius: 10, padding: 3, marginBottom: 10 },
   form: { backgroundColor: "#fff", borderRadius: 14, padding: 16, marginBottom: 14 },
   formTitle: { fontSize: 16, fontWeight: "800", color: "#1B2B33" },
   formHint: { fontSize: 12.5, color: "#6B7B85", lineHeight: 18, marginTop: 4, marginBottom: 10 },
@@ -460,10 +401,6 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: "#fff", fontWeight: "800" },
   searchWrap: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: "#D6DEE3", backgroundColor: "#F8FAFB", borderRadius: 10, paddingHorizontal: 12 },
   search: { flex: 1, paddingVertical: 11, fontSize: 15 },
-  searchBtn: { backgroundColor: "#0B6E8F", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
-  searchBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
-  searchEmpty: { color: "#8895A0", fontSize: 12.5, marginTop: 10 },
-  resultRow: { flexDirection: "row", alignItems: "center", gap: 10, borderTopWidth: 1, borderTopColor: "#EDF2F4", paddingTop: 12, marginTop: 12 },
   inBtn: { backgroundColor: "#0B6E8F", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 9 },
   inBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   registerLink: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#EAF4F8", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginTop: 14 },
@@ -472,17 +409,14 @@ const styles = StyleSheet.create({
   card: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", borderRadius: 12, padding: 16, marginBottom: 10 },
   avatar: { width: 42, height: 42, borderRadius: 12, backgroundColor: "#E7F3F8", alignItems: "center", justifyContent: "center", overflow: "hidden" },
   avatarText: { color: "#0B6E8F", fontWeight: "800" },
-  pending: { marginTop: 14, borderTopWidth: 1, borderTopColor: "#E6EEF2", paddingTop: 12 },
   pendingActions: { flexDirection: "row", gap: 10, marginTop: 12 },
   quietBtn: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, alignItems: "center", justifyContent: "center" },
   quietText: { color: "#5C7380", fontWeight: "800" },
   overlay: { flex: 1, backgroundColor: "rgba(15, 30, 40, 0.45)", justifyContent: "center", padding: 20 },
-  modalCard: { backgroundColor: "#fff", borderRadius: 16, padding: 16 },
+  modalCard: { backgroundColor: "#fff", borderRadius: 16, padding: 16, maxHeight: "90%" },
   modalHead: { flexDirection: "row", alignItems: "center", gap: 8 },
   name: { fontSize: 16, fontWeight: "700", color: "#1B2B33" },
   meta: { color: "#6B7B85", marginTop: 2, fontSize: 13 },
   outBtn: { borderWidth: 1, borderColor: "#0B6E8F", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
   outText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
-  doneBadge: { backgroundColor: "#EEF2F4", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
-  doneText: { color: "#8895A0", fontWeight: "700", fontSize: 13 },
 });
