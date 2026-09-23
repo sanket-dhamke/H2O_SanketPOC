@@ -40,25 +40,26 @@ const STATUS_META = {
   cancelled: { label: "Cancelled", color: "#8794A0", bg: "#EEF2F4", icon: "ban-outline" },
 };
 
-export default function AmenitiesScreen() {
+export default function AmenitiesScreen({ route }) {
   const { user } = useAuth();
   const navigation = useNavigation();
   const isAdmin = user?.role === "admin";
   const L = labelsFor(user);
+  const initialTab = route?.params?.tab === "mine" ? "mine" : "book";
 
   const onBack = navigation?.canGoBack?.() ? () => navigation.goBack() : undefined;
 
   return isAdmin ? (
     <AdminAmenities onBack={onBack} L={L} />
   ) : (
-    <ResidentAmenities onBack={onBack} L={L} />
+    <ResidentAmenities onBack={onBack} L={L} initialTab={initialTab} />
   );
 }
 
 /* ============================ Resident view ============================== */
-function ResidentAmenities({ onBack, L }) {
+function ResidentAmenities({ onBack, L, initialTab = "book" }) {
   const navigation = useNavigation();
-  const [tab, setTab] = useState("book");
+  const [tab, setTab] = useState(initialTab);
   const [amenities, setAmenities] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -76,7 +77,10 @@ function ResidentAmenities({ onBack, L }) {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => {
+    setTab(initialTab);
+    load();
+  }, [load, initialTab]));
 
   const onRefresh = async () => {
     setRefreshing(true);

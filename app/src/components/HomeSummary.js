@@ -1,10 +1,38 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import DonutChart from "./DonutChart";
 import TrendBars from "./TrendBars";
 import { body, head } from "../lib/type";
 import { openScreen } from "../lib/nav";
+import { api } from "../lib/api";
+import { getCurrentUser } from "../lib/auth";
+import { withAnnouncementNotices } from "../lib/announcementNotices";
+import { withBookingNotices } from "../lib/bookingNotices";
+
+const DISMISSED_NOTICES_KEY = "gatezo.dismissedAnnouncements";
+
+async function readDismissedNotices() {
+  try {
+    const raw = await AsyncStorage.getItem(DISMISSED_NOTICES_KEY);
+    const ids = raw ? JSON.parse(raw) : [];
+    return Array.isArray(ids) ? ids.filter((id) => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+async function rememberDismissedNotice(id) {
+  const ids = await readDismissedNotices();
+  const next = [id, ...ids.filter((x) => x !== id)].slice(0, 200);
+  try {
+    await AsyncStorage.setItem(DISMISSED_NOTICES_KEY, JSON.stringify(next));
+  } catch {
+    // Opening the notice still works if this phone cannot store the dismissal.
+  }
+  return next;
+}
 
 // One palette for the whole dashboard so a colour always means the same thing:
 // green is settled, orange needs action, red is a problem.
@@ -105,6 +133,31 @@ function Card({ title, hint, icon, children, fill, onPress }) {
 export default function HomeSummary({ data, loading, navigation, labels }) {
   const { width } = useWindowDimensions();
   const stackCharts = width < 720;
+  const [noticeSummary, setNoticeSummary] = useState(null);
+  const dismissedRef = useRef([]);
+
+  useEffect(() => {
+    if (!data) {
+      setNoticeSummary(null);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      const [dismissed, announcements, bookings] = await Promise.all([
+        readDismissedNotices(),
+        api.announcements().then((res) => res.announcements || []).catch(() => []),
+        api.bookings().then((res) => res.bookings || []).catch(() => []),
+      ]);
+      if (cancelled) return;
+      dismissedRef.current = dismissed;
+      const me = getCurrentUser();
+      const withNotices = withAnnouncementNotices(data, announcements, { dismissed });
+      setNoticeSummary(withBookingNotices(withNotices, bookings, { residentId: me?.id }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [data]);
 
   if (loading && !data) {
     return (
@@ -119,7 +172,8 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
   // /home-summary, and a network blip should not punch a hole in Home.
   if (!data) return null;
 
-  const { visitors, finance, trend, pending = [], defaulters = [] } = data;
+  const shown = noticeSummary || data;
+  const { visitors, finance, trend, pending = [], defaulters = [] } = shown;
   const isAdmin = data.role === "admin";
 
   const byKey = Object.fromEntries((visitors?.segments || []).map((s) => [s.key, s]));
@@ -144,6 +198,17 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
   const trendMonths = (trend || []).slice(-4);
 
   const go = (item) => {
+    if (item.announcementId) {
+      dismissedRef.current = [...dismissedRef.current, item.announcementId];
+      rememberDismissedNotice(item.announcementId);
+      setNoticeSummary((current) => {
+        const base = current || data;
+        return {
+          ...base,
+          pending: (base.pending || []).filter((row) => row.announcementId !== item.announcementId),
+        };
+      });
+    }
     if (!item.route) return;
     openScreen(navigation, item.route, item.params || undefined);
   };

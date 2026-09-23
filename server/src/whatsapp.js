@@ -121,3 +121,80 @@ export async function sendFeeReminder({ toPhone, orgName, guardian, student, amo
     return { sent: false, dev: false, error: e.message, link };
   }
 }
+
+// Society notices are not fee reminders. Never reuse the fee_reminder template:
+// its parameters are guardian, school, student, amount and due date.
+const NOTICE_TEMPLATE = process.env.WHATSAPP_NOTICE_TEMPLATE || "";
+
+function clipParam(value, max) {
+  const clean = String(value || "").replace(/[\r\n\t]+/g, " ").replace(/ {2,}/g, " ").trim();
+  return (clean || "-").slice(0, max);
+}
+
+export function buildNoticeText({ name, societyName, title, body }) {
+  const who = name ? `Dear ${name},` : "Hello,";
+  const from = societyName ? ` from ${societyName}` : "";
+  return `${who}\n\nSociety notice${from}:\n${title || "Notice"}\n\n${body || ""}\n\nOpen GATEZO and look under Needs your attention.`;
+}
+
+// Builds the Cloud API body. A dedicated notice template is used when
+// WHATSAPP_NOTICE_TEMPLATE is set. Otherwise this is a plain text message,
+// which only delivers inside an open chat window. It is never fee_reminder.
+export function societyNoticePayload({ to, name, societyName, title, body, templateName = NOTICE_TEMPLATE }) {
+  if (templateName) {
+    return {
+      messaging_product: "whatsapp",
+      to,
+      type: "template",
+      template: {
+        name: templateName,
+        language: { code: LANG },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: clipParam(name || "Resident", 60) },
+              { type: "text", text: clipParam(societyName || "your society", 80) },
+              { type: "text", text: clipParam(title, 120) },
+              { type: "text", text: clipParam(body, 500) },
+            ],
+          },
+        ],
+      },
+    };
+  }
+  return {
+    messaging_product: "whatsapp",
+    to,
+    type: "text",
+    text: { preview_url: false, body: buildNoticeText({ name, societyName, title, body }).slice(0, 4000) },
+  };
+}
+
+export async function sendSocietyNotice({ toPhone, name, societyName, title, body }) {
+  const to = normalizePhone(toPhone);
+  const text = buildNoticeText({ name, societyName, title, body });
+  if (!to) return { sent: false, dev: !whatsappEnabled, error: "No phone on file" };
+  if (!whatsappEnabled) {
+    console.log(`[whatsapp:dev] notice to ${to}: ${text.replace(/\n/g, " | ")}`);
+    return { sent: false, dev: true };
+  }
+
+  try {
+    const resp = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${PHONE_NUMBER_ID}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify(societyNoticePayload({ to, name, societyName, title, body })),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      const error = data?.error?.message || `HTTP ${resp.status}`;
+      console.error("[whatsapp] notice failed:", error);
+      return { sent: false, dev: false, error };
+    }
+    return { sent: true, dev: false, id: data?.messages?.[0]?.id || null };
+  } catch (e) {
+    console.error("[whatsapp] notice error:", e.message);
+    return { sent: false, dev: false, error: e.message };
+  }
+}

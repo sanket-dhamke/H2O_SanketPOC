@@ -4,6 +4,7 @@ import { authRequired, roleRequired } from "../auth.js";
 import { serializeAnnouncement, serializePost } from "../serializers.js";
 import { parsePaging } from "../paging.js";
 import { aiEnabled, answerCommunityQuery } from "../ai.js";
+import { remindSocietyAboutAnnouncement } from "../announcementNotify.js";
 
 // Society community features: admin announcements + a resident posts board.
 // Everything is scoped to the caller's society.
@@ -38,7 +39,16 @@ communityRouter.post("/announcements", authRequired, roleRequired("admin"), asyn
       authorName: req.user.name || null,
     },
   });
-  res.status(201).json({ announcement: serializeAnnouncement(item) });
+  // The notice is already saved. Email and WhatsApp are best-effort and only
+  // go to people who have that channel. The app shows it under Needs your
+  // attention even when neither channel is configured.
+  let reminders = { audience: 0, emailed: 0, whatsapp: 0, pushed: 0 };
+  try {
+    reminders = await remindSocietyAboutAnnouncement(prisma, item);
+  } catch (err) {
+    console.error("[announcement] reminder failed:", err.message);
+  }
+  res.status(201).json({ announcement: serializeAnnouncement(item), reminders });
 });
 
 communityRouter.delete("/announcements/:id", authRequired, roleRequired("admin"), async (req, res) => {
