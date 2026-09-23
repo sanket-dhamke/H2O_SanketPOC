@@ -11,11 +11,11 @@ import {
   RefreshControl,
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import ScreenHeader from "../components/ScreenHeader";
+import AppTextInput from "../components/AppTextInput";
 
 const TYPES = [
   { id: "medical", label: "Medical", icon: "medkit", color: "#B42318" },
@@ -40,6 +40,10 @@ export default function SosScreen() {
   const [responder, setResponder] = useState({ isResponder: false, responderSkill: null });
   const [refreshing, setRefreshing] = useState(false);
   const [raising, setRaising] = useState(false);
+  const [pendingType, setPendingType] = useState(null);
+  const [note, setNote] = useState("");
+  const [notice, setNotice] = useState(null);
+  const [noticeError, setNoticeError] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -55,27 +59,33 @@ export default function SosScreen() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
-  const raise = (type) => {
-    const meta = TYPES.find((t) => t.id === type);
-    Alert.alert(`Raise ${meta.label} SOS?`, "This alerts the guards, admins and nearby responders immediately.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Send SOS",
-        style: "destructive",
-        onPress: async () => {
-          setRaising(true);
-          try {
-            await api.raiseSos({ type });
-            await load();
-            Alert.alert("SOS sent", "Guards and responders have been alerted. Stay where you are if safe.");
-          } catch (e) {
-            Alert.alert("Error", e.message);
-          } finally {
-            setRaising(false);
-          }
-        },
-      },
-    ]);
+  // Confirm on the page. The browser build's Alert.alert does nothing, so a
+  // tap on Medical / Fire / Security / Other used to look dead.
+  const sendPending = async () => {
+    if (!pendingType || raising) return;
+    const type = pendingType;
+    const detail = note.trim().slice(0, 240);
+    if (type === "other" && detail.length < 3) {
+      setNoticeError(true);
+      setNotice("Write what this is. Other does not tell anyone the emergency on its own.");
+      return;
+    }
+    setRaising(true);
+    setNotice(null);
+    setNoticeError(false);
+    try {
+      await api.raiseSos({ type, note: detail || undefined });
+      await load();
+      setPendingType(null);
+      setNote("");
+      setNoticeError(false);
+      setNotice("SOS sent. Guards and responders have been alerted. Stay where you are if it is safe.");
+    } catch (e) {
+      setNoticeError(true);
+      setNotice(e.message || "Could not send the alert.");
+    } finally {
+      setRaising(false);
+    }
   };
 
   const respond = async (id) => {
@@ -129,7 +139,8 @@ export default function SosScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.alertName}>{meta.label} · {al.raiserName || "Resident"}{al.raiserFlatNo ? ` (${al.raiserFlatNo})` : ""}</Text>
-                      <Text style={styles.alertTime}>{new Date(al.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{al.note ? ` · ${al.note}` : ""}</Text>
+                      <Text style={styles.alertTime}>{new Date(al.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</Text>
+                      {al.note ? <Text style={styles.alertNote}>{al.note}</Text> : null}
                     </View>
                   </View>
                   {(al.responses || []).length > 0 && (
@@ -160,16 +171,68 @@ export default function SosScreen() {
 
         {/* Panic buttons */}
         <Text style={styles.sectionTitle}>Raise an alert</Text>
-        <View style={styles.typeGrid}>
-          {TYPES.map((t) => (
-            <TouchableOpacity key={t.id} style={[styles.typeBtn, raising && { opacity: 0.5 }]} onPress={() => raise(t.id)} disabled={raising} activeOpacity={0.8}>
-              <LinearGradient colors={[t.color, t.color + "CC"]} style={styles.typeGrad}>
-                <Ionicons name={t.icon} size={26} color="#fff" />
-              </LinearGradient>
-              <Text style={styles.typeLabel}>{t.label}</Text>
-            </TouchableOpacity>
-          ))}
+        <View style={styles.typeCard}>
+          {TYPES.map((t, i) => {
+            const selected = pendingType === t.id;
+            return (
+              <TouchableOpacity
+                key={t.id}
+                style={[styles.typeRow, i > 0 && styles.typeRowBorder, selected && { backgroundColor: "#F8FBFC" }]}
+                onPress={() => {
+                  setNotice(null);
+                  setNoticeError(false);
+                  setNote("");
+                  setPendingType(selected ? null : t.id);
+                }}
+                disabled={raising}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.typeIcon, { backgroundColor: t.color }]}>
+                  <Ionicons name={t.icon} size={18} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.typeLabel}>{t.label}</Text>
+                  <Text style={styles.typeHint}>
+                    {t.id === "other" ? "Not medical, security, or fire. You write what it is." : "Tap to alert guards and neighbours"}
+                  </Text>
+                </View>
+                <Ionicons name={selected ? "chevron-up" : "chevron-forward"} size={18} color="#9AA7AF" />
+              </TouchableOpacity>
+            );
+          })}
         </View>
+        {pendingType ? (
+          <View style={styles.confirmBox}>
+            <Text style={styles.confirmText}>
+              {pendingType === "other"
+                ? "Send an Other alert now? Write what is happening. Guards, admins and nearby responders get your name, flat, and this note."
+                : `Send a ${TYPES.find((t) => t.id === pendingType)?.label} alert now? Guards, admins and nearby responders are notified immediately. A short detail helps them.`}
+            </Text>
+            <AppTextInput
+              style={styles.noteInput}
+              value={note}
+              onChangeText={setNote}
+              placeholder={pendingType === "other" ? "What is happening?" : "Add a detail (optional)"}
+              maxLength={240}
+            />
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={styles.confirmCancel}
+                onPress={() => {
+                  setPendingType(null);
+                  setNote("");
+                }}
+                disabled={raising}
+              >
+                <Text style={styles.confirmCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.confirmSend, raising && { opacity: 0.6 }]} onPress={sendPending} disabled={raising}>
+                <Text style={styles.confirmSendText}>{raising ? "Sending…" : "Send SOS"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
+        {notice ? <Text style={[styles.notice, noticeError && styles.noticeError]}>{notice}</Text> : null}
 
         {/* Ambulance / emergency numbers */}
         <Text style={styles.sectionTitle}>One-tap help</Text>
@@ -223,15 +286,37 @@ const styles = StyleSheet.create({
   alertIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   alertName: { fontWeight: "800", color: "#1B2B33", fontSize: 14 },
   alertTime: { color: "#8895A0", fontSize: 12, marginTop: 2 },
+  alertNote: { color: "#1B2B33", fontSize: 13.5, lineHeight: 19, marginTop: 8 },
   responders: { color: "#1E7A3D", fontSize: 12.5, fontWeight: "600", marginTop: 10 },
   alertActions: { flexDirection: "row", gap: 10, marginTop: 12, alignItems: "center" },
   smallBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 9, paddingHorizontal: 12, paddingVertical: 8 },
   smallBtnText: { color: "#fff", fontWeight: "700", fontSize: 12.5 },
   respondedTag: { color: "#1E7A3D", fontWeight: "700", fontSize: 12.5 },
-  typeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  typeBtn: { width: "47%", flexGrow: 1, backgroundColor: "#fff", borderRadius: 16, paddingVertical: 16, alignItems: "center", gap: 10 },
-  typeGrad: { width: 58, height: 58, borderRadius: 29, alignItems: "center", justifyContent: "center" },
-  typeLabel: { fontWeight: "800", color: "#1B2B33", fontSize: 14 },
+  typeCard: { backgroundColor: "#fff", borderRadius: 14, borderWidth: 1, borderColor: "#E2EAEE", overflow: "hidden" },
+  typeRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  typeRowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#E6EEF2" },
+  typeIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  typeLabel: { fontWeight: "800", color: "#1B2B33", fontSize: 15 },
+  typeHint: { color: "#6B7B85", fontSize: 12.5, marginTop: 2 },
+  confirmBox: { backgroundColor: "#fff", borderRadius: 14, borderWidth: 1, borderColor: "#F3C4C0", padding: 14, marginTop: 10 },
+  confirmText: { color: "#1B2B33", fontSize: 14, lineHeight: 20 },
+  noteInput: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "#E2EAEE",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    backgroundColor: "#F8FBFC",
+  },
+  confirmActions: { flexDirection: "row", gap: 10, marginTop: 12 },
+  confirmCancel: { flex: 1, backgroundColor: "#EEF2F4", borderRadius: 10, paddingVertical: 12, alignItems: "center" },
+  confirmCancelText: { color: "#5C7380", fontWeight: "700" },
+  confirmSend: { flex: 1, backgroundColor: "#B42318", borderRadius: 10, paddingVertical: 12, alignItems: "center" },
+  confirmSendText: { color: "#fff", fontWeight: "800" },
+  notice: { color: "#1E7A3D", fontWeight: "700", fontSize: 13.5, lineHeight: 19, marginTop: 10 },
+  noticeError: { color: "#B42318" },
   ambBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#B42318", borderRadius: 14, paddingVertical: 16 },
   ambText: { color: "#fff", fontWeight: "800", fontSize: 15 },
   helpRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#fff", borderRadius: 12, padding: 13, marginTop: 8 },

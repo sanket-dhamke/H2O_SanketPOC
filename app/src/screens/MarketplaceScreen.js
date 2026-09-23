@@ -132,69 +132,84 @@ export default function MarketplaceScreen() {
         onBack={() => navigation.goBack()}
         right={addBtn}
       />
-      <View style={styles.filters}>
-        <View style={styles.searchWrap}>
-          <Ionicons name="search" size={18} color="#8895A0" />
-          <TextInput
-            style={styles.search}
-            value={query}
-            onChangeText={setQuery}
-            placeholder="What are you looking for?"
-            underlineColorAndroid="transparent"
-          />
-        </View>
-
-        <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggle, !mine && styles.toggleActive]} onPress={() => setMine(false)}>
-            <Text style={[styles.toggleText, !mine && styles.toggleTextActive]}>Browse</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggle, mine && styles.toggleActive]} onPress={() => setMine(true)}>
-            <Text style={[styles.toggleText, mine && styles.toggleTextActive]}>My listings</Text>
-          </TouchableOpacity>
-        </View>
-
-        {!mine ? (
-          <>
-            <View style={styles.chipWrap}>
-              {LISTING_KINDS.map((k) => (
-                <FilterChip
-                  key={k.id || "all-types"}
-                  icon={k.icon}
-                  label={k.label}
-                  tone="purple"
-                  active={kind === k.id}
-                  onPress={() => setKind(k.id)}
-                />
-              ))}
-            </View>
-            <View style={styles.chipWrap}>
-              <FilterChip
-                icon="apps-outline"
-                label="All categories"
-                active={!category}
-                onPress={() => setCategory(null)}
-              />
-              {LISTING_CATEGORIES.map((c) => (
-                <FilterChip
-                  key={c.id}
-                  icon={c.icon}
-                  label={counts[c.id] ? `${c.label} (${counts[c.id]})` : c.label}
-                  active={category === c.id}
-                  onPress={() => setCategory(c.id)}
-                />
-              ))}
-            </View>
-          </>
-        ) : null}
-      </View>
-
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={{ gap: 12, paddingHorizontal: 16 }}
-        contentContainerStyle={{ paddingVertical: 12, gap: 12 }}
+        contentContainerStyle={{ paddingBottom: 12, gap: 12 }}
+        keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        // Search and filters scroll away with the grid: pinned above the list
+        // they ate most of a phone screen, so a new listing sat below the fold.
+        ListHeaderComponent={
+          <View style={styles.filters}>
+            <View style={styles.searchWrap}>
+              <Ionicons name="search" size={18} color="#8895A0" />
+              <TextInput
+                style={styles.search}
+                value={query}
+                onChangeText={setQuery}
+                placeholder="What are you looking for?"
+                underlineColorAndroid="transparent"
+              />
+            </View>
+
+            <View style={styles.toggleRow}>
+              <TouchableOpacity style={[styles.toggle, !mine && styles.toggleActive]} onPress={() => setMine(false)}>
+                <Text style={[styles.toggleText, !mine && styles.toggleTextActive]}>Browse</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.toggle, mine && styles.toggleActive]} onPress={() => setMine(true)}>
+                <Text style={[styles.toggleText, mine && styles.toggleTextActive]}>My listings</Text>
+              </TouchableOpacity>
+            </View>
+
+            {!mine ? (
+              <>
+                <ScrollView
+                  horizontal
+                  nestedScrollEnabled
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipRow}
+                >
+                  {LISTING_KINDS.map((k) => (
+                    <FilterChip
+                      key={k.id || "all-types"}
+                      icon={k.icon}
+                      label={k.label}
+                      tone="purple"
+                      active={kind === k.id}
+                      onPress={() => setKind(k.id)}
+                    />
+                  ))}
+                </ScrollView>
+                <ScrollView
+                  horizontal
+                  nestedScrollEnabled
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipRow}
+                >
+                  <FilterChip
+                    icon="apps-outline"
+                    label="All categories"
+                    active={!category}
+                    onPress={() => setCategory(null)}
+                  />
+                  {LISTING_CATEGORIES.map((c) => (
+                    <FilterChip
+                      key={c.id}
+                      icon={c.icon}
+                      label={counts[c.id] ? `${c.label} (${counts[c.id]})` : c.label}
+                      active={category === c.id}
+                      onPress={() => setCategory(c.id)}
+                    />
+                  ))}
+                </ScrollView>
+              </>
+            ) : null}
+          </View>
+        }
+        ListHeaderComponentStyle={{ width: "100%" }}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="pricetags-outline" size={30} color="#B7C2C9" />
@@ -466,7 +481,7 @@ const Label = ({ children }) => <Text style={styles.label}>{children}</Text>;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
   addBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
-  filters: { backgroundColor: "#F1F5F7", paddingTop: 12, paddingBottom: 4, zIndex: 1 },
+  filters: { backgroundColor: "#F1F5F7", paddingTop: 12, paddingBottom: 10 },
   searchWrap: {
     flexDirection: "row",
     alignItems: "center",
@@ -506,6 +521,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingTop: 10,
+    gap: 8,
+  },
+  chipRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 2,
     gap: 8,
   },
   filterChip: {

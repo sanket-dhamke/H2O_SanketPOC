@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
   Modal,
+  useWindowDimensions,
 } from "react-native";
 import TextInput from "../components/AppTextInput";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -17,9 +18,11 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { isPreschool } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 import OffersRail from "../components/OffersRail";
 import { translateAndSpeak, stopSpeaking, speechSupported } from "../lib/speak";
+import { body, head } from "../lib/type";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 const timeAgo = (iso) => {
@@ -33,18 +36,23 @@ const timeAgo = (iso) => {
   return `${Math.floor(h / 24)}d ago`;
 };
 
+// Board categories are neighbour talk only. Selling lives in Community market
+// (listings with photos, prices and group-buy), so "For sale" is not offered
+// here — older sale posts still render through SALE_META.
 const CATEGORIES = [
   { id: "general", label: "General", icon: "chatbubbles-outline" },
-  { id: "sale", label: "For sale", icon: "pricetag-outline" },
   { id: "query", label: "Question", icon: "help-circle-outline" },
   { id: "lost_found", label: "Lost & found", icon: "search-outline" },
   { id: "recommend", label: "Recommend", icon: "thumbs-up-outline" },
 ];
-const catMeta = (id) => CATEGORIES.find((c) => c.id === id) || CATEGORIES[0];
+const SALE_META = { id: "sale", label: "For sale", icon: "pricetag-outline" };
+const catMeta = (id) => (id === "sale" ? SALE_META : CATEGORIES.find((c) => c.id === id) || CATEGORIES[0]);
 
 export default function CommunityScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
+  const { width } = useWindowDimensions();
+  const compact = width < 420;
   const [tab, setTab] = useState("announcements");
   const [announcements, setAnnouncements] = useState([]);
   const [posts, setPosts] = useState([]);
@@ -53,8 +61,25 @@ export default function CommunityScreen() {
   const [postModal, setPostModal] = useState(false);
 
   const preschool = isPreschool(user);
-  const isAdmin = user?.role === "admin";
-  const canPost = user?.role === "resident" || user?.role === "admin";
+  const role = user?.role;
+  const isAdmin = role === "admin";
+  const canPost = role === "resident" || role === "admin";
+
+  // Guards read notices and call people; booking a clubhouse or buying a sofa
+  // is not their job, so those links are not shown to them at all.
+  const quickLinks = useMemo(() => {
+    const everyone = ["resident", "admin", "guard"];
+    return [
+      { id: "homeServices", label: "Home services", subtitle: "Cleaning, AC, painting, movers", icon: "construct", color: "#0B6E8F", screen: "HomeServices", roles: ["resident", "admin"], societyOnly: true },
+      { id: "market", label: "Buy & Sell", subtitle: "Listings, rentals & group-buy", icon: "pricetags", color: "#C99000", ink: "#8A6200", screen: "Marketplace", roles: ["resident", "admin"] },
+      { id: "helpdesk", label: "Helpdesk", subtitle: "Raise a request or call the office", icon: "help-buoy", color: "#1E7A3D", screen: "Helpdesk", roles: everyone },
+      { id: "directory", label: "Directory", subtitle: preschool ? "Parents, staff & office" : "Neighbours, staff & committee", icon: "people", color: "#2B6CB0", ink: "#1E4E89", screen: "Directory", roles: everyone },
+      { id: "services", label: "Helplines", subtitle: "Security, office & emergency", icon: "call", color: "#B42318", screen: "Services", roles: everyone },
+      { id: "amenities", label: preschool ? "Book hall" : "Book clubhouse", subtitle: preschool ? "Hall & event slots" : "Hall, party slot & amenities", icon: "calendar", color: "#C2571A", ink: "#9A3F10", screen: "Amenities", roles: ["resident", "admin"] },
+      { id: "assistant", label: "Assistant", subtitle: preschool ? "Ask about your school" : "Ask about your society", icon: "sparkles", color: "#6D3BD1", screen: "Assistant", roles: everyone },
+      { id: "help", label: "Help & how-to", subtitle: "How each feature works", icon: "book", color: "#BE185D", screen: "Help", roles: everyone },
+    ].filter((l) => l.roles.includes(role) && !(l.societyOnly && preschool));
+  }, [role, preschool]);
 
   const load = useCallback(async () => {
     try {
@@ -126,7 +151,12 @@ export default function CommunityScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader icon="megaphone" title="Community" subtitle={`Announcements & ${preschool ? "parents'" : "neighbours'"} board`} right={addBtn} />
+      <ScreenHeader
+        icon="megaphone"
+        title="Community"
+        subtitle={preschool ? "Official school notices & parents' board" : "Official society notices & neighbours' board"}
+        right={addBtn}
+      />
 
       <View style={styles.segment}>
         <Seg label="Announcements" active={tab === "announcements"} onPress={() => setTab("announcements")} />
@@ -134,49 +164,29 @@ export default function CommunityScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={{ padding: 16 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <View style={styles.shortcutRow}>
-          {!preschool ? (
-            <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("HomeServices")}>
-              <Ionicons name="construct" size={20} color="#0B6E8F" />
-              <Text style={styles.shortcutText}>Home Services</Text>
-            </TouchableOpacity>
-          ) : null}
-          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Marketplace")}>
-            <Ionicons name="pricetags" size={20} color="#C99000" />
-            <Text style={styles.shortcutText}>Buy & Sell</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Helpdesk")}>
-            <Ionicons name="help-buoy" size={20} color="#1E7A3D" />
-            <Text style={styles.shortcutText}>Helpdesk</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Directory")}>
-            <Ionicons name="people" size={20} color="#0B6E8F" />
-            <Text style={styles.shortcutText}>Directory</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Services")}>
-            <Ionicons name="construct" size={20} color="#7A5AF8" />
-            <Text style={styles.shortcutText}>Services & help</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Amenities")}>
-            <Ionicons name="calendar" size={20} color="#0B6E8F" />
-            <Text style={styles.shortcutText}>{preschool ? "Book hall" : "Book clubhouse"}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Assistant")}>
-            <Ionicons name="sparkles" size={20} color="#6D3BD1" />
-            <Text style={styles.shortcutText}>Assistant</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("Help")}>
-            <Ionicons name="book" size={20} color="#0B6E8F" />
-            <Text style={styles.shortcutText}>Help & how-to</Text>
-          </TouchableOpacity>
-        </View>
-        <OffersRail slot="community" navigation={navigation} compact />
         {tab === "announcements" ? (
           <>
-            {announcements.length === 0 && <Empty text="No announcements yet." />}
+            <View style={styles.scopeNote}>
+              <Ionicons name="megaphone-outline" size={16} color="#0B6E8F" />
+              <Text style={styles.scopeNoteText}>
+                {preschool
+                  ? "Official school notices from the office only. Use the Board for parent chat, sales and questions."
+                  : "Official society notices from the committee only, such as water, AGM, security and lifts. Use the Board for sales, questions and neighbour chat."}
+              </Text>
+            </View>
+            {announcements.length === 0 && (
+              <Empty
+                text={
+                  preschool
+                    ? "No school announcements yet."
+                    : "No society announcements yet."
+                }
+              />
+            )}
             {announcements.map((a) => (
               <View key={a.id} style={styles.card}>
                 <View style={styles.cardHead}>
@@ -202,7 +212,22 @@ export default function CommunityScreen() {
           </>
         ) : (
           <>
-            {posts.length === 0 && <Empty text="No posts yet. Be the first to share something!" />}
+            {posts.length === 0 ? (
+              <BoardEmpty
+                preschool={preschool}
+                canPost={canPost}
+                onWrite={() => setPostModal(true)}
+                onMarket={() => navigation.navigate("Marketplace")}
+              />
+            ) : canPost ? (
+              <TouchableOpacity style={styles.scopeNote} onPress={() => navigation.navigate("Marketplace")}>
+                <Ionicons name="pricetags-outline" size={16} color="#0B6E8F" />
+                <Text style={styles.scopeNoteText}>
+                  Questions, lost & found and recommendations. Selling or renting something? Post it in Buy & Sell.
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color="#0B6E8F" />
+              </TouchableOpacity>
+            ) : null}
             {posts.map((p) => {
               const meta = catMeta(p.category);
               const canDelete = isAdmin || p.authorId === user?.id;
@@ -236,10 +261,53 @@ export default function CommunityScreen() {
             })}
           </>
         )}
+        <View style={styles.toolsCard}>
+          <View style={styles.toolsHead}>
+            <View style={styles.toolsMark}>
+              <Ionicons name="grid-outline" size={20} color="#0B6E8F" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.toolsTitle}>Services & help</Text>
+              <Text style={styles.toolsHint}>
+                {preschool ? "School tools, helpdesk & directory" : "Home services, helpdesk & directory"}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.optionGrid}>
+            {quickLinks.map((l) => (
+              <TouchableOpacity
+                key={l.id}
+                style={[
+                  styles.optionCard,
+                  compact && styles.optionCardFull,
+                  { borderColor: `${l.color}33` },
+                ]}
+                onPress={() => navigation.navigate(l.screen)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.optionIcon, { backgroundColor: `${l.color}1F` }]}>
+                  <Ionicons name={l.icon} size={20} color={l.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.optionLabel, { color: l.ink || l.color }]}>{l.label}</Text>
+                  <Text style={styles.optionSub} numberOfLines={2}>
+                    {l.subtitle}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+        {canPost ? <OffersRail slot="community" navigation={navigation} compact /> : null}
       </ScrollView>
 
       <AnnouncementModal visible={annModal} onClose={() => setAnnModal(false)} onDone={load} />
-      <PostModal visible={postModal} onClose={() => setPostModal(false)} onDone={load} />
+      <PostModal
+        visible={postModal}
+        onClose={() => setPostModal(false)}
+        onDone={load}
+        onSell={() => navigation.navigate("Marketplace")}
+      />
     </View>
   );
 }
@@ -254,6 +322,33 @@ function Seg({ label, active, onPress }) {
 
 function Empty({ text }) {
   return <Text style={styles.empty}>{text}</Text>;
+}
+
+function BoardEmpty({ preschool, canPost, onWrite, onMarket }) {
+  return (
+    <View style={styles.emptyCard}>
+      <View style={styles.emptyIcon}>
+        <Ionicons name="chatbubbles-outline" size={22} color="#0B6E8F" />
+      </View>
+      <Text style={styles.emptyTitle}>Nothing on the board yet</Text>
+      <Text style={styles.emptyBody}>
+        {preschool
+          ? "Parents post questions, lost & found and recommendations here. Nobody has posted yet. Official notices stay on Announcements."
+          : "Neighbours post questions, lost & found and recommendations here. Nobody has posted yet. Official notices stay on Announcements."}
+        {canPost ? " Sales go in Buy & Sell." : ""}
+      </Text>
+      {canPost ? (
+        <View style={styles.emptyActions}>
+          <TouchableOpacity style={styles.emptyBtn} onPress={onWrite}>
+            <Text style={styles.emptyBtnText}>Write the first post</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.emptyBtnGhost} onPress={onMarket}>
+            <Text style={styles.emptyBtnGhostText}>Open Buy & Sell</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 function AnnouncementModal({ visible, onClose, onDone }) {
@@ -283,7 +378,10 @@ function AnnouncementModal({ visible, onClose, onDone }) {
   };
 
   return (
-    <FormModal visible={visible} onClose={onClose} title="New announcement" icon="megaphone-outline" busy={busy} onSubmit={submit}>
+    <FormModal visible={visible} onClose={onClose} title="Society announcement" icon="megaphone-outline" busy={busy} onSubmit={submit}>
+      <Text style={styles.formHint}>
+        Official notice for every resident (water, AGM, security, lifts). Do not use this for buy/sell or personal messages — those go on the Board.
+      </Text>
       <Label>Title</Label>
       <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Water supply maintenance" />
       <Label>Message</Label>
@@ -296,11 +394,10 @@ function AnnouncementModal({ visible, onClose, onDone }) {
   );
 }
 
-function PostModal({ visible, onClose, onDone }) {
+function PostModal({ visible, onClose, onDone, onSell }) {
   const [category, setCategory] = useState("general");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [price, setPrice] = useState("");
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
@@ -310,16 +407,10 @@ function PostModal({ visible, onClose, onDone }) {
     }
     setBusy(true);
     try {
-      await api.createPost({
-        category,
-        title: title.trim(),
-        body: body.trim(),
-        price: category === "sale" && price ? Number(price) : undefined,
-      });
+      await api.createPost({ category, title: title.trim(), body: body.trim() });
       setCategory("general");
       setTitle("");
       setBody("");
-      setPrice("");
       onClose();
       onDone();
     } catch (e) {
@@ -330,7 +421,21 @@ function PostModal({ visible, onClose, onDone }) {
   };
 
   return (
-    <FormModal visible={visible} onClose={onClose} title="New post" icon="create-outline" busy={busy} onSubmit={submit}>
+    <FormModal visible={visible} onClose={onClose} title="New board post" icon="create-outline" busy={busy} onSubmit={submit}>
+      <Text style={styles.formHint}>
+        For neighbour talk — questions, lost & found, recommendations.
+      </Text>
+      <TouchableOpacity
+        style={styles.sellLink}
+        onPress={() => {
+          onClose();
+          onSell?.();
+        }}
+      >
+        <Ionicons name="pricetags-outline" size={16} color="#0B6E8F" />
+        <Text style={styles.sellLinkText}>Selling something? List it in Community market</Text>
+        <Ionicons name="chevron-forward" size={16} color="#0B6E8F" />
+      </TouchableOpacity>
       <Label>Category</Label>
       <View style={styles.catPick}>
         {CATEGORIES.map((c) => (
@@ -345,47 +450,31 @@ function PostModal({ visible, onClose, onDone }) {
         ))}
       </View>
       <Label>Title</Label>
-      <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Sofa set for sale" />
-      {category === "sale" && (
-        <>
-          <Label>Price (Rs.)</Label>
-          <TextInput style={styles.input} value={price} onChangeText={setPrice} placeholder="12000" keyboardType="numeric" />
-        </>
-      )}
+      <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Lost keys near D wing" />
       <Label>Details</Label>
       <TextInput style={[styles.input, styles.multiline]} value={body} onChangeText={setBody} placeholder="Describe your post…" multiline />
     </FormModal>
   );
 }
 
-// "Listen" bar: reads a notice aloud in English / Hindi / Marathi. The server
-// translates on the fly; the phone speaks it (expo-speech). Hidden if the build
-// doesn't support speech yet.
+// Reads the notice aloud in English. The phone does not speak Hindi or Marathi.
 function ListenBar({ text }) {
-  const [busy, setBusy] = useState(null);
+  const [busy, setBusy] = useState(false);
   if (!speechSupported()) return null;
-  const langs = [
-    { id: "en", label: "English" },
-    { id: "hi", label: "हिंदी" },
-    { id: "mr", label: "मराठी" },
-  ];
-  const play = async (id) => {
-    setBusy(id);
+  const play = async () => {
+    setBusy(true);
     try {
-      await translateAndSpeak(text, id);
+      await translateAndSpeak(text, "en");
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   };
   return (
     <View style={styles.listenBar}>
-      <Ionicons name="volume-medium-outline" size={15} color="#0B6E8F" />
-      <Text style={styles.listenLabel}>Listen</Text>
-      {langs.map((l) => (
-        <TouchableOpacity key={l.id} style={styles.listenChip} onPress={() => play(l.id)}>
-          <Text style={styles.listenChipText}>{busy === l.id ? "…" : l.label}</Text>
-        </TouchableOpacity>
-      ))}
+      <TouchableOpacity style={[styles.listenChip, { flexDirection: "row", alignItems: "center", gap: 4 }]} onPress={play} disabled={busy}>
+        <Ionicons name="volume-medium-outline" size={15} color="#0B6E8F" />
+        <Text style={styles.listenChipText}>{busy ? "…" : "Listen"}</Text>
+      </TouchableOpacity>
       <TouchableOpacity style={styles.listenStop} onPress={stopSpeaking} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
         <Ionicons name="stop-circle-outline" size={18} color="#B44" />
       </TouchableOpacity>
@@ -403,6 +492,7 @@ function FormModal({ visible, onClose, title, icon, children, busy, onSubmit }) 
               <Ionicons name={icon || "create-outline"} size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>{title}</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 480 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             {children}
@@ -432,9 +522,116 @@ const styles = StyleSheet.create({
   segText: { color: "#6B7B85", fontWeight: "700", fontSize: 13 },
   segTextActive: { color: "#fff" },
   empty: { color: "#6B7B85", textAlign: "center", marginTop: 30 },
-  shortcutRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 14 },
-  shortcut: { minWidth: "47%", flexGrow: 1, backgroundColor: "#fff", borderRadius: 12, paddingVertical: 14, alignItems: "center", gap: 6 },
-  shortcutText: { color: "#334", fontWeight: "700", fontSize: 12 },
+  scopeNote: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: "#EAF4F8",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  scopeNoteText: { flex: 1, color: "#0B3A49", fontSize: 13, lineHeight: 18, fontWeight: "600" },
+  formHint: { color: "#5C7380", fontSize: 13, lineHeight: 18, marginBottom: 4 },
+  sellLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#EAF4F8",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 10,
+  },
+  sellLinkText: { flex: 1, color: "#0B3A49", fontSize: 12.5, fontWeight: "700" },
+  toolsCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: "#E6EEF2",
+    overflow: "hidden",
+  },
+  toolsHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  toolsMark: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "#0B6E8F18",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toolsTitle: { fontSize: 15.5, ...head(800), color: "#1B2B33" },
+  toolsHint: { fontSize: 12, color: "#6B7B85", marginTop: 2, ...body(400) },
+  optionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingBottom: 12,
+    paddingTop: 2,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F7",
+  },
+  optionCard: {
+    width: "48%",
+    flexGrow: 1,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: "#F7FAFB",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#E6EEF2",
+  },
+  optionCardFull: { width: "100%", flexGrow: 0 },
+  optionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  optionLabel: { fontSize: 13, lineHeight: 18, ...head(700), color: "#1B2B33" },
+  optionSub: { fontSize: 11, color: "#6B7B85", marginTop: 2, lineHeight: 14, ...body(400) },
+  emptyCard: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 14,
+    alignItems: "flex-start",
+  },
+  emptyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#EAF4F8",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  emptyTitle: { color: "#1B2B33", fontSize: 16, fontWeight: "800" },
+  emptyBody: { color: "#48606B", fontSize: 13.5, lineHeight: 20, marginTop: 6 },
+  emptyActions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
+  emptyBtn: { backgroundColor: "#0B6E8F", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
+  emptyBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  emptyBtnGhost: {
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#CFE0E6",
+    backgroundColor: "#fff",
+  },
+  emptyBtnGhostText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
   card: { backgroundColor: "#fff", borderRadius: 14, padding: 16, marginBottom: 12 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
   pin: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#FBEadd", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },

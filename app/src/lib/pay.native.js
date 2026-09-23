@@ -1,15 +1,13 @@
 import RazorpayCheckout from "react-native-razorpay";
 import { api } from "./api";
 import { checkoutOptions } from "./razorpayCheckout";
-import { pickPayMethod } from "./paySheet";
+import { loadPaymentMethods } from "./payMethods";
 
+// Straight to Razorpay: one sheet, listing the instruments this society's
+// account can actually charge.
 async function openCheckout(order) {
-  const choice = await pickPayMethod({
-    amountPaise: order.amount,
-    description: order.description,
-  });
-  if (!choice) return { cancelled: true };
-  const options = checkoutOptions(order, choice);
+  const methods = await loadPaymentMethods();
+  const options = checkoutOptions(order, methods);
   try {
     const result = await RazorpayCheckout.open(options);
     return { result };

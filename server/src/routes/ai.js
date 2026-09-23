@@ -7,6 +7,7 @@ import {
   assistantAnswer,
   assistantAct,
   transcribeAudio,
+  transcribeAudioLocalized,
   parseVisitorFromText,
   translateText,
 } from "../ai.js";
@@ -71,6 +72,10 @@ aiRouter.post("/act", authRequired, async (req, res) => {
 // General-purpose speech-to-text for the AI home tab's mic button. Unlike
 // /voice-visitor this is open to every role and returns plain text, which the
 // caller then sends to /act.
+//
+// Residents ask in Hindi and Marathi as often as in English, so the reply keeps
+// the spoken words (`text`) and its language (`lang`) for display, plus an
+// English rendering (`textEn`) because intent matching is English-only.
 aiRouter.post("/transcribe", authRequired, async (req, res) => {
   if (!ensureEnabled(res)) return;
   const { audioBase64 } = req.body || {};
@@ -83,11 +88,13 @@ aiRouter.post("/transcribe", authRequired, async (req, res) => {
   }
   try {
     const raw = audioBase64.replace(/^data:.*;base64,/, "");
-    const text = await transcribeAudio(Buffer.from(raw, "base64"));
-    if (!text.trim()) {
+    const { text, lang } = await transcribeAudioLocalized(Buffer.from(raw, "base64"));
+    const spoken = String(text || "").trim();
+    if (!spoken) {
       return res.status(400).json({ message: "No speech detected. Please try again." });
     }
-    res.json({ text: text.trim() });
+    const textEn = lang === "en" ? spoken : await translateText(spoken, "en");
+    res.json({ text: spoken, lang, textEn });
   } catch (err) {
     console.error("AI transcribe failed:", err.message);
     res.status(502).json({ message: `Could not process the audio: ${err.message}` });

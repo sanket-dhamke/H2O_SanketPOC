@@ -1,6 +1,6 @@
 import { api } from "./api";
 import { checkoutOptions } from "./razorpayCheckout";
-import { pickPayMethod } from "./payMethodPicker.web";
+import { loadPaymentMethods } from "./payMethods";
 
 const CHECKOUT_SRC = "https://checkout.razorpay.com/v1/checkout.js";
 
@@ -19,16 +19,11 @@ function loadCheckoutScript() {
   return scriptPromise;
 }
 
-function clearPayPicker() {
-  document.querySelectorAll("[data-gatemate-pay-picker]").forEach((n) => n.remove());
-}
-
-async function openRazorpay(order, choice) {
-  clearPayPicker();
+async function openRazorpay(order, methods) {
   await loadCheckoutScript();
   return new Promise((resolve, reject) => {
     const rzp = new window.Razorpay({
-      ...checkoutOptions(order, choice),
+      ...checkoutOptions(order, methods),
       handler: (response) => resolve(response),
       modal: { ondismiss: () => resolve(null) },
     });
@@ -39,13 +34,11 @@ async function openRazorpay(order, choice) {
   });
 }
 
+// Straight to Razorpay: one sheet, listing the instruments this society's
+// account can actually charge.
 async function chooseAndCheckout(order) {
-  const choice = await pickPayMethod({
-    amountPaise: order.amount,
-    description: order.description,
-  });
-  if (!choice) return { cancelled: true };
-  const result = await openRazorpay(order, choice);
+  const methods = await loadPaymentMethods();
+  const result = await openRazorpay(order, methods);
   if (!result) return { cancelled: true };
   return { result };
 }

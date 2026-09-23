@@ -16,11 +16,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { payBill } from "../lib/pay";
+import { loadPaymentMethods, payMethodsHint } from "../lib/payMethods";
 import { useAuth } from "../lib/auth";
 import { labelsFor } from "../lib/org";
 import { buildReceipt } from "../lib/receiptHtml";
 import { downloadReceipt } from "../lib/receipt";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
+import MobileNumberEditor from "../components/MobileNumberEditor";
 import MonthField from "../components/MonthField";
 import OffersRail from "../components/OffersRail";
 
@@ -31,10 +34,14 @@ function formatDateTime(iso) {
 }
 
 export default function MaintenanceScreen() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const L = labelsFor(user);
   const navigation = useNavigation();
-  const canGoBack = navigation.canGoBack();
+  // canGoBack() is also true when the parent tab has history (Home → Maintenance).
+  // That is not a page to go back to. Back belongs only on a screen pushed
+  // onto this stack, such as Collections opened from Finance.
+  const stackIndex = navigation.getState?.()?.index ?? 0;
+  const canGoBack = stackIndex > 0;
   const [bills, setBills] = useState([]);
   const [totalDue, setTotalDue] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -43,6 +50,7 @@ export default function MaintenanceScreen() {
   const [downloading, setDownloading] = useState(false);
   const [cashBill, setCashBill] = useState(null);
   const [monthFilter, setMonthFilter] = useState("");
+  const [payMethods, setPayMethods] = useState(null);
   const isAdmin = user?.role === "admin";
 
   // When a month is chosen, show only that period's bills (period is "YYYY-MM").
@@ -87,6 +95,7 @@ export default function MaintenanceScreen() {
     } catch {
       // Payee info is optional; ignore if it fails.
     }
+    setPayMethods(await loadPaymentMethods());
     return loadedBills;
   }, []);
 
@@ -162,8 +171,10 @@ export default function MaintenanceScreen() {
         onBack={canGoBack ? () => navigation.goBack() : undefined}
         right={
           <View style={styles.headerStat}>
-            <Text style={styles.headerStatLabel}>Outstanding</Text>
-            <Text style={styles.headerStatValue}>₹{totalDue}</Text>
+            <Text style={styles.headerStatLabel} numberOfLines={1}>Outstanding</Text>
+            <Text style={styles.headerStatValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              ₹{totalDue}
+            </Text>
           </View>
         }
       />
@@ -176,9 +187,7 @@ export default function MaintenanceScreen() {
             {payee.last4 ? ` · A/c ••${payee.last4}` : ""}
           </Text>
         ) : null}
-        <Text style={styles.upiHint}>
-          Pay opens with UPI first — Google Pay, PhonePe, Paytm or a UPI ID. Card and net banking stay available.
-        </Text>
+        <Text style={styles.upiHint}>{payMethodsHint(payMethods)}</Text>
         {payee?.upiId ? <Text style={styles.upiId}>Society UPI · {payee.upiId}</Text> : null}
       </View>
       <FlatList
@@ -188,6 +197,11 @@ export default function MaintenanceScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={
           <View>
+            {!isAdmin ? (
+              <View style={styles.mobileCard}>
+                <MobileNumberEditor user={user} updateUser={updateUser} />
+              </View>
+            ) : null}
             {!isAdmin ? (
               <TouchableOpacity style={styles.rentLink} onPress={() => navigation.navigate("RentAgreements")}>
                 <Ionicons name="document-text-outline" size={18} color="#0B6E8F" />
@@ -310,6 +324,7 @@ export default function MaintenanceScreen() {
                 <View style={styles.paidBadge}>
                   <Text style={styles.paidBadgeText}>PAID</Text>
                 </View>
+                <ModalClose onPress={() => setReceipt(null)} />
               </View>
               <Text style={styles.receiptAmount}>₹{receipt?.amount}</Text>
             </LinearGradient>
@@ -399,6 +414,7 @@ function CashModal({ bill, onClose, onSubmit, labels }) {
                 <Ionicons name="cash" size={18} color="#fff" />
               </View>
               <Text style={styles.receiptTitle}>Record cash payment</Text>
+              <ModalClose onPress={onClose} />
             </View>
             <Text style={styles.cashSub}>
               {bill ? `${labels?.unit || "Flat"} ${bill.flatNo} · ${bill.period} · ₹${bill.amount}` : ""}
@@ -435,6 +451,7 @@ function ReceiptRow({ label, value }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
+  mobileCard: { backgroundColor: "#fff", borderRadius: 12, paddingHorizontal: 14, marginBottom: 12, borderWidth: 1, borderColor: "#E6EEF2" },
   rentLink: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#EAF4F8", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, marginBottom: 14 },
   rentLinkText: { flex: 1, color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
   filterRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
@@ -452,7 +469,7 @@ const styles = StyleSheet.create({
   breakdown: { color: "#8895A0", fontSize: 11, marginTop: 3 },
   emptyBox: { alignItems: "center", paddingVertical: 48, gap: 10 },
   emptyText: { color: "#8895A0", fontSize: 14, fontWeight: "600" },
-  headerStat: { alignItems: "flex-end" },
+  headerStat: { alignItems: "flex-end", maxWidth: 120 },
   headerStatLabel: { color: "#CDE9F2", fontSize: 11, fontWeight: "600" },
   headerStatValue: { color: "#fff", fontSize: 24, fontWeight: "800", marginTop: 2 },
   payee: { backgroundColor: "#EAF6FA", paddingHorizontal: 16, paddingVertical: 10 },

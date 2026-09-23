@@ -5,17 +5,22 @@ import { brand } from "./brand";
 
 const API_PORT = 4000;
 
-// On web, always talk to the backend on the SAME hostname the page is served
-// from (e.g. page at localhost:8090 -> API at localhost:4000). This avoids the
-// browser/OS-firewall blocking calls to a LAN IP like 192.168.x.x.
+function remoteApiUrl(value) {
+  const clean = String(value || "").trim().replace(/\/+$/, "");
+  if (!clean || /localhost|127\.0\.0\.1/.test(clean)) return null;
+  return clean;
+}
+
+// On web, a hosted API (set for preview builds) is called directly. Otherwise
+// the page talks to port 4000 on the same host as the page. Reading only
+// extra.apiUrl missed EXPO_PUBLIC_API_URL, so a public preview page tried
+// its own hostname on port 4000 and login never reached GATEZO.
 function webApiUrl() {
   if (Platform.OS === "web" && typeof window !== "undefined" && window.location?.hostname) {
-    // If a remote API is configured (hosted backend), the browser should use it
-    // directly. Only fall back to same-host:4000 for pure local dev.
-    const configured = Constants.expoConfig?.extra?.apiUrl;
-    if (configured && !/localhost|127\.0\.0\.1/.test(configured)) {
-      return configured.replace(/\/+$/, "");
-    }
+    const configured =
+      remoteApiUrl(process.env.EXPO_PUBLIC_API_URL) ||
+      remoteApiUrl(Constants.expoConfig?.extra?.apiUrl);
+    if (configured) return configured;
     return `${window.location.protocol}//${window.location.hostname}:${API_PORT}`;
   }
   return null;
@@ -130,14 +135,18 @@ export const api = {
     request(`/api/maintenance/${id}/pay`, { method: "POST", body: amount != null ? { amount } : {} }),
   createOrder: (id, amount) =>
     request(`/api/maintenance/${id}/create-order`, { method: "POST", body: amount != null ? { amount } : {} }),
+  // What checkout can actually charge (UPI / card / net banking / wallet).
+  paymentMethods: () => request("/api/payments/methods"),
   verifyPayment: (id, payload) =>
     request(`/api/maintenance/${id}/verify`, { method: "POST", body: payload }),
 
-  visitors: () => request("/api/visitors"),
+  visitors: (params) => request(`/api/visitors${qs(params)}`),
   addVisitor: (payload) =>
     request("/api/visitors", { method: "POST", body: payload }),
   decideVisitor: (id, status) =>
     request(`/api/visitors/${id}/decision`, { method: "POST", body: { status } }),
+  guardVisitorAction: (id, { action, reason }) =>
+    request(`/api/visitors/${id}/guard-action`, { method: "POST", body: { action, reason } }),
   markVisitorExit: (id) =>
     request(`/api/visitors/${id}/exit`, { method: "POST" }),
 
@@ -357,9 +366,12 @@ export const api = {
   workerByCode: (code) => request(`/api/workers/code/${encodeURIComponent(code)}`),
   registerWorker: (payload) => request("/api/workers", { method: "POST", body: payload }),
   rateWorker: (id, payload) => request(`/api/workers/${id}/ratings`, { method: "POST", body: payload }),
-  workerAttendance: (id) => request(`/api/workers/${id}/attendance`),
+  workerAttendance: (id, params) => request(`/api/workers/${id}/attendance${qs(params)}`),
+  // Gate desk: every helper in/out logged at this society today.
+  workerAttendanceToday: (date) => request(`/api/workers/attendance/today${qs({ date })}`),
   workerCheckIn: (id, payload) => request(`/api/workers/${id}/attendance/checkin`, { method: "POST", body: payload || {} }),
-  workerCheckOut: (attendanceId) => request(`/api/workers/attendance/${attendanceId}/checkout`, { method: "POST" }),
+  workerCheckOut: (attendanceId, payload) =>
+    request(`/api/workers/attendance/${attendanceId}/checkout`, { method: "POST", body: payload || {} }),
 
   // Services & helplines catalog (daily help, trades, medical, utilities…)
   services: () => request("/api/services"),

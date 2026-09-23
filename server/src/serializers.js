@@ -41,6 +41,8 @@ export function serializeStaffAttendance(s) {
     date: s.date,
     inAt: s.inAt,
     outAt: s.outAt,
+    inPhotoUrl: s.inPhotoUrl || null,
+    outPhotoUrl: s.outPhotoUrl || null,
     createdAt: s.createdAt,
   };
 }
@@ -85,6 +87,7 @@ export function serializeVisitor(v) {
     status: v.status,
     createdAt: v.createdAt,
     decidedAt: v.decidedAt,
+    decisionNote: v.decisionNote || null,
     exitAt: v.exitAt || null,
   };
 }

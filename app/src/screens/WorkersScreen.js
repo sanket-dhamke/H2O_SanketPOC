@@ -17,6 +17,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { brand } from "../lib/brand";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
+import OptionalPhoto from "../components/OptionalPhoto";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 
 export const WORKER_CATS = [
@@ -53,6 +55,7 @@ export default function WorkersScreen() {
   const [cat, setCat] = useState("all");
   const [refreshing, setRefreshing] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [banner, setBanner] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -105,6 +108,8 @@ export default function WorkersScreen() {
         </ScrollView>
       </View>
 
+      {banner ? <Text style={styles.banner}>{banner}</Text> : null}
+
       <FlatList
         data={workers}
         keyExtractor={(w) => w.id}
@@ -113,7 +118,7 @@ export default function WorkersScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="ribbon-outline" size={30} color="#B7C2C9" />
-            <Text style={styles.emptyText}>No rated helpers yet. Tap + to add one — their rating will then follow them everywhere.</Text>
+            <Text style={styles.emptyText}>No helpers registered yet. Tap + to add one. Check-in is on the Staff tab, not here.</Text>
           </View>
         }
         renderItem={({ item: w }) => {
@@ -144,7 +149,8 @@ export default function WorkersScreen() {
         onClose={() => setAdding(false)}
         onDone={(w) => {
           setAdding(false);
-          if (w?.id) navigation.navigate("WorkerPassport", { id: w.id });
+          setBanner(w?.name ? `${w.name} is registered. Check them in from Staff → Helpers.` : "Helper registered.");
+          load();
         }}
       />
     </View>
@@ -166,6 +172,7 @@ function RegisterWorkerModal({ visible, onClose, onDone }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [idProof, setIdProof] = useState("");
+  const [photo, setPhoto] = useState(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -175,6 +182,7 @@ function RegisterWorkerModal({ visible, onClose, onDone }) {
       setName("");
       setPhone("");
       setIdProof("");
+      setPhoto(null);
     }
   }, [visible]);
 
@@ -183,7 +191,14 @@ function RegisterWorkerModal({ visible, onClose, onDone }) {
     if (phone.replace(/\D/g, "").length < 10) return Alert.alert("Phone needed", "A 10-digit phone number is the worker's portable identity.");
     setBusy(true);
     try {
-      const r = await api.registerWorker({ name: name.trim(), phone, category, subtype: subtype.trim() || undefined, idProof: idProof.trim() || undefined });
+      const r = await api.registerWorker({
+        name: name.trim(),
+        phone,
+        category,
+        subtype: subtype.trim() || undefined,
+        idProof: idProof.trim() || undefined,
+        photoUrl: photo?.base64 || undefined,
+      });
       if (r.existed) {
         Alert.alert(`Already on ${brand.name}`, `${r.worker.name} already has a Trust Passport — opening it so you can add your rating.`);
       }
@@ -204,6 +219,7 @@ function RegisterWorkerModal({ visible, onClose, onDone }) {
               <Ionicons name="ribbon-outline" size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>Add a helper</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 480 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             <Label>Category</Label>
@@ -230,6 +246,8 @@ function RegisterWorkerModal({ visible, onClose, onDone }) {
             <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="10-digit mobile" keyboardType="phone-pad" />
             <Label>ID note (optional)</Label>
             <TextInput style={styles.input} value={idProof} onChangeText={setIdProof} placeholder="e.g. Aadhaar verified, police-verified" />
+            <OptionalPhoto value={photo} onChange={setPhoto} />
+            <Text style={styles.formHint}>Photo is optional. Adding someone does not check them in.</Text>
             <View style={styles.modalActions}>
               <TouchableOpacity style={[styles.mBtn, styles.cancelBtn]} onPress={onClose}>
                 <Text style={styles.cancelText}>Cancel</Text>
@@ -265,6 +283,7 @@ const styles = StyleSheet.create({
   ratingText: { color: "#8895A0", fontSize: 12, fontWeight: "600" },
   empty: { alignItems: "center", paddingVertical: 40, gap: 10, paddingHorizontal: 30 },
   emptyText: { color: "#8895A0", fontSize: 14, fontWeight: "600", textAlign: "center", lineHeight: 20 },
+  banner: { color: "#0B6E8F", fontWeight: "700", fontSize: 13.5, lineHeight: 19, marginHorizontal: 16, marginBottom: 4 },
 
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 20 },
   modalCard: { backgroundColor: "#fff", borderRadius: 18, overflow: "hidden" },
@@ -273,6 +292,7 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 17, fontWeight: "800", color: "#fff", flex: 1 },
   modalBody: { padding: 18 },
   label: { fontSize: 13, fontWeight: "700", color: "#334", marginBottom: 6, marginTop: 12 },
+  formHint: { color: "#6B7B85", fontSize: 12.5, lineHeight: 18, marginTop: 8 },
   input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, backgroundColor: "#F8FAFB" },
   pickRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   pick: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: "#CFE0E6", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },

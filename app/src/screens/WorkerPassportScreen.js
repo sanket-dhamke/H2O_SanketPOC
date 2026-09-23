@@ -37,7 +37,6 @@ export default function WorkerPassportScreen() {
   const [myComment, setMyComment] = useState("");
   const [saving, setSaving] = useState(false);
   const [attendance, setAttendance] = useState([]);
-  const [busyGate, setBusyGate] = useState(false);
   const [showQr, setShowQr] = useState(false);
 
   const load = useCallback(async () => {
@@ -76,24 +75,6 @@ export default function WorkerPassportScreen() {
       Alert.alert("Error", e.message);
     } finally {
       setSaving(false);
-    }
-  };
-
-  const openAttendance = attendance.find((a) => !a.outAt);
-  const gateAction = async () => {
-    setBusyGate(true);
-    try {
-      if (openAttendance) {
-        await api.workerCheckOut(openAttendance.id);
-      } else {
-        await api.workerCheckIn(worker.id);
-      }
-      const a = await api.workerAttendance(worker.id);
-      setAttendance(a.attendance || []);
-    } catch (e) {
-      Alert.alert("Error", e.message);
-    } finally {
-      setBusyGate(false);
     }
   };
 
@@ -161,10 +142,7 @@ export default function WorkerPassportScreen() {
         {isStaff && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Gate attendance (this society)</Text>
-            <TouchableOpacity style={[styles.gateBtn, openAttendance && styles.gateBtnOut, busyGate && { opacity: 0.6 }]} onPress={gateAction} disabled={busyGate}>
-              <Ionicons name={openAttendance ? "log-out-outline" : "log-in-outline"} size={18} color="#fff" />
-              <Text style={styles.gateBtnText}>{busyGate ? "…" : openAttendance ? "Log exit" : "Log entry"}</Text>
-            </TouchableOpacity>
+            <Text style={styles.attHint}>Check in and check out are on Staff → Helpers. Registering someone does not let them in.</Text>
             {attendance.slice(0, 5).map((a) => (
               <View key={a.id} style={styles.attRow}>
                 <Text style={styles.attDate}>{a.date}</Text>
@@ -233,9 +211,7 @@ const styles = StyleSheet.create({
   qrHint: { color: "#8895A0", fontSize: 12, textAlign: "center", marginTop: 8, paddingHorizontal: 20 },
   card: { backgroundColor: "#fff", borderRadius: 16, padding: 16, marginTop: 14 },
   cardTitle: { fontSize: 15, fontWeight: "800", color: "#1B2B33", marginBottom: 12 },
-  gateBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#1E7A3D", borderRadius: 12, paddingVertical: 13 },
-  gateBtnOut: { backgroundColor: "#C2571A" },
-  gateBtnText: { color: "#fff", fontWeight: "800", fontSize: 14 },
+  attHint: { color: "#6B7B85", fontSize: 13, lineHeight: 18, marginBottom: 8 },
   attRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, borderTopWidth: 1, borderTopColor: "#EEF2F4", marginTop: 8 },
   attDate: { color: "#1B2B33", fontWeight: "700", fontSize: 13 },
   attTime: { color: "#6B7B85", fontSize: 12.5 },

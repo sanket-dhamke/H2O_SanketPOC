@@ -22,6 +22,7 @@ import { brand } from "../lib/brand";
 import { labelsFor } from "../lib/org";
 import { SUPPORT, memberId } from "../lib/support";
 import ChangePasswordModal from "./ChangePasswordModal";
+import MobileNumberEditor from "./MobileNumberEditor";
 import { openScreen } from "../lib/nav";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
@@ -121,11 +122,19 @@ export default function ProfileModal({ visible, onClose }) {
     open(`mailto:${SUPPORT.email}?subject=${subject}&body=${body}`);
   };
 
-  const confirmLogout = () =>
+  const confirmLogout = () => {
+    // react-native-web's Alert.alert is a no-op, so the profile row must
+    // sign out directly — same as the header Logout button.
+    if (Platform.OS === "web") {
+      onClose();
+      logout();
+      return;
+    }
     Alert.alert("Log out", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
       { text: "Log out", style: "destructive", onPress: () => { onClose(); logout(); } },
     ]);
+  };
 
   if (!user) return null;
 
@@ -160,10 +169,13 @@ export default function ProfileModal({ visible, onClose }) {
             {!!addressLine && <Row icon="location-outline" label={L.org} value={addressLine} />}
             {!!user.societyAddress && <Row icon="map-outline" label="Address" value={user.societyAddress} />}
             <Row icon="mail-outline" label="Email" value={user.email} />
-            {!!user.phone && <Row icon="call-outline" label="Phone" value={user.phone} />}
             {isSuper && !!platform?.contactEmail && (
               <Row icon="at-outline" label="Platform contact" value={platform.contactEmail} />
             )}
+          </Section>
+
+          <Section title="Mobile number">
+            <MobileNumberEditor user={user} updateUser={updateUser} />
           </Section>
 
           {/* Preferences */}

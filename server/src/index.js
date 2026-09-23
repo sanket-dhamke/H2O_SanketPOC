@@ -22,7 +22,7 @@ import { gatePassRouter } from "./routes/gatepass.js";
 import { marketplaceRouter } from "./routes/marketplace.js";
 import { gateRouter } from "./routes/gate.js";
 import { servicesRouter, ensureDefaultHelplines } from "./routes/services.js";
-import { workersRouter } from "./routes/workers.js";
+import { workersRouter, ensureAttendancePhotoColumns } from "./routes/workers.js";
 import { preschoolRouter } from "./routes/preschool.js";
 import { sosRouter } from "./routes/sos.js";
 import { ivrRouter } from "./routes/ivr.js";
@@ -33,6 +33,7 @@ import { sustainabilityRouter } from "./routes/sustainability.js";
 import { aiRouter } from "./routes/ai.js";
 import { homeRouter } from "./routes/home.js";
 import { homeServicesRouter } from "./routes/homeServices.js";
+import { paymentsRouter } from "./routes/payments.js";
 import { globalLimiter, authLimiter, aiLimiter } from "./rateLimit.js";
 import { startQueueWorkers, queueBackend } from "./queue.js";
 import { cacheBackend } from "./cache.js";
@@ -43,6 +44,7 @@ import { backfillSlugs } from "./slug.js";
 import { recordPayment } from "./billing.js";
 import { runFeeReminders } from "./feeReminders.js";
 import { runRentExpiryChecks } from "./rentReminders.js";
+import { ensureVisitorWaitColumns, sweepVisitorWaits } from "./visitorWait.js";
 
 const app = express();
 // Behind Render/other proxies: trust the first proxy hop so req.ip (used by the
@@ -110,6 +112,7 @@ app.get("/api/health", (_req, res) =>
 app.use("/api", authRouter);
 app.use("/api", homeRouter);
 app.use("/api", maintenanceRouter);
+app.use("/api", paymentsRouter);
 app.use("/api", visitorsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/superadmin", superadminRouter);
@@ -283,4 +286,9 @@ app.listen(PORT, "0.0.0.0", () => {
     .catch((e) => console.error("Platform settings init failed:", e.message));
   // Seed national helplines into the platform-curated services layer (idempotent).
   ensureDefaultHelplines().catch((e) => console.error("Helpline seed failed:", e.message));
+  // Close unanswered gate visits after 3 minutes, and place the one follow-up call.
+  const sweep = () => sweepVisitorWaits().catch((e) => console.error("Visitor wait sweep failed:", e.message));
+  ensureVisitorWaitColumns().then(sweep).catch((e) => console.error("Visitor wait columns failed:", e.message));
+  ensureAttendancePhotoColumns().catch((e) => console.error("Attendance photo columns failed:", e.message));
+  setInterval(sweep, 30 * 1000);
 });

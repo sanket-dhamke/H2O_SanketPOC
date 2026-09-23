@@ -4,7 +4,7 @@
 // Allowed values:
 //   User.role      : "superadmin" | "admin" | "guard" | "resident"
 //   Bill.status    : "pending"  | "paid"
-//   Visitor.status : "pending"  | "approved" | "rejected" | "leave_at_gate"
+//   Visitor.status : "pending" | "approved" | "rejected" | "leave_at_gate" | "no_response" | "sent_back" | "allowed_by_guard"
 //
 // Multi-tenancy: every society is a Society. Flats, users (admin/guard/resident),
 // expenses and the bank account belong to exactly one society. Bills and visitors
@@ -303,6 +303,10 @@ model Visitor {
   decidedBy String?
   createdAt DateTime  @default(now())
   decidedAt DateTime?
+  // Why a guard let someone in after the resident did not answer.
+  decisionNote   String?
+  // When the one follow-up phone call was placed (or skipped).
+  approvalCallAt DateTime?
   // Gate exit timestamp (entry/exit tracking; used by preschools especially).
   exitAt    DateTime?
   exitBy    String?
@@ -324,6 +328,8 @@ model StaffAttendance {
   inAt      DateTime  @default(now())
   outAt     DateTime?
   markedBy  String?
+  inPhotoUrl  String?
+  outPhotoUrl String?
   createdAt DateTime  @default(now())
 
   @@index([societyId, date])
@@ -977,6 +983,8 @@ model WorkerAttendance {
   inAt      DateTime  @default(now())
   outAt     DateTime?
   markedBy  String?
+  inPhotoUrl  String?
+  outPhotoUrl String?
   createdAt DateTime  @default(now())
 
   @@index([workerId, date])

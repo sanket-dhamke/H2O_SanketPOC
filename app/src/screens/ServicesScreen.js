@@ -48,6 +48,8 @@ export default function ServicesScreen() {
   const role = user?.role;
   const isSuperadmin = role === "superadmin";
   const isAdmin = role === "admin";
+  const isGuard = role === "guard";
+  const canAdd = !isGuard;
 
   const [contacts, setContacts] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
@@ -137,17 +139,26 @@ export default function ServicesScreen() {
 
   const openEditor = useCallback((c) => setEditor(c), []);
 
-  const canEdit = (c) => c.mine || (isAdmin && c.scope === "society") || (isSuperadmin && c.scope === "platform");
+  const canEdit = (c) => {
+    if (isGuard) return false;
+    if (isSuperadmin) return c.scope === "platform";
+    if (isAdmin) return c.scope === "society" || (c.mine && c.scope === "personal");
+    // Residents can add new numbers, and may tidy their own private contacts —
+    // they cannot edit or delete society/platform directory entries.
+    return !!(c.mine && c.scope === "personal");
+  };
 
-  const addBtn = (
+  const addBtn = canAdd ? (
     <TouchableOpacity onPress={() => setEditor({})} style={styles.addBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
       <Ionicons name="add" size={24} color="#fff" />
     </TouchableOpacity>
-  );
+  ) : null;
 
   const subtitle = isSuperadmin
     ? `${brand.name}-curated helplines (all societies)`
-    : "Trusted numbers for your society";
+    : isGuard
+      ? "Trusted numbers for your society (view only)"
+      : "Trusted numbers for your society";
 
   return (
     <View style={styles.container}>
@@ -159,7 +170,7 @@ export default function ServicesScreen() {
         right={addBtn}
       />
 
-      {!isSuperadmin && (
+      {!isSuperadmin && !isGuard && (
         <View style={styles.segment}>
           <Seg label="Directory" active={tab === "directory"} onPress={() => setTab("directory")} />
           <Seg label="My contacts" active={tab === "mine"} onPress={() => setTab("mine")} />
@@ -227,7 +238,11 @@ export default function ServicesScreen() {
           <View style={styles.empty}>
             <Ionicons name="call-outline" size={30} color="#B7C2C9" />
             <Text style={styles.emptyText}>
-              {tab === "mine" ? "No personal contacts yet. Tap + to add one." : "No contacts here yet."}
+              {tab === "mine"
+                ? "No personal contacts yet. Tap + to add one."
+                : isGuard
+                  ? "No contacts here yet."
+                  : "No contacts here yet. Tap + to add a number."}
             </Text>
           </View>
         }

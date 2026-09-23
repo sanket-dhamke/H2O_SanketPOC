@@ -354,6 +354,7 @@ function actionCatalogue(role, orgType) {
       { id: "import_csv", label: "Bulk import", intent: "bulk add members or units from a CSV / spreadsheet", keywords: ["csv", "import", "bulk", "excel", "spreadsheet", "upload list"], route: "Members", params: { screen: "Onboarding" } },
       { id: "gate_log", label: "Open gate log", intent: "the visitor / gate entry log", keywords: ["visitor", "gate", "entry", "log", "who came"], route: "Visitors" },
       { id: "helpdesk", label: "Open helpdesk", intent: "resident complaints and tickets", keywords: ["complaint", "ticket", "helpdesk", "issue"], route: "Community", params: { screen: "Helpdesk" } },
+      { id: "book_amenity", label: preschool ? "Open hall" : "Open clubhouse", intent: preschool ? "add the hall, slots, or approve hall booking requests" : "add clubhouse/hall facilities, slots, or approve amenity booking requests", keywords: ["clubhouse", "club house", "hall", "amenity", "party", "booking", "book", "slot", "facility"], route: "Community", params: { screen: "Amenities" } },
       { id: "reports", label: "Open reports", intent: "reports, exports and backups", keywords: ["report", "export", "pdf", "backup"], route: "Finance", params: { screen: "Reports" } },
       { id: "manager", label: "Society manager", intent: "AI-drafted notices, reminders and monthly summaries", keywords: ["notice", "announce", "draft", "reminder", "summary"], route: "Finance", params: { screen: "Manager" } },
     ];
@@ -416,6 +417,13 @@ function deterministicReply(context, action) {
     if (context.role === "admin" && action?.id === "finance") {
       const s = context.society || {};
       return `Collected ${money(s.collectedThisMonth)} this month, with ${money(s.pendingAllTime)} still outstanding. Tap below to open finances.`;
+    }
+    if (action?.id === "book_amenity") {
+      return context.role === "admin"
+        ? (context.orgType === "preschool"
+          ? "Admins don’t place a parent booking here — you add the hall and approve requests. Tap below to open Hall."
+          : "Admins don’t place a resident booking here — you add clubhouse/hall facilities and approve requests. Tap below to open Clubhouse.")
+        : "Tap below to pick a date and slot.";
     }
   } catch {
     /* fall through to the generic line */
@@ -651,8 +659,67 @@ export async function transcribeAudio(buffer, filename = "audio.m4a", { english 
   throw lastErr || new Error("No transcription model available");
 }
 
+// Assistant voice input, unlike guard dictation, keeps the speech in the
+// language it was spoken: a resident who asks in Hindi or Marathi should be
+// answered in that language, not in English. Whisper's verbose response names
+// the language it heard; when a provider doesn't support that format we fall
+// back to plain text and guess from the script.
+export async function transcribeAudioLocalized(buffer, filename = "audio.m4a") {
+  const models = workingTranscribeModel
+    ? [workingTranscribeModel, ...transcriptionCandidates().filter((m) => m !== workingTranscribeModel)]
+    : transcriptionCandidates();
+
+  let lastErr = null;
+  for (const model of models) {
+    try {
+      let text = "";
+      let reported = "";
+      try {
+        const file = await OpenAI.toFile(buffer, filename);
+        const r = await openai.audio.transcriptions.create({ model, file, response_format: "verbose_json" });
+        text = r.text || "";
+        reported = r.language || "";
+      } catch (err) {
+        if (isModelMissing(err)) throw err;
+        console.warn(`transcribeAudioLocalized: verbose_json unavailable (${err.message}); using plain text.`);
+        const retry = await OpenAI.toFile(buffer, filename);
+        const r = await openai.audio.transcriptions.create({ model, file: retry });
+        text = r.text || "";
+      }
+      workingTranscribeModel = model;
+      const lang = WHISPER_LANGS[String(reported).toLowerCase()] || detectLang(text);
+      return { text, lang };
+    } catch (err) {
+      lastErr = err;
+      if (!isModelMissing(err)) throw err;
+      console.warn(`transcribeAudioLocalized: model "${model}" not available, trying next…`);
+    }
+  }
+  throw lastErr || new Error("No transcription model available");
+}
+
 // Human language names for the codes the app offers.
 const LANG_NAMES = { en: "English", hi: "Hindi (Devanagari)", mr: "Marathi (Devanagari)" };
+
+// Whisper reports the language it heard, as a name or an ISO code depending on
+// the provider. Only the three the app speaks matter; anything else is treated
+// as English so the assistant still answers.
+const WHISPER_LANGS = { english: "en", en: "en", hindi: "hi", hi: "hi", marathi: "mr", mr: "mr" };
+
+// Words that separate Marathi from Hindi in the same script. Both languages use
+// Devanagari, so without this every Marathi question would be answered in Hindi.
+// Matched whole-word: as a substring "काय" also sits inside the Hindi "शिकायत".
+const MARATHI_WORDS = new Set([
+  "आहे", "आहेत", "नाही", "नाहीये", "काय", "कसं", "कसे", "कशी", "किती",
+  "माझा", "माझी", "माझं", "माझ्या", "मला", "तुम्ही", "पाहिजे", "करायचं", "कुठे", "कधी",
+]);
+
+function detectLang(text) {
+  const s = String(text || "");
+  if (!/[\u0900-\u097F]/.test(s)) return "en";
+  const words = s.split(/[^\u0900-\u097F]+/).filter(Boolean);
+  return words.some((w) => MARATHI_WORDS.has(w)) ? "mr" : "hi";
+}
 
 // Translates arbitrary text to a target language (en/hi/mr) for spoken notices
 // and vernacular announcements. Returns the original text unchanged if AI is off

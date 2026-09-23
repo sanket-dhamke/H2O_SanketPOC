@@ -10,6 +10,8 @@ import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-cont
 import { useFonts } from "expo-font";
 
 import { AuthProvider, useAuth } from "./src/lib/auth";
+import { fetchVisitorLog, readCachedVisitors } from "./src/lib/visitorLogCache";
+import { fetchDirectory, readCachedDirectory } from "./src/lib/gateDirectory";
 import { FONTS, body } from "./src/lib/type";
 import { registerForPushNotifications } from "./src/lib/push";
 import LoginScreen from "./src/screens/LoginScreen";
@@ -61,7 +63,6 @@ import PayToH2OScreen from "./src/screens/admin/PayToH2OScreen";
 import SuperAdminDashboardScreen from "./src/screens/superadmin/SuperAdminDashboardScreen";
 import SocietiesScreen from "./src/screens/superadmin/SocietiesScreen";
 import BackupRecoveryScreen from "./src/screens/superadmin/BackupRecoveryScreen";
-import PayMethodSheet from "./src/components/PayMethodSheet";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -149,6 +150,7 @@ function MembersStackScreen() {
       <MembersStack.Screen name="BankAccount" component={BankAccountScreen} />
       <MembersStack.Screen name="Vehicles" component={VehiclesScreen} />
       <MembersStack.Screen name="GateDevices" component={GateDevicesScreen} />
+      <MembersStack.Screen name="StaffAttendance" component={StaffAttendanceScreen} />
       <MembersStack.Screen name="Plans" component={PlansScreen} />
     </MembersStack.Navigator>
   );
@@ -283,14 +285,15 @@ function SuperAdminTabs() {
 
 function GuardTabs() {
   const { user } = useAuth();
-  const preschool = isPreschool(user);
   const L = labelsFor(user);
   const tabScreenOptions = useTabScreenOptions();
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
       <Tab.Screen name="Gate" component={GateScreen} />
-      {preschool && <Tab.Screen name="Staff" component={StaffAttendanceScreen} />}
+      {/* Guards mark attendance for staff and helpers in every tenant, not just
+          preschools — it is the other half of what happens at the gate. */}
+      <Tab.Screen name="Staff" component={StaffAttendanceScreen} />
       <Tab.Screen name="Community" component={CommunityStackScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: L.gate }} />
     </Tab.Navigator>
@@ -300,6 +303,18 @@ function GuardTabs() {
 function AppInner() {
   const { user, loading } = useAuth();
   const navRef = useRef();
+
+  useEffect(() => {
+    if (!user?.id) return;
+    // Start the gate log while Home is on screen, so the tab opens with rows
+    // already in memory instead of waiting on the server.
+    readCachedVisitors(user.id).catch(() => {});
+    fetchVisitorLog(user.id).catch(() => {});
+    if (user.role === "guard" || user.role === "admin") {
+      readCachedDirectory(user.id).catch(() => {});
+      fetchDirectory(user.id).catch(() => {});
+    }
+  }, [user?.id, user?.role]);
 
   useEffect(() => {
     if (!user) return;
@@ -357,7 +372,6 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <AppInner />
-        <PayMethodSheet />
       </AuthProvider>
     </SafeAreaProvider>
   );

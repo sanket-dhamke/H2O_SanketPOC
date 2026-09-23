@@ -173,8 +173,9 @@ async function residentSummary(user) {
       level: "warn",
       icon: "calendar-outline",
       label: `${unpaidBookings} booking${unpaidBookings === 1 ? "" : "s"} approved`,
-      detail: "Approved by the admin — payment pending.",
-      route: "Amenities",
+      detail: "Approved by the admin — payment pending. Open My bookings to pay.",
+      route: "Community",
+      params: { screen: "Amenities", params: { tab: "mine" } },
     });
   }
   const now = new Date();

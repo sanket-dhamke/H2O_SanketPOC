@@ -2,6 +2,7 @@ import { api } from "./api";
 import { answerFromHelp } from "./helpGuide";
 import { findHomeService, HOME_SERVICE_SLOTS, inr as svcInr } from "./homeServices";
 import { isPreschool } from "./org";
+import { detectLang, isIndic, hasDevanagari, indicToEnglishQuestion } from "./lang";
 
 const inr = (n) => `₹${Math.round(n || 0).toLocaleString("en-IN")}`;
 
@@ -29,6 +30,7 @@ const ADMIN = [
   { id: "gate_log", label: "Open gate log", keywords: ["visitor", "visited", "gate", "entry", "log", "who came"], route: "Visitors" },
   { id: "helpdesk", label: "Open helpdesk", keywords: ["complaint", "ticket", "helpdesk"], route: "Community", params: { screen: "Helpdesk" } },
   { id: "manager", label: "Society manager", keywords: ["notice", "announce", "draft", "reminder"], route: "Finance", params: { screen: "Manager" } },
+  { id: "book_amenity", label: "Open clubhouse", keywords: ["clubhouse", "club house", "hall", "amenity", "party", "booking", "book", "slot", "facility"], route: "Community", params: { screen: "Amenities" } },
   { id: "sos", label: "Emergency SOS", keywords: ["sos", "emergency"], route: "Community", params: { screen: "Sos" } },
 ];
 
@@ -42,7 +44,12 @@ function catalogue(role, user) {
   const preschool = isPreschool(user);
   if (role === "admin") {
     return preschool
-      ? ADMIN.map((a) => (a.id === "manager" ? { ...a, label: "School manager" } : a.id === "members" ? { ...a, label: "Manage accounts" } : a))
+      ? ADMIN.map((a) => {
+          if (a.id === "manager") return { ...a, label: "School manager" };
+          if (a.id === "members") return { ...a, label: "Manage accounts" };
+          if (a.id === "book_amenity") return { ...a, label: "Open hall" };
+          return a;
+        })
       : ADMIN;
   }
   if (role === "guard") return GUARD;
@@ -238,6 +245,38 @@ function wantsServiceBook(q) {
   return /\b(book|schedule|arrange|fix)\b/.test(q) && detectServiceSlug(q);
 }
 
+function wantsAmenityBook(q) {
+  return /(clubhouse|club house|\bamenit|\bhall\b|party hall)/.test(q) && /(book|booking|reserv|slot|create|add|new)/.test(q);
+}
+
+function amenityAction(role, preschool) {
+  if (role === "admin") {
+    return {
+      id: "book_amenity",
+      label: preschool ? "Open hall" : "Open clubhouse",
+      route: "Community",
+      params: { screen: "Amenities" },
+    };
+  }
+  return {
+    id: "book_amenity",
+    label: preschool ? "Book hall" : "Book clubhouse",
+    route: "Community",
+    params: { screen: "Amenities" },
+  };
+}
+
+function amenityReply(role, preschool) {
+  if (role === "admin") {
+    return preschool
+      ? "Admins don’t place a parent booking here — you add the hall and approve requests. Tap below to open Hall: Requests to approve, or Manage to add the hall and slots."
+      : "Admins don’t place a resident booking here — you add clubhouse/hall facilities and approve requests. Tap below to open Clubhouse: Requests to approve, or Manage to add a facility and slots. Residents book from Community → Book clubhouse.";
+  }
+  return preschool
+    ? "Tap below to pick a date and slot for the hall."
+    : "Tap below to pick a date and slot for the clubhouse or hall.";
+}
+
 function ok(reply, action) {
   return { reply, action, autoOpen: false, source: "app", preferLocal: true };
 }
@@ -381,7 +420,8 @@ function answerBooking(q) {
   );
 }
 
-async function groundedReply(action, role, q, question) {
+async function groundedReply(action, user, q, question) {
+  const role = user?.role;
   try {
     if (action?.id === "pay_bill" || (action?.id === "finance" && role === "admin")) {
       const billed = await answerBills(q, role);
@@ -394,6 +434,9 @@ async function groundedReply(action, role, q, question) {
     if (action?.id === "home_services") {
       const booked = answerBooking(q);
       if (booked) return booked.reply;
+    }
+    if (action?.id === "book_amenity") {
+      return amenityReply(role, isPreschool(user));
     }
     if (action?.id === "call_security") {
       const data = await api.helpdeskContacts().catch(() => ({}));
@@ -420,6 +463,10 @@ export async function resolveAssistant(question, userOrRole) {
     if (wantsServiceBook(q)) {
       const booked = answerBooking(q);
       if (booked) return booked;
+    }
+    if (wantsAmenityBook(q)) {
+      const preschool = isPreschool(user);
+      return ok(amenityReply(role, preschool), amenityAction(role, preschool));
     }
     if (wantsBillSplit(q) || wantsPendingAmount(q)) {
       return await answerBills(q, role);
@@ -473,7 +520,7 @@ export async function resolveAssistant(question, userOrRole) {
 
   const action = matchIntent(question, role, user);
   const reply = action
-    ? await groundedReply(action, role, q, question)
+    ? await groundedReply(action, user, q, question)
     : "I can look up bills, visitors (by name, date or vehicle), bookings, helpdesk, or how a feature works — try “how much maintenance is pending” or “who visited last week”.";
   return {
     reply,
@@ -481,6 +528,46 @@ export async function resolveAssistant(question, userOrRole) {
     autoOpen: false,
     source: "app",
     preferLocal: true,
+  };
+}
+
+async function translateSafely(text, lang) {
+  const src = String(text || "").trim();
+  if (!src) return src;
+  try {
+    const { text: out } = await api.translate(src, lang);
+    return out?.trim() || src;
+  } catch {
+    // Translation is a nicety; never lose the answer over it.
+    return src;
+  }
+}
+
+// Ask in English, हिंदी or मराठी. Everything that resolves an answer — intent
+// keywords, the help guide, bill/visitor lookups — is written in English, so a
+// Devanagari question is translated in, answered, and translated back out. Voice
+// input already knows the language and its English text, so it skips a hop.
+export async function askAssistant(question, user, { lang: knownLang, textEn } = {}) {
+  const asked = String(question || "").trim();
+  const lang = knownLang || detectLang(asked);
+
+  let english = asked;
+  if (isIndic(lang)) {
+    english = (textEn || "").trim() || (await translateSafely(asked, "en"));
+    // Translation needs the AI provider. When it is off or unreachable the text
+    // comes back unchanged, so route the question by keyword instead of handing
+    // Devanagari to an English intent matcher that can only shrug at it.
+    if (hasDevanagari(english)) english = indicToEnglishQuestion(asked) || english;
+  }
+
+  const result = await resolveAssistant(english, user);
+  if (!isIndic(lang)) return { ...result, lang, question: asked };
+
+  return {
+    ...result,
+    reply: await translateSafely(result.reply, lang),
+    lang,
+    question: asked,
   };
 }
 

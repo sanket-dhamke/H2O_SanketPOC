@@ -16,7 +16,7 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { labelsFor, isPreschool } from "../lib/org";
 import { body, head } from "../lib/type";
-import { resolveAssistant, looksLikeAiFailure } from "../lib/assistant";
+import { askAssistant, looksLikeAiFailure } from "../lib/assistant";
 import { openScreen } from "../lib/nav";
 import { brand } from "../lib/brand";
 
@@ -76,7 +76,10 @@ export default function AskGateMate({ navigation }) {
 
   const prompts = promptsFor(user.role, L, preschool);
 
-  const ask = async (text) => {
+  // `spoken` carries what voice input already worked out (the language heard
+  // and its English rendering) so a Hindi or Marathi question is not translated
+  // twice.
+  const ask = async (text, spoken) => {
     const question = (text ?? input).trim();
     if (!question || busy) return;
     setInput("");
@@ -84,10 +87,11 @@ export default function AskGateMate({ navigation }) {
     try {
       // Always solve from the app's own data first. The live Groq model on
       // Render is retired, so waiting on /api/ai/* just surfaces a 502.
-      const local = await resolveAssistant(question, user);
+      const local = await askAssistant(question, user, spoken);
       setResult({ question, reply: local.reply, action: local.action });
-      // Live bills/visitors/help always win. Remote chat is optional colour.
-      if (!local.preferLocal) {
+      // Live bills/visitors/help always win. Remote chat is optional colour,
+      // and only when the resident asked in English (the model replies in it).
+      if (!local.preferLocal && local.lang === "en") {
         const remote = await api.aiAssistant(question);
         const text = remote?.answer || remote?.reply;
         if (text && !looksLikeAiFailure(text)) {
@@ -99,7 +103,7 @@ export default function AskGateMate({ navigation }) {
         }
       }
     } catch {
-      const local = await resolveAssistant(question, user);
+      const local = await askAssistant(question, user, spoken);
       setResult({ question, reply: local.reply, action: local.action });
     } finally {
       setBusy(false);
@@ -130,13 +134,13 @@ export default function AskGateMate({ navigation }) {
       const base64 = await FileSystem.readAsStringAsync(recorder.uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-      const { text } = await api.aiTranscribe(`data:audio/m4a;base64,${base64}`);
+      const { text, lang, textEn } = await api.aiTranscribe(`data:audio/m4a;base64,${base64}`);
       setBusy(false);
       if (!text?.trim()) {
         Alert.alert("Didn't catch that", "Please try again, or type your request.");
         return;
       }
-      await ask(text);
+      await ask(text, { lang, textEn });
     } catch (e) {
       setBusy(false);
       const msg = /404/.test(e.message || "")

@@ -7,6 +7,7 @@ import { enqueuePush } from "../queue.js";
 import { parsePaging } from "../paging.js";
 import { uploadVisitorPhoto, placeholderPhoto } from "../storage.js";
 import { placeApprovalCall } from "../ivr.js";
+import { sweepVisitorWaits, validateGuardAction } from "../visitorWait.js";
 
 export const visitorsRouter = Router();
 
@@ -104,6 +105,7 @@ visitorsRouter.post("/visitors", authRequired, roleRequired("guard", "admin"), a
       placeApprovalCall({ visitor, toPhone: callable.phone }).catch((e) =>
         console.error("IVR approval call failed:", e?.message)
       );
+      prisma.visitor.update({ where: { id: visitor.id }, data: { approvalCallAt: new Date() } }).catch(() => {});
     }
   }
 
@@ -112,6 +114,7 @@ visitorsRouter.post("/visitors", authRequired, roleRequired("guard", "admin"), a
 
 // Resident sees their flat's visitors; guard/admin see the full gate log.
 visitorsRouter.get("/visitors", authRequired, async (req, res) => {
+  sweepVisitorWaits().catch((e) => console.error("Visitor wait sweep failed:", e.message));
   const where = {};
   if (req.user.role === "resident") {
     const u = await prisma.user.findUnique({ where: { id: req.user.id }, select: { flatId: true } });
@@ -123,12 +126,23 @@ visitorsRouter.get("/visitors", authRequired, async (req, res) => {
   const paging = parsePaging(req, { def: 200, max: 500 });
   const visitors = await prisma.visitor.findMany({
     where,
-    include: { flat: true },
+    include: { flat: { select: { flatNo: true } } },
     orderBy: { createdAt: "desc" },
     take: paging.take,
     skip: paging.skip,
   });
-  res.json({ visitors: visitors.map(serializeVisitor), hasMore: visitors.length >= paging.limit });
+  res.json({
+    visitors: visitors.map((v) => {
+      const row = serializeVisitor(v);
+      // Inline camera photos make this list take seconds to download.
+      if (typeof row.photo === "string" && row.photo.startsWith("data:")) {
+        row.photo = null;
+        row.photoUrl = null;
+      }
+      return row;
+    }),
+    hasMore: visitors.length >= paging.limit,
+  });
 });
 
 // Guard/admin marks a visitor as having left (entry/exit tracking). Records the
@@ -162,6 +176,9 @@ visitorsRouter.post("/visitors/:id/decision", authRequired, async (req, res) => 
     if (visitor.flatId !== u?.flatId) {
       return res.status(403).json({ message: "Not your visitor" });
     }
+    if (visitor.status !== "pending") {
+      return res.status(409).json({ message: "The 3 minutes to answer have ended." });
+    }
   }
 
   const updated = await prisma.visitor.update({
@@ -185,6 +202,48 @@ visitorsRouter.post("/visitors/:id/decision", authRequired, async (req, res) => 
       `${updated.name} was ${status.replace(/_/g, " ")} by the resident.`,
       { type: "decision", visitorId: updated.id }
     );
+  }
+  res.json({ visitor: serializeVisitor(updated) });
+});
+
+// Guard closes a visit the resident did not answer: allow a guest only with a
+// reason, or leave a delivery/cab at the gate, or send the person back.
+visitorsRouter.post("/visitors/:id/guard-action", authRequired, roleRequired("guard", "admin"), async (req, res) => {
+  const visitor = await prisma.visitor.findFirst({
+    where: { id: req.params.id, flat: { societyId: req.user.societyId || "__none__" } },
+    include: { flat: true },
+  });
+  if (!visitor) return res.status(404).json({ message: "Visitor not found" });
+  const check = validateGuardAction(visitor, req.body?.action, req.body?.reason);
+  if (!check.ok) return res.status(400).json({ message: check.message });
+
+  const updated = await prisma.visitor.update({
+    where: { id: visitor.id },
+    data: {
+      status: check.status,
+      decisionNote: check.decisionNote || null,
+      decidedAt: new Date(),
+      decidedBy: req.user.id,
+    },
+    include: { flat: true },
+  });
+
+  const residents = await prisma.user.findMany({
+    where: { flatId: updated.flatId, role: "resident", active: true },
+  });
+  const admins = await prisma.user.findMany({
+    where: { societyId: updated.flat.societyId, role: "admin", active: true },
+  });
+  const note = {
+    allowed_by_guard: `${updated.name} was allowed in by the guard. Reason: ${updated.decisionNote}`,
+    leave_at_gate: `${updated.name} was left at the gate and not sent up.`,
+    sent_back: `${updated.name} was sent back and not let in.`,
+  }[check.status];
+  const title = `Flat ${updated.flat.flatNo}: ${
+    check.status === "allowed_by_guard" ? "Allowed by guard" : check.status === "leave_at_gate" ? "Left at gate" : "Sent back"
+  }`;
+  for (const person of [...residents, ...admins]) {
+    if (person.expoPushToken) enqueuePush(person.expoPushToken, title, note, { type: "decision", visitorId: updated.id });
   }
   res.json({ visitor: serializeVisitor(updated) });
 });

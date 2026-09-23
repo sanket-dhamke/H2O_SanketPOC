@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
   backText: { color: "#fff", fontSize: 14, ...body(700), marginLeft: 2 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   titleWrap: { flex: 1, minWidth: 0 },
-  rightSlot: { flexShrink: 0, marginLeft: 8 },
+  rightSlot: { flexShrink: 1, minWidth: 0, marginLeft: 8 },
   iconChip: {
     width: 46,
     height: 46,
