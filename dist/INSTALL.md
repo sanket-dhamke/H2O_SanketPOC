@@ -1,57 +1,40 @@
 # GATEZO test APK
 
-`GATEZO-preview-v1.0.0-build32.apk` — built from `cursor/admin-home-helplines-2dd7`,
-pointed at the live API (`https://h2o-api-5sxc.onrender.com`).
+`GATEZO-preview-v1.0.0-build33.apk` — built from `cursor/admin-home-helplines-2dd7`
+at `8b0fa9f`, pointed at the live API (`https://h2o-api-5sxc.onrender.com`).
 
-Scan `gatezo_apk_qr.png`, or open the link on the phone:
+Scan `gatezo_apk_qr.png`, or open this link on the phone:
 
 ```
-https://raw.githubusercontent.com/sanket-dhamke/H2O_SanketPOC/refs/heads/cursor/gatezo-apk-2dd7/dist/GATEZO-preview-v1.0.0-build32.apk
+https://raw.githubusercontent.com/sanket-dhamke/H2O_SanketPOC/refs/heads/cursor/gatezo-apk-2dd7/dist/GATEZO-preview-v1.0.0-build33.apk
 ```
 
 ## Before you install
 
-**Uninstall the GATEZO app you already have.** This build is signed with the
-Android debug key, not the EAS key, so Android refuses to install it over an
-EAS-signed copy ("App not installed"). Uninstalling clears that app's local
-data — your society data lives on the server and is untouched.
+This build uses the same debug signature as build 32 and a higher version, so it
+can install over that test APK. Your society data stays on the server.
 
-Android will also ask you to allow installs from Chrome/Files the first time.
+If Android says the app is not installed, the phone still has an older copy
+signed by Expo's key. Uninstall that GATEZO first, then open the link again.
+Android will ask you to allow installs from Chrome the first time.
 
-Phones only: arm64 (every Android phone sold in the last several years). Not an
-emulator build.
+Phones only: arm64. Not an emulator build.
 
-## What is in it
+## What is new in this build
 
-Admin: full "Maintenance this month" title, `vs last month` showing a dash
-instead of `undefined%`, scrolling Browse chips, committee-only announcement
-copy, the admin clubhouse answer from Ask GATEZO, helpline permissions, and no
-chart painting over Emergency SOS.
+Home → Needs your attention shows an approved clubhouse booking, with the slot
+and the amount to pay. Opening it goes to My bookings.
 
-Resident: one Razorpay screen instead of two, honest payment-method copy,
-marketplace filters that scroll with the listings, board separated from Community
-market, Hindi and Marathi questions understood.
+A society notice is on that same list. Listen reads the notice in English.
 
-Guard: announcements without shopping links, and a Staff tab for staff and
-helper attendance.
+Staff and helpers are one list. Tap a name for today, this week, or this month.
+A photo on register, check-in, or check-out is optional.
 
-## Two server-side pieces need a deploy first
+## What still waits on the server
 
-`/api/payments/methods` and `/api/workers/attendance/today` are new in this
-branch and are not on Render yet. Until the API redeploys, the Helpers list will
-look empty and the bills-tab wording falls back to a generic sentence — the app
-code is right, the endpoints just 404.
+Email and WhatsApp for a new notice go out only after this server is deployed,
+and only for people who have an email or a phone on file. The row on Home works
+now.
 
-## Replacing this build
-
-This is a stopgap because the build ran here instead of on EAS. A real preview
-build keeps the EAS keystore, so it upgrades in place and can take
-JavaScript-only fixes over the air:
-
-```bash
-cd app
-npx eas-cli build --platform android --profile preview   # new APK + QR
-npx eas-cli update --branch preview                      # JS-only, no reinstall
-```
-
-Delete this branch once that exists — it carries a 51 MB binary.
+A check-in or check-out photo is stored on the visit after the server deploy.
+The check-in itself still saves. A registration photo saves now.
