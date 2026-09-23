@@ -396,34 +396,24 @@ function PostModal({ visible, onClose, onDone, onSell }) {
   );
 }
 
-// "Listen" bar: reads a notice aloud in English / Hindi / Marathi. The server
-// translates on the fly; the phone speaks it (expo-speech). Hidden if the build
-// doesn't support speech yet.
+// Reads the notice aloud in English. The phone does not speak Hindi or Marathi.
 function ListenBar({ text }) {
-  const [busy, setBusy] = useState(null);
+  const [busy, setBusy] = useState(false);
   if (!speechSupported()) return null;
-  const langs = [
-    { id: "en", label: "English" },
-    { id: "hi", label: "हिंदी" },
-    { id: "mr", label: "मराठी" },
-  ];
-  const play = async (id) => {
-    setBusy(id);
+  const play = async () => {
+    setBusy(true);
     try {
-      await translateAndSpeak(text, id);
+      await translateAndSpeak(text, "en");
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   };
   return (
     <View style={styles.listenBar}>
-      <Ionicons name="volume-medium-outline" size={15} color="#0B6E8F" />
-      <Text style={styles.listenLabel}>Listen</Text>
-      {langs.map((l) => (
-        <TouchableOpacity key={l.id} style={styles.listenChip} onPress={() => play(l.id)}>
-          <Text style={styles.listenChipText}>{busy === l.id ? "…" : l.label}</Text>
-        </TouchableOpacity>
-      ))}
+      <TouchableOpacity style={[styles.listenChip, { flexDirection: "row", alignItems: "center", gap: 4 }]} onPress={play} disabled={busy}>
+        <Ionicons name="volume-medium-outline" size={15} color="#0B6E8F" />
+        <Text style={styles.listenChipText}>{busy ? "…" : "Listen"}</Text>
+      </TouchableOpacity>
       <TouchableOpacity style={styles.listenStop} onPress={stopSpeaking} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
         <Ionicons name="stop-circle-outline" size={18} color="#B44" />
       </TouchableOpacity>
