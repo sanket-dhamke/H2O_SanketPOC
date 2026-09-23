@@ -310,7 +310,7 @@ function PersonHistory({ person, onClose }) {
   const summary = summarizeVisits(shown);
   const summaryText = loading
     ? "Loading their visits…"
-    : `${summary.days} day${summary.days === 1 ? "" : "s"} · ${summary.visits} visit${summary.visits === 1 ? "" : "s"} · ${formatHours(summary.minutes)}${summary.open ? ` · ${summary.open} still inside` : ""}`;
+    : `${summary.days} day${summary.days === 1 ? "" : "s"} · ${summary.visits} visit${summary.visits === 1 ? "" : "s"}${summary.minutes ? ` · ${formatHours(summary.minutes)}` : ""}${summary.open ? ` · ${summary.open} still inside` : ""}`;
 
   return (
     <Modal visible={!!person} transparent animationType="fade" onRequestClose={onClose}>
