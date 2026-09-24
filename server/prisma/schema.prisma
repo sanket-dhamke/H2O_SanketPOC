@@ -1137,6 +1137,7 @@ model NeighborhoodPost {
   authorId     String
   societyId    String
   societyName  String?
+  area         String?
   body         String
   imageUrl     String?
   kind         String             @default("post")
@@ -1147,6 +1148,7 @@ model NeighborhoodPost {
 
   @@index([createdAt])
   @@index([societyId])
+  @@index([area])
 }
 
 model NeighborhoodVote {

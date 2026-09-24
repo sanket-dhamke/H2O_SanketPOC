@@ -10,8 +10,10 @@ import { body } from "../lib/type";
 const VISIBILITY = [
   { id: "followers", label: "Followers" },
   { id: "society", label: "My society" },
-  { id: "all", label: "Everyone" },
+  { id: "area", label: "This area" },
 ];
+
+const VISIBILITY_LABEL = VISIBILITY.reduce((acc, item) => ({ ...acc, [item.id]: item.label }), {});
 
 export default function NeighborhoodScreen() {
   const navigation = useNavigation();
@@ -104,7 +106,7 @@ export default function NeighborhoodScreen() {
           {posts.map((post) => (
             <View key={post.id} style={styles.card}>
               <Text style={styles.name}>{post.authorName} · {post.societyName || "Society"}</Text>
-              <Text style={styles.meta}>{post.kind} · {post.visibility}</Text>
+              <Text style={styles.meta}>{post.kind} · {VISIBILITY_LABEL[post.visibility] || post.visibility}</Text>
               <Text style={styles.copy}>{post.body}</Text>
               {!!post.imageUrl && <Image source={{ uri: post.imageUrl }} style={styles.photo} />}
               {(post.poll || []).map((choice) => (

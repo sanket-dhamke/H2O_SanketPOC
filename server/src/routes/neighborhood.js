@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { authRequired } from "../auth.js";
-import { VISIBILITIES, KINDS, acceptedPeerIds, canMessage, filterFeed } from "../neighborhoodFeed.js";
+import { VISIBILITIES, KINDS, areaKey, acceptedPeerIds, canMessage, filterFeed } from "../neighborhoodFeed.js";
 
 export const neighborhoodRouter = Router();
 
@@ -21,6 +21,7 @@ const NEIGHBORHOOD_DDL = [
     "authorId" TEXT NOT NULL,
     "societyId" TEXT NOT NULL,
     "societyName" TEXT,
+    "area" TEXT,
     "body" TEXT NOT NULL,
     "imageUrl" TEXT,
     "kind" TEXT NOT NULL DEFAULT 'post',
@@ -28,6 +29,7 @@ const NEIGHBORHOOD_DDL = [
     "pollOptions" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`,
+  `ALTER TABLE "NeighborhoodPost" ADD COLUMN IF NOT EXISTS "area" TEXT`,
   `CREATE TABLE IF NOT EXISTS "NeighborhoodVote" (
     "id" TEXT PRIMARY KEY,
     "postId" TEXT NOT NULL,
@@ -67,6 +69,19 @@ async function peersOf(userId) {
   return acceptedPeerIds(rows, userId);
 }
 
+// The viewer object canSeePost needs: their id, society, and locality (area).
+async function viewerContext(user) {
+  let area = null;
+  if (user.societyId) {
+    const society = await prisma.society.findUnique({
+      where: { id: user.societyId },
+      select: { city: true },
+    });
+    area = areaKey(society?.city);
+  }
+  return { id: user.id, societyId: user.societyId, area };
+}
+
 function serializePost(post, viewerId) {
   const options = Array.isArray(post.pollOptions) ? post.pollOptions : [];
   const counts = {};
@@ -82,6 +97,7 @@ function serializePost(post, viewerId) {
     authorName: post.author?.name || "Resident",
     societyId: post.societyId,
     societyName: post.societyName || post.author?.society?.name || null,
+    area: post.area || null,
     createdAt: post.createdAt,
     poll: options.map((option) => ({ option, votes: counts[option] || 0 })),
     myVote: mine?.option || null,
@@ -90,13 +106,13 @@ function serializePost(post, viewerId) {
 
 neighborhoodRouter.get("/neighborhood/feed", authRequired, async (req, res) => {
   await ensureNeighborhoodTables();
-  const peers = await peersOf(req.user.id);
+  const [viewer, peers] = await Promise.all([viewerContext(req.user), peersOf(req.user.id)]);
   const posts = await prisma.neighborhoodPost.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,
     include: { author: { select: { name: true, society: { select: { name: true } } } }, votes: true },
   });
-  const visible = filterFeed(posts, req.user, peers);
+  const visible = filterFeed(posts, viewer, peers);
   res.json({ posts: visible.map((post) => serializePost(post, req.user.id)) });
 });
 
@@ -113,12 +129,13 @@ neighborhoodRouter.post("/neighborhood/posts", authRequired, async (req, res) =>
   if (kind === "poll" && pollOptions.length < 2) {
     return res.status(400).json({ message: "A poll needs at least two choices." });
   }
-  const society = await prisma.society.findUnique({ where: { id: req.user.societyId }, select: { name: true } });
+  const society = await prisma.society.findUnique({ where: { id: req.user.societyId }, select: { name: true, city: true } });
   const post = await prisma.neighborhoodPost.create({
     data: {
       authorId: req.user.id,
       societyId: req.user.societyId,
       societyName: society?.name || null,
+      area: areaKey(society?.city),
       body,
       imageUrl: req.body?.imageUrl ? String(req.body.imageUrl).slice(0, 500) : null,
       kind,
@@ -137,8 +154,8 @@ neighborhoodRouter.post("/neighborhood/posts/:id/vote", authRequired, async (req
   if (!post || post.kind !== "poll") return res.status(404).json({ message: "Poll not found." });
   const options = Array.isArray(post.pollOptions) ? post.pollOptions : [];
   if (!options.includes(option)) return res.status(400).json({ message: "That choice is not on the poll." });
-  const peers = await peersOf(req.user.id);
-  if (!filterFeed([post], req.user, peers).length) return res.status(404).json({ message: "Poll not found." });
+  const [viewer, peers] = await Promise.all([viewerContext(req.user), peersOf(req.user.id)]);
+  if (!filterFeed([post], viewer, peers).length) return res.status(404).json({ message: "Poll not found." });
   await prisma.neighborhoodVote.upsert({
     where: { postId_userId: { postId: post.id, userId: req.user.id } },
     update: { option },
