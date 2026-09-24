@@ -70,6 +70,7 @@ export default function CommunityScreen() {
   const quickLinks = useMemo(() => {
     const everyone = ["resident", "admin", "guard"];
     return [
+      { id: "neighborhood", label: "Neighborhood", subtitle: "Posts, polls and follows across societies", icon: "chatbubbles", color: "#0F6E56", screen: "Neighborhood", roles: ["resident", "admin"] },
       { id: "homeServices", label: "Home services", subtitle: "Cleaning, AC, painting, movers", icon: "construct", color: "#0B6E8F", screen: "HomeServices", roles: ["resident", "admin"], societyOnly: true },
       { id: "market", label: "Buy & Sell", subtitle: "Listings, rentals & group-buy", icon: "pricetags", color: "#C99000", ink: "#8A6200", screen: "Marketplace", roles: ["resident", "admin"] },
       { id: "helpdesk", label: "Helpdesk", subtitle: "Raise a request or call the office", icon: "help-buoy", color: "#1E7A3D", screen: "Helpdesk", roles: everyone },

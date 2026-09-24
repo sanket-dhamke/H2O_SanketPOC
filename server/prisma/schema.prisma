@@ -186,6 +186,9 @@ model User {
   listingMessages ListingMessage[] @relation("ListingMsgFrom")
   listingJoins  ListingJoin[] @relation("ListingJoinUser")
   serviceBookings ServiceBooking[] @relation("ResidentServiceBookings")
+  neighborhoodPosts NeighborhoodPost[]
+  followRequests    Follow[] @relation("FollowOut")
+  followIncoming    Follow[] @relation("FollowIn")
 
   // societyId+role: directory & admin/guard lookups. flatId: fast push targeting
   // (notify a flat's residents) and "residents of this flat" reads.
@@ -1111,6 +1114,62 @@ model RentalCompliance {
 }
 
 // ---- Tier 3: Sustainability dashboard (per-flat water metering + green score) -
+// Experiment: neighborhood feed. Not part of the main GATEZO line until it is merged.
+// Follow.status: "pending" | "accepted"
+// NeighborhoodPost.visibility: "followers" | "society" | "all"
+// NeighborhoodPost.kind: "post" | "problem" | "poll"
+model Follow {
+  id          String   @id @default(uuid())
+  requester   User     @relation("FollowOut", fields: [requesterId], references: [id], onDelete: Cascade)
+  requesterId String
+  target      User     @relation("FollowIn", fields: [targetId], references: [id], onDelete: Cascade)
+  targetId    String
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+
+  @@unique([requesterId, targetId])
+  @@index([targetId, status])
+}
+
+model NeighborhoodPost {
+  id           String             @id @default(uuid())
+  author       User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId     String
+  societyId    String
+  societyName  String?
+  body         String
+  imageUrl     String?
+  kind         String             @default("post")
+  visibility   String             @default("society")
+  pollOptions  Json?
+  createdAt    DateTime           @default(now())
+  votes        NeighborhoodVote[]
+
+  @@index([createdAt])
+  @@index([societyId])
+}
+
+model NeighborhoodVote {
+  id      String           @id @default(uuid())
+  post    NeighborhoodPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId  String
+  userId  String
+  option  String
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+}
+
+model NeighborhoodMessage {
+  id        String   @id @default(uuid())
+  fromId    String
+  toId      String
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([fromId, toId, createdAt])
+}
+
 model WaterReading {
   id        String   @id @default(uuid())
   societyId String
