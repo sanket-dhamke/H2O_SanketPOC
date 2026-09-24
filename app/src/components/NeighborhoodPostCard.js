@@ -19,6 +19,7 @@ export default function NeighborhoodPostCard({ post, currentUserId, onOpenProfil
   const vis = VISIBILITY_META[post.visibility] || { label: post.visibility, icon: "ellipse-outline" };
   const kind = KIND_META[post.kind];
   const isSelf = post.authorId === currentUserId;
+  const images = post.images && post.images.length ? post.images : post.imageUrl ? [post.imageUrl] : [];
   const totalVotes = poll.reduce((sum, choice) => sum + choice.votes, 0);
 
   const openProfile = () => { if (!isSelf) onOpenProfile?.(post.authorId, post.authorName); };
@@ -86,7 +87,14 @@ export default function NeighborhoodPostCard({ post, currentUserId, onOpenProfil
         </View>
 
         {!!post.body && <Text style={styles.copy}>{post.body}</Text>}
-        {!!post.imageUrl && <Image source={{ uri: post.imageUrl }} style={styles.photo} />}
+        {images.length === 1 && <Image source={{ uri: images[0] }} style={styles.photoSingle} resizeMode="cover" />}
+        {images.length > 1 && (
+          <View style={styles.grid}>
+            {images.map((uri, i) => (
+              <Image key={i} source={{ uri }} style={[styles.gridImg, images.length === 3 && i === 0 && styles.gridWide]} resizeMode="cover" />
+            ))}
+          </View>
+        )}
 
         {poll.length > 0 && (
           <View style={styles.poll}>
@@ -137,7 +145,10 @@ const styles = StyleSheet.create({
   pill: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#F0F4F6", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   pillText: { ...body(600), fontSize: 11, color: "#5B6B73" },
   copy: { ...body(400), color: "#182830", fontSize: 15, lineHeight: 21, marginTop: 6 },
-  photo: { width: "100%", height: 190, borderRadius: 14, marginTop: 10, backgroundColor: "#EDF2F4" },
+  photoSingle: { width: "100%", height: 200, borderRadius: 14, marginTop: 10, backgroundColor: "#EDF2F4" },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 10, borderRadius: 14, overflow: "hidden" },
+  gridImg: { width: "49%", aspectRatio: 1, backgroundColor: "#EDF2F4" },
+  gridWide: { width: "100%", aspectRatio: 2 },
   poll: { marginTop: 10, gap: 8 },
   choice: { height: 38, borderRadius: 10, backgroundColor: "#F5F8F9", justifyContent: "center", overflow: "hidden" },
   choiceFill: { position: "absolute", left: 0, top: 0, bottom: 0, borderRadius: 10 },

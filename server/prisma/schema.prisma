@@ -1140,6 +1140,7 @@ model NeighborhoodPost {
   area         String?
   body         String
   imageUrl     String?
+  images       Json?
   kind         String             @default("post")
   visibility   String             @default("society")
   pollOptions  Json?

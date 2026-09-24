@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Alert } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import ScreenHeader from "../components/ScreenHeader";
 import AppTextInput from "../components/AppTextInput";
 import Avatar from "../components/Avatar";
@@ -65,8 +66,7 @@ export default function NeighborhoodScreen() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bodyText, setBodyText] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [showPhoto, setShowPhoto] = useState(false);
+  const [images, setImages] = useState([]); // base64 data URLs, like Buy & Sell
   const [kind, setKind] = useState("post");
   const [visibility, setVisibility] = useState("society");
   const [pollOptions, setPollOptions] = useState("");
@@ -98,16 +98,43 @@ export default function NeighborhoodScreen() {
 
   const openProfile = (userId, name) => navigation.navigate("NeighborhoodProfile", { userId, name });
 
+  const MAX_PHOTOS = 4;
+  const remaining = () => MAX_PHOTOS - images.length;
+  const addAssets = (assets) => {
+    const next = (assets || []).filter((a) => a?.base64).map((a) => `data:image/jpeg;base64,${a.base64}`);
+    if (next.length) setImages((prev) => [...prev, ...next].slice(0, MAX_PHOTOS));
+  };
+  async function pickFromLibrary() {
+    if (remaining() <= 0) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return setError("Allow photo access to add pictures.");
+    const result = await ImagePicker.launchImageLibraryAsync({
+      quality: 0.5,
+      base64: true,
+      allowsMultipleSelection: true,
+      selectionLimit: remaining(),
+    });
+    if (!result.canceled) addAssets(result.assets);
+  }
+  async function takePhoto() {
+    if (remaining() <= 0) return;
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) return setError("Allow camera access to take a photo.");
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.5, base64: true, allowsEditing: true });
+    if (!result.canceled) addAssets(result.assets);
+  }
+
+  const canPost = !!bodyText.trim() || images.length > 0;
+
   async function publish() {
-    if (!bodyText.trim() || posting) return;
+    if (!canPost || posting) return;
     setPosting(true);
     setError("");
     try {
-      await api.createNeighborhoodPost({ body: bodyText, imageUrl, kind, visibility, pollOptions });
+      await api.createNeighborhoodPost({ body: bodyText, images, kind, visibility, pollOptions });
       setBodyText("");
-      setImageUrl("");
+      setImages([]);
       setPollOptions("");
-      setShowPhoto(false);
       setKind("post");
       await loadFeed();
     } catch (e) {
@@ -130,11 +157,32 @@ export default function NeighborhoodScreen() {
           style={styles.input}
         />
       </View>
-      {showPhoto && (
-        <AppTextInput value={imageUrl} onChangeText={setImageUrl} placeholder="Paste a photo link (https://…)" style={styles.subInput} />
-      )}
       {kind === "poll" && (
         <AppTextInput value={pollOptions} onChangeText={setPollOptions} placeholder="Poll choices — one per line (2–4)" multiline style={styles.subInput} />
+      )}
+      {(images.length > 0 || true) && (
+        <View style={styles.photoStrip}>
+          {images.map((uri, i) => (
+            <View key={i} style={styles.thumbWrap}>
+              <Image source={{ uri }} style={styles.thumb} />
+              <TouchableOpacity style={styles.thumbRemove} onPress={() => setImages((im) => im.filter((_, idx) => idx !== i))}>
+                <Ionicons name="close" size={12} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ))}
+          {images.length < MAX_PHOTOS && (
+            <>
+              <TouchableOpacity style={styles.addTile} onPress={pickFromLibrary}>
+                <Ionicons name="images-outline" size={20} color="#0B6E8F" />
+                <Text style={styles.addTileText}>Gallery</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.addTile} onPress={takePhoto}>
+                <Ionicons name="camera-outline" size={20} color="#0B6E8F" />
+                <Text style={styles.addTileText}>Camera</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       )}
       <View style={styles.kindRow}>
         {KINDS.map((k) => {
@@ -146,9 +194,6 @@ export default function NeighborhoodScreen() {
             </TouchableOpacity>
           );
         })}
-        <TouchableOpacity style={[styles.kindChip, styles.iconOnly, showPhoto && styles.kindChipOn]} onPress={() => setShowPhoto((v) => !v)}>
-          <Ionicons name="image-outline" size={16} color={showPhoto ? "#0B6E8F" : "#7A8992"} />
-        </TouchableOpacity>
       </View>
       <View style={styles.audienceRow}>
         <View style={styles.audienceChips}>
@@ -163,9 +208,9 @@ export default function NeighborhoodScreen() {
           })}
         </View>
         <TouchableOpacity
-          style={[styles.postBtn, (!bodyText.trim() || posting) && styles.postBtnOff]}
+          style={[styles.postBtn, (!canPost || posting) && styles.postBtnOff]}
           onPress={publish}
-          disabled={!bodyText.trim() || posting}
+          disabled={!canPost || posting}
         >
           <Text style={styles.postBtnText}>{posting ? "Posting…" : "Post"}</Text>
         </TouchableOpacity>
@@ -283,6 +328,12 @@ const styles = StyleSheet.create({
   composerTop: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
   input: { flex: 1, minHeight: 46, maxHeight: 140, ...body(400), fontSize: 16, color: "#182830", paddingTop: 10 },
   subInput: { backgroundColor: "#F4F7F8", borderRadius: 12, padding: 12, marginTop: 10, ...body(400), minHeight: 44 },
+  photoStrip: { flexDirection: "row", gap: 8, marginTop: 12, flexWrap: "wrap" },
+  thumbWrap: { width: 64, height: 64, borderRadius: 12, overflow: "hidden" },
+  thumb: { width: 64, height: 64, borderRadius: 12, backgroundColor: "#E7F3F8" },
+  thumbRemove: { position: "absolute", top: 3, right: 3, backgroundColor: "rgba(0,0,0,0.55)", width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  addTile: { width: 64, height: 64, borderRadius: 12, backgroundColor: "#EAF4F8", borderWidth: 1, borderColor: "#CDE6EF", borderStyle: "dashed", alignItems: "center", justifyContent: "center", gap: 2 },
+  addTileText: { ...body(600), color: "#0B6E8F", fontSize: 11 },
   kindRow: { flexDirection: "row", gap: 8, marginTop: 12, flexWrap: "wrap" },
   kindChip: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: "#F4F7F8", borderWidth: 1, borderColor: "#E4EAED" },
   iconOnly: { paddingHorizontal: 10 },

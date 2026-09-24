@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { authRequired } from "../auth.js";
+import { uploadDocument } from "../storage.js";
 import { VISIBILITIES, KINDS, areaKey, acceptedPeerIds, canMessage, filterFeed } from "../neighborhoodFeed.js";
 
 export const neighborhoodRouter = Router();
@@ -24,12 +25,14 @@ const NEIGHBORHOOD_DDL = [
     "area" TEXT,
     "body" TEXT NOT NULL,
     "imageUrl" TEXT,
+    "images" JSONB,
     "kind" TEXT NOT NULL DEFAULT 'post',
     "visibility" TEXT NOT NULL DEFAULT 'society',
     "pollOptions" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`,
   `ALTER TABLE "NeighborhoodPost" ADD COLUMN IF NOT EXISTS "area" TEXT`,
+  `ALTER TABLE "NeighborhoodPost" ADD COLUMN IF NOT EXISTS "images" JSONB`,
   `CREATE TABLE IF NOT EXISTS "NeighborhoodLike" (
     "id" TEXT PRIMARY KEY,
     "postId" TEXT NOT NULL,
@@ -95,12 +98,14 @@ function serializePost(post, viewerId) {
   for (const vote of post.votes || []) counts[vote.option] = (counts[vote.option] || 0) + 1;
   const mine = (post.votes || []).find((vote) => vote.userId === viewerId);
   const likes = post.likes || [];
+  const images = Array.isArray(post.images) ? post.images : post.imageUrl ? [post.imageUrl] : [];
   return {
     likeCount: likes.length,
     liked: likes.some((like) => like.userId === viewerId),
+    images,
     id: post.id,
     body: post.body,
-    imageUrl: post.imageUrl || null,
+    imageUrl: images[0] || null,
     kind: post.kind,
     visibility: post.visibility,
     authorId: post.authorId,
@@ -131,7 +136,6 @@ neighborhoodRouter.post("/neighborhood/posts", authRequired, async (req, res) =>
   const body = String(req.body?.body || "").trim();
   const visibility = VISIBILITIES.includes(req.body?.visibility) ? req.body.visibility : "society";
   const kind = KINDS.includes(req.body?.kind) ? req.body.kind : "post";
-  if (!body) return res.status(400).json({ message: "Write something to post." });
   if (!req.user.societyId) return res.status(400).json({ message: "Join a society before posting." });
   const pollOptions = kind === "poll"
     ? String(req.body?.pollOptions || "").split("\n").map((line) => line.trim()).filter(Boolean).slice(0, 4)
@@ -139,6 +143,29 @@ neighborhoodRouter.post("/neighborhood/posts", authRequired, async (req, res) =>
   if (kind === "poll" && pollOptions.length < 2) {
     return res.status(400).json({ message: "A poll needs at least two choices." });
   }
+  // Photos: accept up to 4 base64 data URLs (or http links) and mirror the
+  // Marketplace flow — upload to object storage when configured, otherwise
+  // embed the data URL so the picture still shows in local/demo runs.
+  const MAX_IMG_CHARS = 4_000_000; // ~3 MB decoded per image
+  const incoming = Array.isArray(req.body?.images) ? req.body.images.slice(0, 4) : [];
+  const stamp = Date.now();
+  const uploaded = await Promise.all(
+    incoming.map(async (img, i) => {
+      if (typeof img !== "string" || !img) return null;
+      if (img.startsWith("http")) return img;
+      if (img.length > MAX_IMG_CHARS) return null;
+      const url = await uploadDocument(img, `nbhd-${stamp}-${i}`, "neighborhood");
+      return url || (img.startsWith("data:") ? img : null);
+    })
+  );
+  let images = uploaded.filter(Boolean);
+  // Backward-compatible: still accept a single pasted photo link.
+  if (!images.length && typeof req.body?.imageUrl === "string" && req.body.imageUrl.startsWith("http")) {
+    images = [req.body.imageUrl];
+  }
+  // A post needs either words or at least one photo.
+  if (!body && !images.length) return res.status(400).json({ message: "Write something or add a photo to post." });
+
   const society = await prisma.society.findUnique({ where: { id: req.user.societyId }, select: { name: true, city: true } });
   const post = await prisma.neighborhoodPost.create({
     data: {
@@ -147,7 +174,8 @@ neighborhoodRouter.post("/neighborhood/posts", authRequired, async (req, res) =>
       societyName: society?.name || null,
       area: areaKey(society?.city),
       body,
-      imageUrl: req.body?.imageUrl ? String(req.body.imageUrl).slice(0, 500) : null,
+      imageUrl: images[0] || null,
+      images: images.length ? images : undefined,
       kind,
       visibility,
       pollOptions: pollOptions.length ? pollOptions : undefined,
