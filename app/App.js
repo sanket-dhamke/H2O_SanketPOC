@@ -22,6 +22,7 @@ import GateScreen from "./src/screens/GateScreen";
 import AssistantScreen from "./src/screens/AssistantScreen";
 import CommunityScreen from "./src/screens/CommunityScreen";
 import NeighborhoodScreen from "./src/screens/NeighborhoodScreen";
+import NeighborhoodProfileScreen from "./src/screens/NeighborhoodProfileScreen";
 import HelpScreen from "./src/screens/HelpScreen";
 import HelpdeskScreen from "./src/screens/HelpdeskScreen";
 import TicketDetailScreen from "./src/screens/TicketDetailScreen";
@@ -197,6 +198,7 @@ function CommunityStackScreen() {
     <CommunityStack.Navigator screenOptions={{ headerShown: false }}>
       <CommunityStack.Screen name="CommunityHome" component={CommunityScreen} />
       <CommunityStack.Screen name="Neighborhood" component={NeighborhoodScreen} />
+      <CommunityStack.Screen name="NeighborhoodProfile" component={NeighborhoodProfileScreen} />
       <CommunityStack.Screen name="Helpdesk" component={HelpdeskScreen} />
       <CommunityStack.Screen name="TicketDetail" component={TicketDetailScreen} />
       <CommunityStack.Screen name="Directory" component={DirectoryScreen} />

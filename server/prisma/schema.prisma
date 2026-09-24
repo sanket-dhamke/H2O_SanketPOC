@@ -1145,10 +1145,21 @@ model NeighborhoodPost {
   pollOptions  Json?
   createdAt    DateTime           @default(now())
   votes        NeighborhoodVote[]
+  likes        NeighborhoodLike[]
 
   @@index([createdAt])
   @@index([societyId])
   @@index([area])
+}
+
+model NeighborhoodLike {
+  id        String           @id @default(uuid())
+  post      NeighborhoodPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String
+  userId    String
+  createdAt DateTime         @default(now())
+
+  @@unique([postId, userId])
 }
 
 model NeighborhoodVote {

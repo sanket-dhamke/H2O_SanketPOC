@@ -347,6 +347,8 @@ export const api = {
   neighborhoodFeed: () => request("/api/neighborhood/feed"),
   createNeighborhoodPost: (payload) => request("/api/neighborhood/posts", { method: "POST", body: payload }),
   voteNeighborhood: (id, option) => request(`/api/neighborhood/posts/${id}/vote`, { method: "POST", body: { option } }),
+  likeNeighborhood: (id) => request(`/api/neighborhood/posts/${id}/like`, { method: "POST" }),
+  neighborhoodProfile: (userId) => request(`/api/neighborhood/users/${userId}`),
   neighborhoodPeople: (q) => request(`/api/neighborhood/people${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   neighborhoodRequests: () => request("/api/neighborhood/requests"),
   requestFollow: (userId) => request(`/api/neighborhood/follow/${userId}`, { method: "POST" }),

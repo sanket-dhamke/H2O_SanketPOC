@@ -30,6 +30,13 @@ const NEIGHBORHOOD_DDL = [
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`,
   `ALTER TABLE "NeighborhoodPost" ADD COLUMN IF NOT EXISTS "area" TEXT`,
+  `CREATE TABLE IF NOT EXISTS "NeighborhoodLike" (
+    "id" TEXT PRIMARY KEY,
+    "postId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "NeighborhoodLike_postId_userId_key" ON "NeighborhoodLike"("postId", "userId")`,
   `CREATE TABLE IF NOT EXISTS "NeighborhoodVote" (
     "id" TEXT PRIMARY KEY,
     "postId" TEXT NOT NULL,
@@ -87,7 +94,10 @@ function serializePost(post, viewerId) {
   const counts = {};
   for (const vote of post.votes || []) counts[vote.option] = (counts[vote.option] || 0) + 1;
   const mine = (post.votes || []).find((vote) => vote.userId === viewerId);
+  const likes = post.likes || [];
   return {
+    likeCount: likes.length,
+    liked: likes.some((like) => like.userId === viewerId),
     id: post.id,
     body: post.body,
     imageUrl: post.imageUrl || null,
@@ -110,7 +120,7 @@ neighborhoodRouter.get("/neighborhood/feed", authRequired, async (req, res) => {
   const posts = await prisma.neighborhoodPost.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,
-    include: { author: { select: { name: true, society: { select: { name: true } } } }, votes: true },
+    include: { author: { select: { name: true, society: { select: { name: true } } } }, votes: true, likes: true },
   });
   const visible = filterFeed(posts, viewer, peers);
   res.json({ posts: visible.map((post) => serializePost(post, req.user.id)) });
@@ -142,7 +152,7 @@ neighborhoodRouter.post("/neighborhood/posts", authRequired, async (req, res) =>
       visibility,
       pollOptions: pollOptions.length ? pollOptions : undefined,
     },
-    include: { author: { select: { name: true, society: { select: { name: true } } } }, votes: true },
+    include: { author: { select: { name: true, society: { select: { name: true } } } }, votes: true, likes: true },
   });
   res.status(201).json({ post: serializePost(post, req.user.id) });
 });
@@ -162,6 +172,71 @@ neighborhoodRouter.post("/neighborhood/posts/:id/vote", authRequired, async (req
     create: { postId: post.id, userId: req.user.id, option },
   });
   res.json({ ok: true });
+});
+
+// A person's public profile: their details, the follow relationship with the
+// viewer, and the posts the viewer is actually allowed to see (same visibility
+// rules as the feed). This is what powers the tappable profile + post history.
+neighborhoodRouter.get("/neighborhood/users/:userId", authRequired, async (req, res) => {
+  await ensureNeighborhoodTables();
+  const targetId = req.params.userId;
+  const target = await prisma.user.findUnique({
+    where: { id: targetId },
+    select: { id: true, name: true, role: true, society: { select: { name: true, city: true } } },
+  });
+  if (!target) return res.status(404).json({ message: "Person not found." });
+
+  const [viewer, peers] = await Promise.all([viewerContext(req.user), peersOf(req.user.id)]);
+  const authored = await prisma.neighborhoodPost.findMany({
+    where: { authorId: targetId },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    include: { author: { select: { name: true, society: { select: { name: true } } } }, votes: true, likes: true },
+  });
+  const visible = filterFeed(authored, viewer, peers);
+
+  const row = await prisma.follow.findFirst({
+    where: { OR: [{ requesterId: req.user.id, targetId }, { requesterId: targetId, targetId: req.user.id }] },
+  });
+  let follow = "none";
+  if (row?.status === "accepted") follow = "accepted";
+  else if (row?.requesterId === req.user.id && row.status === "pending") follow = "requested";
+  else if (row?.targetId === req.user.id && row.status === "pending") follow = "incoming";
+
+  res.json({
+    profile: {
+      id: target.id,
+      name: target.name,
+      role: target.role,
+      societyName: target.society?.name || null,
+      area: areaKey(target.society?.city),
+      areaLabel: target.society?.city || null,
+      isSelf: targetId === req.user.id,
+      follow,
+      followId: row?.id || null,
+      canMessage: canMessage(req.user.id, targetId, peers),
+      postCount: visible.length,
+    },
+    posts: visible.map((post) => serializePost(post, req.user.id)),
+  });
+});
+
+neighborhoodRouter.post("/neighborhood/posts/:id/like", authRequired, async (req, res) => {
+  await ensureNeighborhoodTables();
+  const post = await prisma.neighborhoodPost.findUnique({ where: { id: req.params.id } });
+  if (!post) return res.status(404).json({ message: "Post not found." });
+  const [viewer, peers] = await Promise.all([viewerContext(req.user), peersOf(req.user.id)]);
+  if (!filterFeed([post], viewer, peers).length) return res.status(404).json({ message: "Post not found." });
+  const existing = await prisma.neighborhoodLike.findUnique({
+    where: { postId_userId: { postId: post.id, userId: req.user.id } },
+  });
+  if (existing) {
+    await prisma.neighborhoodLike.delete({ where: { id: existing.id } });
+  } else {
+    await prisma.neighborhoodLike.create({ data: { postId: post.id, userId: req.user.id } });
+  }
+  const likeCount = await prisma.neighborhoodLike.count({ where: { postId: post.id } });
+  res.json({ liked: !existing, likeCount });
 });
 
 neighborhoodRouter.get("/neighborhood/people", authRequired, async (req, res) => {
