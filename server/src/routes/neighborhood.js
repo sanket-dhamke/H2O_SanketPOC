@@ -5,46 +5,54 @@ import { VISIBILITIES, KINDS, acceptedPeerIds, canMessage, filterFeed } from "..
 
 export const neighborhoodRouter = Router();
 
+// Postgres rejects multiple commands in one prepared statement (error 42601),
+// so each DDL statement is issued as its own $executeRawUnsafe call.
+const NEIGHBORHOOD_DDL = [
+  `CREATE TABLE IF NOT EXISTS "Follow" (
+    "id" TEXT PRIMARY KEY,
+    "requesterId" TEXT NOT NULL,
+    "targetId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "Follow_requesterId_targetId_key" ON "Follow"("requesterId", "targetId")`,
+  `CREATE TABLE IF NOT EXISTS "NeighborhoodPost" (
+    "id" TEXT PRIMARY KEY,
+    "authorId" TEXT NOT NULL,
+    "societyId" TEXT NOT NULL,
+    "societyName" TEXT,
+    "body" TEXT NOT NULL,
+    "imageUrl" TEXT,
+    "kind" TEXT NOT NULL DEFAULT 'post',
+    "visibility" TEXT NOT NULL DEFAULT 'society',
+    "pollOptions" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE TABLE IF NOT EXISTS "NeighborhoodVote" (
+    "id" TEXT PRIMARY KEY,
+    "postId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "option" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "NeighborhoodVote_postId_userId_key" ON "NeighborhoodVote"("postId", "userId")`,
+  `CREATE TABLE IF NOT EXISTS "NeighborhoodMessage" (
+    "id" TEXT PRIMARY KEY,
+    "fromId" TEXT NOT NULL,
+    "toId" TEXT NOT NULL,
+    "body" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`,
+];
+
 let ready = null;
 export function ensureNeighborhoodTables() {
   if (!ready) {
-    ready = prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "Follow" (
-        "id" TEXT PRIMARY KEY,
-        "requesterId" TEXT NOT NULL,
-        "targetId" TEXT NOT NULL,
-        "status" TEXT NOT NULL DEFAULT 'pending',
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE UNIQUE INDEX IF NOT EXISTS "Follow_requesterId_targetId_key" ON "Follow"("requesterId", "targetId");
-      CREATE TABLE IF NOT EXISTS "NeighborhoodPost" (
-        "id" TEXT PRIMARY KEY,
-        "authorId" TEXT NOT NULL,
-        "societyId" TEXT NOT NULL,
-        "societyName" TEXT,
-        "body" TEXT NOT NULL,
-        "imageUrl" TEXT,
-        "kind" TEXT NOT NULL DEFAULT 'post',
-        "visibility" TEXT NOT NULL DEFAULT 'society',
-        "pollOptions" JSONB,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS "NeighborhoodVote" (
-        "id" TEXT PRIMARY KEY,
-        "postId" TEXT NOT NULL,
-        "userId" TEXT NOT NULL,
-        "option" TEXT NOT NULL,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE UNIQUE INDEX IF NOT EXISTS "NeighborhoodVote_postId_userId_key" ON "NeighborhoodVote"("postId", "userId");
-      CREATE TABLE IF NOT EXISTS "NeighborhoodMessage" (
-        "id" TEXT PRIMARY KEY,
-        "fromId" TEXT NOT NULL,
-        "toId" TEXT NOT NULL,
-        "body" TEXT NOT NULL,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-    `).catch((err) => {
+    ready = (async () => {
+      for (const statement of NEIGHBORHOOD_DDL) {
+        await prisma.$executeRawUnsafe(statement);
+      }
+    })().catch((err) => {
       ready = null;
       throw err;
     });
