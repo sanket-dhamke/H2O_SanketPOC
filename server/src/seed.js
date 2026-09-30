@@ -277,6 +277,23 @@ async function main() {
     ],
   });
 
+  /* ============ Society 3: Riverside Residency (Pune) ====================== */
+  // Same city as Green Valley, so the two share a neighborhood "area". Skyline
+  // (Mumbai) sits in a different area. This lets the demo show an "This area"
+  // post crossing societies within Pune while staying out of Mumbai's feed.
+  const river = await prisma.society.create({
+    data: { name: "Riverside Residency", city: "Pune", address: "Baner Road, Pune 411045" },
+  });
+  const flatR101 = await prisma.flat.create({
+    data: { societyId: river.id, flatNo: "R-101", block: "R", ownerName: "Meera Joshi" },
+  });
+  await prisma.user.createMany({
+    data: [
+      { name: "Riverside Admin", email: "admin@riverside.com", role: "admin", passwordHash: hash, phone: "99999 20001", societyId: river.id },
+      { name: "Meera Joshi", email: "resident@riverside.com", role: "resident", passwordHash: hash, phone: "97777 20001", societyId: river.id, flatId: flatR101.id },
+    ],
+  });
+
   console.log("Seed complete. All demo logins use password: " + PASSWORD);
   console.log("  SUPER ADMIN (GATEZO owner): owner@h2o.com");
   console.log("  Society 1 - Green Valley Residency (Pune):");
@@ -285,6 +302,8 @@ async function main() {
   console.log("  Society 2 - Skyline Towers (Mumbai):");
   console.log("     admin@skyline.com, guard@skyline.com");
   console.log("     resident@skyline.com (S-101), resident2@skyline.com (S-102)");
+  console.log("  Society 3 - Riverside Residency (Pune, same area as Green Valley):");
+  console.log("     admin@riverside.com, resident@riverside.com (R-101)");
 }
 
 main()
