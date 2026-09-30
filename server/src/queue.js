@@ -100,6 +100,15 @@ async function enqueue(job) {
   enqueueMem(job);
 }
 
+export function queueStats() {
+  return {
+    backend: queueBackend,
+    inMemoryDepth: q.length,
+    inMemoryActive: active,
+    redisConfigured: Boolean(REDIS_URL),
+  };
+}
+
 /* --------------------------------- public --------------------------------- */
 // Fire-and-forget: schedule a push; returns immediately.
 export function enqueuePush(token, title, body, data = {}) {
