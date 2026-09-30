@@ -108,3 +108,25 @@ export async function uploadDocument(base64, id, folder = "documents") {
     return null;
   }
 }
+
+// Phone PUTs the file to signedUrl, then stores returned publicUrl on the record.
+export async function createSignedUpload({ folder = "uploads", id, ext = "jpg", contentType = "image/jpeg" } = {}) {
+  if (!storageEnabled || !id) return null;
+  try {
+    const path = `${folder}/${id}.${ext}`;
+    const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(path);
+    if (error) throw error;
+    const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+    return {
+      path,
+      token: data?.token || null,
+      signedUrl: data?.signedUrl || null,
+      publicUrl: pub?.publicUrl || null,
+      contentType,
+      bucket: BUCKET,
+    };
+  } catch (err) {
+    console.error("Signed upload failed:", err.message);
+    return null;
+  }
+}

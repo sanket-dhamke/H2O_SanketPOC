@@ -7,19 +7,25 @@ import { publicUser } from "../serializers.js";
 import { validatePassword } from "../passwordPolicy.js";
 import { sendEmail } from "../email.js";
 import { sendPush } from "../push.js";
+import { loginBlocked, noteLoginFailure, clearLoginFailures } from "../lockout.js";
 
 export const authRouter = Router();
 
 authRouter.post("/auth/login", async (req, res) => {
   const { email, password } = req.body || {};
-  // Emails are stored lowercased, so normalize the input for a case-insensitive match.
+  const wait = loginBlocked(email, req.ip);
+  if (wait) {
+    return res.status(429).json({ message: `Too many failed sign-ins. Try again in ${wait} seconds.` });
+  }
   const user = await prisma.user.findUnique({
     where: { email: String(email || "").trim().toLowerCase() },
     include: { flat: true, society: true },
   });
   if (!user || !user.active || !(await bcrypt.compare(password || "", user.passwordHash))) {
+    noteLoginFailure(email, req.ip);
     return res.status(401).json({ message: "Invalid email or password" });
   }
+  clearLoginFailures(email, req.ip);
   // Block login when the user's society has been deactivated by the superadmin.
   if (user.role !== "superadmin" && user.society && !user.society.active) {
     return res.status(403).json({ message: "This society is currently inactive. Contact GateMate support." });

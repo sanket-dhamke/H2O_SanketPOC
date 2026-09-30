@@ -472,4 +472,5 @@ export const api = {
     request("/api/ai/assistant", { method: "POST", body: { question } }),
   aiVoiceVisitor: (payload) =>
     request("/api/ai/voice-visitor", { method: "POST", body: payload }),
+  signUpload: (payload) => request("/api/uploads/sign", { method: "POST", body: payload || {} }),
 };

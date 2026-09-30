@@ -31,8 +31,12 @@ import { rentalRouter } from "./routes/rental.js";
 import { sustainabilityRouter } from "./routes/sustainability.js";
 import { aiRouter } from "./routes/ai.js";
 import { globalLimiter, authLimiter, aiLimiter } from "./rateLimit.js";
-import { startQueueWorkers, queueBackend } from "./queue.js";
+import { startQueueWorkers, queueBackend, queueStats } from "./queue.js";
 import { cacheBackend } from "./cache.js";
+import { requestIdMiddleware, requestLogMiddleware, notFoundHandler, errorHandler } from "./errors.js";
+import { metricsSnapshot } from "./metrics.js";
+import { log } from "./log.js";
+import { uploadsRouter } from "./routes/uploads.js";
 import cron from "node-cron";
 import { runMonthlyBackups } from "./backup.js";
 import { runPlatformBackupSafe } from "./platformBackup.js";
@@ -42,10 +46,9 @@ import { runFeeReminders } from "./feeReminders.js";
 import { runRentExpiryChecks } from "./rentReminders.js";
 
 const app = express();
-// Behind Render/other proxies: trust the first proxy hop so req.ip (used by the
-// rate limiter) reflects the real client, not the load balancer.
 app.set("trust proxy", 1);
 app.use(cors());
+app.use(requestIdMiddleware);
 
 // Razorpay webhook needs the RAW body to verify the signature, so it must be
 // registered before the JSON body parser.
@@ -72,6 +75,7 @@ app.post("/api/razorpay/webhook", express.raw({ type: "*/*" }), async (req, res)
           mode: "online",
           ref: event.payload?.payment?.entity?.id || bill.paymentRef,
         });
+        log.info("razorpay webhook recorded", { billId: bill.id, orderId });
       } catch (e) {
         console.error("[webhook] recordPayment failed:", e.message);
       }
@@ -81,9 +85,9 @@ app.post("/api/razorpay/webhook", express.raw({ type: "*/*" }), async (req, res)
 });
 
 // Visitor photos are sent as base64, so allow a larger JSON body.
-app.use(express.json({ limit: "12mb" }));
-// Telephony webhooks (IVR visitor approval) post form-encoded bodies.
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || "12mb" }));
 app.use(express.urlencoded({ extended: false }));
+app.use(requestLogMiddleware);
 
 // Rate limiting: broad per-IP limiter across the API, with tighter limits on
 // credential and AI endpoints. Exemptions (health, cron, webhook, gate device)
@@ -101,10 +105,16 @@ app.get("/api/health", (_req, res) =>
     ai: aiEnabled,
     cache: cacheBackend,
     queue: queueBackend,
+    queueStats: queueStats(),
   })
 );
 
+app.get("/api/metrics", (_req, res) => {
+  res.json(metricsSnapshot({ cache: cacheBackend, queue: queueStats() }));
+});
+
 app.use("/api", authRouter);
+app.use("/api", uploadsRouter);
 app.use("/api", maintenanceRouter);
 app.use("/api", visitorsRouter);
 app.use("/api/admin", adminRouter);
@@ -246,10 +256,11 @@ if (process.env.RENT_EXPIRY_CRON_ENABLED !== "false") {
   });
 }
 
+app.use(notFoundHandler);
+app.use(errorHandler);
+
 const PORT = process.env.PORT || 4000;
-// Bind explicitly to IPv4 all-interfaces so phones on the LAN can connect.
-// Creates the singleton platform settings row with sensible defaults the first
-// time the server boots (idempotent — never overwrites existing values).
+
 async function ensurePlatformSetting() {
   const existing = await prisma.platformSetting.findUnique({ where: { id: "platform" } });
   if (existing) return false;
@@ -264,18 +275,15 @@ async function ensurePlatformSetting() {
 }
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`GateMate server running on http://0.0.0.0:${PORT}`);
-  console.log(`[infra] cache=${cacheBackend} queue=${queueBackend}`);
-  // Start the notification queue worker (only active in redis mode; the
-  // in-process queue drains on its own when no REDIS_URL is set).
-  startQueueWorkers().catch((e) => console.error("Queue worker init failed:", e.message));
-  // Ensure every existing tenant has a branded-login slug (idempotent).
+  log.info("api listening", { port: PORT, cache: cacheBackend, queue: queueBackend });
+  if (process.env.RUN_QUEUE_WORKER !== "false") {
+    startQueueWorkers().catch((e) => log.error("queue worker init failed", { err: e.message }));
+  }
   backfillSlugs()
-    .then((n) => n > 0 && console.log(`Backfilled slugs for ${n} societ(y/ies).`))
-    .catch((e) => console.error("Slug backfill failed:", e.message));
+    .then((n) => n > 0 && log.info("slug backfill", { count: n }))
+    .catch((e) => log.error("slug backfill failed", { err: e.message }));
   ensurePlatformSetting()
-    .then((created) => created && console.log("Created default platform settings."))
-    .catch((e) => console.error("Platform settings init failed:", e.message));
-  // Seed national helplines into the platform-curated services layer (idempotent).
-  ensureDefaultHelplines().catch((e) => console.error("Helpline seed failed:", e.message));
+    .then((created) => created && log.info("platform settings created"))
+    .catch((e) => log.error("platform settings init failed", { err: e.message }));
+  ensureDefaultHelplines().catch((e) => log.error("helpline seed failed", { err: e.message }));
 });
