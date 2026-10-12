@@ -12,13 +12,13 @@ import crypto from "crypto";
 // Enable with:
 //   IVR_PROVIDER=twilio|exotel
 //   IVR_SECRET=<random string>          (signs webhook callbacks)
-//   PUBLIC_BASE_URL=https://api.gatemate.app
+//   PUBLIC_BASE_URL=https://h2o-api-5sxc.onrender.com
 //   TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_FROM   (for twilio)
 //   EXOTEL_SID / EXOTEL_TOKEN / EXOTEL_FROM                (for exotel)
 // ---------------------------------------------------------------------------
 
 const PROVIDER = (process.env.IVR_PROVIDER || "").toLowerCase();
-const SECRET = process.env.IVR_SECRET || process.env.JWT_SECRET || "gatemate-ivr";
+const SECRET = process.env.IVR_SECRET || process.env.JWT_SECRET || "gatezo-ivr";
 
 export function ivrConfigured() {
   if (PROVIDER === "twilio") {

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# GateMate local setup for macOS (Apple Silicon M1–M5 and Intel).
+# GATEZO local setup for macOS (Apple Silicon M1–M5 and Intel).
 # Safe to re-run. Does not upload secrets.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "==> GateMate Mac setup"
+echo "==> GATEZO Mac setup"
 echo "    arch=$(uname -m)  os=$(uname -s)"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then

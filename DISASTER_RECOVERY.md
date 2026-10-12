@@ -94,7 +94,7 @@ Rebuild on a fresh Postgres (new Supabase project or any Postgres), then load th
    ```bash
    cd server
    BACKUP_ENCRYPTION_KEY="<your key>" DATABASE_URL="<new db url>" \
-     node scripts/restore-platform-backup.js /path/to/gatemate-platform-*.gmb
+     node scripts/restore-platform-backup.js /path/to/gatezo-platform-*.gmb
    ```
 
    The script decrypts, verifies, and inserts every table in FK-safe order

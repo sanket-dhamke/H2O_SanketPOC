@@ -70,7 +70,7 @@ export async function buildPlatformBackup() {
   const { buffer, encrypted } = encryptBuffer(gz);
   const sha256 = crypto.createHash("sha256").update(buffer).digest("hex");
   const stamp = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 16);
-  const filename = `gatemate-platform-${stamp}.${encrypted ? "gmb" : "json.gz"}`;
+  const filename = `gatezo-platform-${stamp}.${encrypted ? "gmb" : "json.gz"}`;
 
   return { buffer, filename, sha256, encrypted, sizeBytes: buffer.length, counts, totalRows };
 }

@@ -46,7 +46,7 @@ model Society {
   planAmount    Float?           // agreed yearly subscription amount (INR)
   planNote      String?
   // Customer-facing product tier: "base" | "prime" | "platinum". Set by the
-  // GateMate superadmin; drives which features are unlocked in the app. Defaults
+  // GATEZO superadmin; drives which features are unlocked in the app. Defaults
   // to "platinum" so existing tenants keep all features until explicitly tiered.
   tier          String           @default("platinum")
   // Auto-erase visitor PII after this many days. Null / 0 = keep forever.
@@ -744,7 +744,7 @@ model VehicleEntry {
 
 // Daily-help & helpline directory (maid, electrician, doctor, ambulance, MSEB…).
 // Three layers, distinguished by `scope`:
-//   "platform" : GateMate-curated, societyId = null, visible to EVERY society.
+//   "platform" : GATEZO-curated, societyId = null, visible to EVERY society.
 //   "society"  : added by a society admin, visible to that society's residents.
 //   "personal" : added by a resident (ownerId set), visible only to that owner
 //                UNLESS suggested to the society (status = "suggested" until an
@@ -901,7 +901,7 @@ model LedgerEntry {
 
 // ---- Portable Helper & Vendor "Trust Passport" (cross-society reputation) ----
 // A worker (maid, cook, electrician, tiffin vendor…) is a NETWORK-WIDE identity
-// (no societyId) so their rating & attendance travel across every GateMate
+// (no societyId) so their rating & attendance travel across every GATEZO
 // society. Identity key is the phone number; `code` is encoded into a QR the
 // worker carries and any gate can scan.
 model Worker {
