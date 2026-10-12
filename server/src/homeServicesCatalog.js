@@ -2,12 +2,19 @@
 // GET /api/home-services. The app ships the same list as a fallback so the
 // investor demo still works if this API has not been deployed yet.
 
+// One-hour windows so a resident can book 14:00–15:00 (2–3 pm) only when a
+// professional who does that service is actually free then.
 export const HOME_SERVICE_SLOTS = [
-  "09:00–11:00",
-  "11:00–13:00",
-  "14:00–16:00",
-  "16:00–18:00",
-  "18:00–20:00",
+  "09:00–10:00",
+  "10:00–11:00",
+  "11:00–12:00",
+  "12:00–13:00",
+  "14:00–15:00",
+  "15:00–16:00",
+  "16:00–17:00",
+  "17:00–18:00",
+  "18:00–19:00",
+  "19:00–20:00",
 ];
 
 export const HOME_SERVICES = [

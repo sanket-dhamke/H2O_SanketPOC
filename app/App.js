@@ -63,7 +63,9 @@ import PayToH2OScreen from "./src/screens/admin/PayToH2OScreen";
 import AdminOfficeScreen from "./src/screens/admin/AdminOfficeScreen";
 import MovesScreen from "./src/screens/admin/MovesScreen";
 import VendorsScreen from "./src/screens/admin/VendorsScreen";
+import ProviderJobsScreen from "./src/screens/provider/ProviderJobsScreen";
 import SuperAdminDashboardScreen from "./src/screens/superadmin/SuperAdminDashboardScreen";
+import ProvidersScreen from "./src/screens/superadmin/ProvidersScreen";
 import SocietiesScreen from "./src/screens/superadmin/SocietiesScreen";
 import BackupRecoveryScreen from "./src/screens/superadmin/BackupRecoveryScreen";
 
@@ -285,6 +287,16 @@ function SuperAdminTabs() {
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Overview" component={SuperAdminDashboardScreen} />
       <Tab.Screen name="Societies" component={SocietiesStackScreen} />
+      <Tab.Screen name="Professionals" component={ProvidersScreen} />
+    </Tab.Navigator>
+  );
+}
+
+function ProviderTabs() {
+  const tabScreenOptions = useTabScreenOptions();
+  return (
+    <Tab.Navigator screenOptions={tabScreenOptions}>
+      <Tab.Screen name="Jobs" component={ProviderJobsScreen} options={{ headerShown: false }} />
     </Tab.Navigator>
   );
 }
@@ -354,6 +366,8 @@ function AppInner() {
         <ResidentTabs />
       ) : user.role === "admin" ? (
         <AdminTabs />
+      ) : user.role === "provider" ? (
+        <ProviderTabs />
       ) : (
         <GuardTabs />
       )}

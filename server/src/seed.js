@@ -17,6 +17,8 @@ async function main() {
   // Wipe existing data (order matters for FK constraints).
   try {
     await prisma.serviceBooking.deleteMany();
+    await prisma.providerPackPayment.deleteMany();
+    await prisma.serviceProvider.deleteMany();
   } catch (e) {
     console.warn("serviceBooking wipe skipped:", e.message);
   }
@@ -277,7 +279,50 @@ async function main() {
     ],
   });
 
+  const packUntil = new Date();
+  packUntil.setFullYear(packUntil.getFullYear() + 1);
+  const pros = [
+    { name: "Ravi Kulkarni", email: "ac.ravi@gatezo.com", phone: "98111 10001", slugs: "ac", rating: 4.9 },
+    { name: "Meera Joshi", email: "ac.meera@gatezo.com", phone: "98111 10002", slugs: "ac", rating: 4.6 },
+    { name: "Anil Deshmukh", email: "clean.anil@gatezo.com", phone: "98111 10003", slugs: "cleaning,pest,laundry", rating: 4.7 },
+    { name: "Priya Nair", email: "salon.priya@gatezo.com", phone: "98111 10004", slugs: "salon", rating: 4.8 },
+    { name: "Imran Shaikh", email: "trades.imran@gatezo.com", phone: "98111 10005", slugs: "trades,instant,painting", rating: 4.5 },
+    { name: "Neha Kapoor", email: "move.neha@gatezo.com", phone: "98111 10006", slugs: "movers,legal,interiors", rating: 4.7 },
+    {
+      name: "GATEZO Desk",
+      email: "desk@gatezo.com",
+      phone: "98111 10000",
+      slugs: "instant,cleaning,movers,ac,trades,painting,legal,interiors,salon,pest,laundry",
+      rating: 4.8,
+      fallback: true,
+    },
+  ];
+  for (const p of pros) {
+    const user = await prisma.user.create({
+      data: { name: p.name, email: p.email, phone: p.phone, role: "provider", passwordHash: hash, active: true },
+    });
+    const provider = await prisma.serviceProvider.create({
+      data: {
+        userId: user.id,
+        phone: p.phone,
+        serviceSlugs: p.slugs,
+        fallback: !!p.fallback,
+        packAmount: p.fallback ? 0 : 4999,
+        packPaidUntil: packUntil,
+        ratingAvg: p.rating,
+        ratingCount: 12,
+      },
+    });
+    if (!p.fallback) {
+      await prisma.providerPackPayment.create({
+        data: { providerId: provider.id, amount: 4999, paidOn: new Date().toISOString().slice(0, 10), note: "Annual pack" },
+      });
+    }
+  }
+
   console.log("Seed complete. All demo logins use password: " + PASSWORD);
+  console.log("  SERVICE PROVIDERS: ac.ravi@gatezo.com, ac.meera@gatezo.com, clean.anil@gatezo.com,");
+  console.log("     salon.priya@gatezo.com, trades.imran@gatezo.com, move.neha@gatezo.com, desk@gatezo.com (house desk)");
   console.log("  SUPER ADMIN (GATEZO owner): owner@h2o.com");
   console.log("  Society 1 - Green Valley Residency (Pune):");
   console.log("     admin@h2o.com / admin2@h2o.com, guard@h2o.com / guard2@h2o.com");

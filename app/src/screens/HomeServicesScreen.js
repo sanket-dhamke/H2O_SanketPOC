@@ -16,6 +16,7 @@ import OffersRail from "../components/OffersRail";
 import TextInput from "../components/AppTextInput";
 import ServiceThumb from "../components/ServiceThumb";
 import { useAuth } from "../lib/auth";
+import { api } from "../lib/api";
 import {
   FEATURED_SLUGS,
   HOME_SERVICES,
@@ -66,6 +67,8 @@ export default function HomeServicesScreen() {
     useCallback(() => {
       if (route.params?.tab === "orders") setTab("orders");
       load();
+      const timer = setInterval(load, 8000);
+      return () => clearInterval(timer);
     }, [load, route.params?.tab])
   );
 
@@ -97,6 +100,15 @@ export default function HomeServicesScreen() {
     }
   };
 
+  const rate = async (booking, rating) => {
+    try {
+      await api.rateHomeServiceBooking(booking.id, { rating });
+      await load();
+    } catch (e) {
+      Alert.alert("Could not save rating", e.message);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <ScreenHeader
@@ -108,7 +120,7 @@ export default function HomeServicesScreen() {
       <View style={styles.segment}>
         <Seg label="Services" active={tab === "services"} onPress={() => setTab("services")} />
         <Seg
-          label={`${isAdmin ? "Orders" : "My bookings"}${bookings.length ? ` (${bookings.length})` : ""}`}
+          label={`${isAdmin ? "Orders" : "History"}${bookings.length ? ` (${bookings.length})` : ""}`}
           active={tab === "orders"}
           onPress={() => setTab("orders")}
         />
@@ -179,6 +191,7 @@ export default function HomeServicesScreen() {
                 booking={b}
                 isAdmin={isAdmin}
                 onStatus={(status) => changeStatus(b, status)}
+                onRate={(rating) => rate(b, rating)}
                 onOpen={() => open(b.serviceSlug)}
               />
             ))
@@ -218,56 +231,47 @@ function ServiceTile({ service, onPress, width }) {
   );
 }
 
-function BookingCard({ booking, isAdmin, onStatus, onOpen }) {
+function BookingCard({ booking, isAdmin, onStatus, onRate }) {
   const meta = BOOKING_STATUS[booking.status] || BOOKING_STATUS.requested;
-  const open = ["requested", "confirmed", "assigned"].includes(booking.status);
+  const canCancel = ["requested", "finding", "offered", "accepted", "confirmed", "assigned"].includes(booking.status);
+  const showOtp = booking.startOtp && (booking.status === "accepted" || booking.status === "started");
   return (
     <View style={styles.bookCard}>
-      <TouchableOpacity onPress={onOpen} activeOpacity={0.85}>
-        <View style={styles.bookTop}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.bookName}>{booking.serviceName}</Text>
-            <Text style={styles.bookPkg}>{booking.packageName}</Text>
-            <Text style={styles.bookMeta}>
-              {prettyDate(booking.scheduledDate)} · {booking.slot}
-              {isAdmin && booking.flatNo ? ` · ${booking.flatNo}` : ""}
-            </Text>
-            {isAdmin && booking.residentName ? (
-              <Text style={styles.bookMeta}>{booking.residentName}</Text>
-            ) : null}
-          </View>
-          <View>
-            <Text style={styles.bookAmt}>{inr(booking.amount)}</Text>
-            <View style={[styles.status, { backgroundColor: meta.bg }]}>
-              <Text style={[styles.statusText, { color: meta.color }]}>{meta.label}</Text>
-            </View>
+      <View style={styles.bookTop}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.bookName}>{booking.serviceName}</Text>
+          <Text style={styles.bookPkg}>{booking.packageName}</Text>
+          <Text style={styles.bookMeta}>
+            {prettyDate(booking.scheduledDate)} · {booking.slot}
+            {isAdmin && booking.flatNo ? ` · ${booking.flatNo}` : ""}
+          </Text>
+          {booking.partnerName ? <Text style={styles.bookMeta}>Professional: {booking.partnerName}</Text> : null}
+          {isAdmin && booking.residentName ? <Text style={styles.bookMeta}>{booking.residentName}</Text> : null}
+          {booking.rating ? <Text style={styles.bookMeta}>Your rating: {booking.rating}★</Text> : null}
+        </View>
+        <View>
+          <Text style={styles.bookAmt}>{inr(booking.amount)}</Text>
+          <View style={[styles.status, { backgroundColor: meta.bg }]}>
+            <Text style={[styles.statusText, { color: meta.color }]}>{meta.label}</Text>
           </View>
         </View>
-      </TouchableOpacity>
-      {open && !isAdmin ? (
+      </View>
+      {showOtp ? (
+        <Text style={styles.bookMeta}>Give this start OTP to the professional: {booking.startOtp}</Text>
+      ) : null}
+      {booking.status === "completed" && !booking.rating && !isAdmin ? (
+        <View style={styles.adminRow}>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <TouchableOpacity key={n} style={styles.confirmBtn} onPress={() => onRate(n)}>
+              <Text style={styles.confirmText}>{n}★</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
+      {canCancel ? (
         <TouchableOpacity style={styles.cancelBtn} onPress={() => onStatus("cancelled")}>
           <Text style={styles.cancelText}>Cancel booking</Text>
         </TouchableOpacity>
-      ) : null}
-      {isAdmin && booking.status === "requested" ? (
-        <View style={styles.adminRow}>
-          <TouchableOpacity style={styles.confirmBtn} onPress={() => onStatus("confirmed")}>
-            <Text style={styles.confirmText}>Confirm</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.cancelBtn} onPress={() => onStatus("cancelled")}>
-            <Text style={styles.cancelText}>Decline</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
-      {isAdmin && (booking.status === "confirmed" || booking.status === "assigned") ? (
-        <View style={styles.adminRow}>
-          <TouchableOpacity style={styles.confirmBtn} onPress={() => onStatus("completed")}>
-            <Text style={styles.confirmText}>Mark completed</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.cancelBtn} onPress={() => onStatus("cancelled")}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
       ) : null}
     </View>
   );

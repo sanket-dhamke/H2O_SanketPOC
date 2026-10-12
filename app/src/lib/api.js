@@ -389,11 +389,25 @@ export const api = {
 
   // Bookable home services (cleaning, AC, painting, movers…)
   homeServices: () => request("/api/home-services"),
+  homeServiceAvailability: (serviceSlug, date) =>
+    request(`/api/home-services/availability?serviceSlug=${encodeURIComponent(serviceSlug)}&date=${encodeURIComponent(date)}`),
   homeServiceBookings: () => request("/api/home-service-bookings"),
   createHomeServiceBooking: (payload) =>
     request("/api/home-service-bookings", { method: "POST", body: payload }),
   updateHomeServiceBooking: (id, payload) =>
     request(`/api/home-service-bookings/${id}`, { method: "PATCH", body: payload }),
+  rateHomeServiceBooking: (id, payload) =>
+    request(`/api/home-service-bookings/${id}/rate`, { method: "POST", body: payload }),
+  providerJobs: () => request("/api/provider/jobs"),
+  providerAccept: (id) => request(`/api/provider/jobs/${id}/accept`, { method: "POST" }),
+  providerDecline: (id) => request(`/api/provider/jobs/${id}/decline`, { method: "POST" }),
+  providerStart: (id, otp) => request(`/api/provider/jobs/${id}/start`, { method: "POST", body: { otp } }),
+  providerComplete: (id) => request(`/api/provider/jobs/${id}/complete`, { method: "POST" }),
+  ownerProviders: () => request("/api/owner/providers"),
+  ownerCreateProvider: (payload) => request("/api/owner/providers", { method: "POST", body: payload }),
+  ownerUpdateProvider: (id, payload) => request(`/api/owner/providers/${id}`, { method: "PATCH", body: payload }),
+  ownerPayProviderPack: (id, payload) => request(`/api/owner/providers/${id}/pack-payment`, { method: "POST", body: payload || {} }),
+  ownerRemoveProvider: (id) => request(`/api/owner/providers/${id}/remove`, { method: "POST" }),
 
   // Gate passes / MyGate-style pre-approval
   gatePasses: () => request("/api/gate-passes"),

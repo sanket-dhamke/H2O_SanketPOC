@@ -34,6 +34,8 @@ import { sustainabilityRouter } from "./routes/sustainability.js";
 import { aiRouter } from "./routes/ai.js";
 import { homeRouter } from "./routes/home.js";
 import { homeServicesRouter } from "./routes/homeServices.js";
+import { providersRouter } from "./routes/providers.js";
+import { tickOffers } from "./providerDispatch.js";
 import { paymentsRouter } from "./routes/payments.js";
 import { globalLimiter, authLimiter, aiLimiter } from "./rateLimit.js";
 import { startQueueWorkers, queueBackend } from "./queue.js";
@@ -130,6 +132,7 @@ app.use("/api", marketplaceRouter);
 app.use("/api", gateRouter);
 app.use("/api", servicesRouter);
 app.use("/api", homeServicesRouter);
+app.use("/api", providersRouter);
 app.use("/api", workersRouter);
 app.use("/api", preschoolRouter);
 app.use("/api", sosRouter);
@@ -298,6 +301,10 @@ async function ensurePlatformSetting() {
   });
   return true;
 }
+
+setInterval(() => {
+  tickOffers().catch((e) => console.error("[providers] offer sweep failed:", e.message));
+}, 15000);
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`GATEZO server running on http://0.0.0.0:${PORT}`);
