@@ -80,7 +80,7 @@ export default function LoginScreen() {
 
   // Auto-brand the login ONLY from a branded link/QR (?t=slug or /t/slug).
   // With no such link, we stay neutral — branding is never remembered/sticky,
-  // so a plain refresh always returns to the neutral GateMate login.
+  // so a plain refresh always returns to the neutral GATEZO login.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -141,7 +141,7 @@ export default function LoginScreen() {
         >
           <View style={styles.logoWrap}>
             <Image source={require("../../assets/icon.png")} style={styles.logoMark} resizeMode="contain" />
-            <Text style={styles.logo}>GateMate</Text>
+            <Text style={styles.logo}>GATEZO</Text>
             <Text style={styles.tagline}>{theme.tagline}</Text>
           </View>
 

@@ -1,7 +1,7 @@
 {
   "name": "h2o-server",
   "version": "1.0.0",
-  "description": "H2O society management backend (accounts, maintenance, visitors, gate approvals)",
+  "description": "GATEZO society management backend (accounts, maintenance, visitors, gate approvals)",
   "type": "module",
   "main": "src/index.js",
   "scripts": {

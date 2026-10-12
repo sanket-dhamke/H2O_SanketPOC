@@ -88,7 +88,7 @@ export default function PlansScreen() {
               {isUpgrade && (
                 <View style={styles.upgradeNote}>
                   <Ionicons name="arrow-up-circle-outline" size={16} color="#8A5A00" />
-                  <Text style={styles.upgradeNoteText}>Ask your GateMate owner to upgrade to unlock these.</Text>
+                  <Text style={styles.upgradeNoteText}>Ask your GATEZO owner to upgrade to unlock these.</Text>
                 </View>
               )}
             </View>
@@ -98,7 +98,7 @@ export default function PlansScreen() {
         <View style={styles.footer}>
           <Ionicons name="information-circle-outline" size={18} color="#6B7B85" />
           <Text style={styles.footerText}>
-            Your plan is set by the GateMate owner. To upgrade or ask about pricing, contact GateMate support from your profile.
+            Your plan is set by the GATEZO owner. To upgrade or ask about pricing, contact GATEZO support from your profile.
           </Text>
         </View>
       </ScrollView>

@@ -274,7 +274,7 @@ marketplaceRouter.delete("/listings/:id", authRequired, async (req, res) => {
 });
 
 // ---- Superadmin moderation: view & moderate ALL listings across societies ----
-// The GateMate owner can see every post (any society, any status) and either
+// The GATEZO owner can see every post (any society, any status) and either
 // disable it (hide from residents) or delete it outright if it's inappropriate.
 marketplaceRouter.get("/moderation/listings", authRequired, roleRequired("superadmin"), async (req, res) => {
   const q = (req.query.q || "").toString().trim().toLowerCase();

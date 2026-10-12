@@ -1,4 +1,4 @@
-# H2O — Society Management App (MyGate-style)
+# GATEZO — Society Management App
 
 A society app for **Android + iOS** from a single codebase, plus a Node.js backend
 with a real database, admin-managed accounts, and optional AI features. It runs on
@@ -15,7 +15,7 @@ with a real database, admin-managed accounts, and optional AI features. It runs 
   - Guards can **dictate** visitor details by voice; the app transcribes (Whisper) and pre-fills the form.
   - Everyone gets a **natural-language assistant** ("who visited my flat last week?", "society balance?", "which flats have dues?"), scoped to their role.
 
-> H2O is an independent, original app inspired by common society-app features. It does not use any MyGate code, assets, brand, or APIs.
+> GATEZO is an independent, original app inspired by common society-app features. It does not use any MyGate code, assets, brand, or APIs. Internal package ids (`h2o`, `com.h2o.society`) stay for Play/EAS continuity.
 
 ## Tech stack
 

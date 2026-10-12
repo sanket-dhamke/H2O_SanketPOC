@@ -1,14 +1,14 @@
-# GateMate — User Guide
+# GATEZO — User Guide
 
-Welcome to **GateMate**, your all-in-one app for running a gated community or a preschool. GateMate replaces WhatsApp groups, paper registers, and manual fee tracking with one simple, secure app.
+Welcome to **GATEZO**, your all-in-one app for running a gated community or a preschool. GATEZO replaces WhatsApp groups, paper registers, and manual fee tracking with one simple, secure app.
 
-This guide explains, in plain language, **what GateMate does**, **who uses it**, and **exactly how to use every feature** — for both **Societies** and **Preschools**.
+This guide explains, in plain language, **what GATEZO does**, **who uses it**, and **exactly how to use every feature** — for both **Societies** and **Preschools**.
 
 ---
 
-## 1. What is GateMate?
+## 1. What is GATEZO?
 
-GateMate is a mobile app (**Android today, iPhone-ready** — see section 12) that helps a **society** (apartment complex) or a **preschool** manage:
+GATEZO is a mobile app (**Android today, iPhone-ready** — see section 12) that helps a **society** (apartment complex) or a **preschool** manage:
 
 - **Money** — maintenance/fees billing, online payments, receipts, dues and reminders.
 - **People at the gate** — visitors, deliveries, pre-approved guests, and staff attendance.
@@ -16,20 +16,20 @@ GateMate is a mobile app (**Android today, iPhone-ready** — see section 12) th
 - **Records** — a full payment history for every flat/student, plus exportable reports.
 - **Help** — a built-in AI assistant that answers questions in everyday language.
 
-> **One app, two modes.** GateMate automatically adapts its wording and screens depending on whether your organisation is a **Society** or a **Preschool**. See the vocabulary table in section 3.
+> **One app, two modes.** GATEZO automatically adapts its wording and screens depending on whether your organisation is a **Society** or a **Preschool**. See the vocabulary table in section 3.
 
 ---
 
-## 2. Who uses GateMate? (Roles)
+## 2. Who uses GATEZO? (Roles)
 
-GateMate has four types of login. Each sees a different home screen with only the tools they need.
+GATEZO has four types of login. Each sees a different home screen with only the tools they need.
 
 | Role | Society | Preschool | What they can do |
 |------|---------|-----------|------------------|
 | **Resident / Parent** | Resident | Parent | Pay dues, approve visitors, create gate passes, book halls/amenities, use community & helpdesk. |
 | **Guard** | Security guard | Gate staff | Log visitors, take photos, notify residents/CLO, admit pre-approved passes, mark staff attendance. |
 | **Admin** | Society admin | Preschool admin | Generate bills, manage flats/students & logins, track dues, send reminders, run reports, handle tickets. |
-| **Superadmin (Owner)** | GateMate owner | GateMate owner | Oversee **all** societies/preschools, see revenue, create new organisations, manage plans & branding. |
+| **Superadmin (Owner)** | GATEZO owner | GATEZO owner | Oversee **all** societies/preschools, see revenue, create new organisations, manage plans & branding. |
 
 You don't choose your role — it's set on your account when it's created. You simply log in with your email and password.
 
@@ -37,7 +37,7 @@ You don't choose your role — it's set on your account when it's created. You s
 
 ## 3. Society vs Preschool — the same app, different words
 
-GateMate uses familiar language for each setting. Nothing else changes — the features work the same way.
+GATEZO uses familiar language for each setting. Nothing else changes — the features work the same way.
 
 | In a Society you see… | In a Preschool you see… |
 |------------------------|--------------------------|
@@ -57,7 +57,7 @@ GateMate uses familiar language for each setting. Nothing else changes — the f
 ### 4.1 Installing the app
 1. Open the **QR code / install link** shared by your admin.
 2. Tap **Download**, then open the APK to install (allow "install from this source" if your phone asks).
-3. Open **GateMate**.
+3. Open **GATEZO**.
 
 ### 4.2 Logging in
 1. On the login screen, enter your **email** and **password**.
@@ -75,12 +75,12 @@ Tap the **profile icon** (top-right of the home screen) to see:
 - **Notification preference** (turn push alerts on/off).
 - **Share my phone number** toggle (controls whether neighbours can see your number in the Directory).
 - **My orders / payment history**.
-- **Support & feedback** — GateMate's support phone number and email.
+- **Support & feedback** — GATEZO's support phone number and email.
 - **Log out**.
 
 ---
 
-> **How to read sections 5–8.** GateMate has a **bottom tab bar** that changes based on your role. Below, each role is explained **tab by tab, left to right**, exactly as the buttons appear at the bottom of your screen — so you can follow along on your phone. Each tab lists everything you can do there, and how to reach features that live one level deeper.
+> **How to read sections 5–8.** GATEZO has a **bottom tab bar** that changes based on your role. Below, each role is explained **tab by tab, left to right**, exactly as the buttons appear at the bottom of your screen — so you can follow along on your phone. Each tab lists everything you can do there, and how to reach features that live one level deeper.
 
 ---
 
@@ -116,7 +116,7 @@ Book shared facilities (Clubhouse / Party Hall in a society, Open Hall / Activit
 ### 5.5 👥 Visitors tab
 Manage people coming to see you.
 - **Approve visitors:** when a guard logs a visitor for your flat you get a **push notification**; here you **Approve**, **Deny**, or **Leave at gate**, and you can see the visitor's **photo** and **purpose**.
-- **🎫 Gate pass — pre-approval (like MyGate):** open **Gate pass** from this tab → **+**. Enter the guest/delivery name, type, and validity window (e.g. approve a delivery for the next 30 minutes). GateMate creates a **unique code** — share it with your guest. At the gate the guard enters the code and admits them instantly, **no call needed**.
+- **🎫 Gate pass — pre-approval (like MyGate):** open **Gate pass** from this tab → **+**. Enter the guest/delivery name, type, and validity window (e.g. approve a delivery for the next 30 minutes). GATEZO creates a **unique code** — share it with your guest. At the gate the guard enters the code and admits them instantly, **no call needed**.
 
 ### 5.6 ✨ Assistant tab (AI)
 Your built-in helper. **Type or speak** questions like *"What's my balance?"*, *"Who visited my flat last week?"*, or *"When is my next due date?"* It only sees **your** data and answers in plain language.
@@ -134,7 +134,7 @@ Quick shortcuts to log a visitor, view the gate log, and open the assistant, plu
 Your main tool at the gate.
 - **Log a new visitor:** take/attach a **photo**, choose the **flat/student**, enter the **purpose**, then **Notify resident** (society) or **Notify CLO** (preschool) — they approve from their phone.
 - **Voice entry:** dictate the visitor's details hands-free when you're busy.
-- **🎫 Admit a pre-approved pass:** tap **Admit a pre-approved pass**, enter the **code** the resident shared, and GateMate verifies it so you can **admit** the guest in one tap.
+- **🎫 Admit a pre-approved pass:** tap **Admit a pre-approved pass**, enter the **code** the resident shared, and GATEZO verifies it so you can **admit** the guest in one tap.
 
 ### 6.3 🪪 Staff tab (preschool only)
 Record **teacher/staff check-in and check-out**. This feeds the attendance reports admins can export.
@@ -169,7 +169,7 @@ Your money control centre. It opens on a finance overview and drills into:
 - **Remind unpaid / pending:** message everyone with a balance (including **partially paid**) via **push, email and WhatsApp**, with your **payment details** included automatically. Preschool admins can set a **per-student reminder date**.
 - **Amenities / Hall bookings:** approve booking requests and manage facilities, slots and prices.
 - **Reports & exports:** pull **wing-wise / class-wise** data and export as **PDF or DOC**. Preschool reports focus on **visitor and staff attendance history**.
-- **Pay to GateMate:** pay your platform/subscription dues to the GateMate owner.
+- **Pay to GATEZO:** pay your platform/subscription dues to the GATEZO owner.
 - **Vendor / venue marketplace:** manage listed vendors/venues (platform fee applies).
 
 ### 7.3 👤 Members / Accounts tab
@@ -229,13 +229,13 @@ The owner oversees the **whole platform** (all societies and preschools).
 - **Keyboard hides the chat in the Assistant:** the screen now scrolls the input above the keyboard automatically — just start typing.
 - **My number isn't in the Directory:** turn on **Share my phone number** in your profile.
 - **Late fee looks wrong:** remember it only applies to **overdue** bills, never to months paid in advance.
-- **Need help:** open your **profile → Support & feedback** for the GateMate support phone and email.
+- **Need help:** open your **profile → Support & feedback** for the GATEZO support phone and email.
 
 ---
 
-## 11. Why GateMate? (What makes it better)
+## 11. Why GATEZO? (What makes it better)
 
-Most societies and preschools juggle a WhatsApp group, a paper visitor register, an Excel sheet for dues, and separate reminder calls. GateMate replaces all of that with **one app** — and does a few things noticeably better than other apps:
+Most societies and preschools juggle a WhatsApp group, a paper visitor register, an Excel sheet for dues, and separate reminder calls. GATEZO replaces all of that with **one app** — and does a few things noticeably better than other apps:
 
 - **Truly two-in-one.** The same app serves **both societies and preschools**, automatically changing its wording (Flat↔Student, Maintenance↔Fees, Notify resident↔Notify CLO). You don't buy two different tools.
 - **Real payments, real receipts.** Dues are paid **online via UPI/cards/net-banking** straight into *your* society/school account — with downloadable receipts and support for **partial payments**. No "mark as paid" guesswork.
@@ -246,17 +246,17 @@ Most societies and preschools juggle a WhatsApp group, a paper visitor register,
 - **Reminders that actually reach people.** Pending-due reminders go out over **push, email AND WhatsApp**, and automatically include your payment details — so residents/parents can pay in one tap.
 - **A real community, across societies.** A **Buy & Sell marketplace** and neighbours' board reach beyond a single building, so there are more buyers, sellers, and answers.
 - **Built-in AI help.** A voice-and-text **AI assistant** answers everyday questions ("What's my balance?", "Who visited last week?") — something almost no competing app offers.
-- **Owner-level oversight.** The GateMate owner sees **revenue and dues across every society/preschool** with a month-by-month view — great for running it as a business.
+- **Owner-level oversight.** The GATEZO owner sees **revenue and dues across every society/preschool** with a month-by-month view — great for running it as a business.
 - **Safe and private by design.** Each organisation's data is kept **separate and secure**, phone numbers are shared **only** if the resident opts in, and data is **backed up automatically every month**.
 - **Zero setup cost for members.** Residents/parents just scan a QR code and log in — no hardware, no complicated onboarding.
 
-**In short:** GateMate is friendlier for everyday users, more accurate with money, stronger on gate security, and smarter (AI) than the usual society/preschool apps.
+**In short:** GATEZO is friendlier for everyday users, more accurate with money, stronger on gate security, and smarter (AI) than the usual society/preschool apps.
 
 ---
 
 ## 12. Platform availability — Android & iPhone (iOS)
 
-**GateMate is fully cross-platform.** It's built with Expo/React Native, so the *same app* runs on both Android and iPhone. Today we distribute the **Android** build (installed by scanning a QR code). iPhone support is ready in the code — it just needs Apple's publishing process to hand it to iPhone users.
+**GATEZO is fully cross-platform.** It's built with Expo/React Native, so the *same app* runs on both Android and iPhone. Today we distribute the **Android** build (installed by scanning a QR code). iPhone support is ready in the code — it just needs Apple's publishing process to hand it to iPhone users.
 
 ### 12.1 Why iPhone needs an extra step
 Apple does **not** allow direct "download-and-install" like Android APKs. Every iPhone app must be signed with an **Apple Developer account** and delivered through **TestFlight** (for testers) or the **App Store** (for the public).
@@ -269,14 +269,14 @@ Apple does **not** allow direct "download-and-install" like Android APKs. Every 
 5. **Distribute for testing via TestFlight:**
    - Submit the build to App Store Connect (`eas submit --platform ios`).
    - Add testers by email in **TestFlight** — they install the free **TestFlight** app and open your invite. Great for pilots with up to a few thousand testers.
-6. **Go public (optional):** when you're happy, submit the same build for **App Store review**. After approval, anyone can install GateMate from the App Store.
+6. **Go public (optional):** when you're happy, submit the same build for **App Store review**. After approval, anyone can install GATEZO from the App Store.
 
 ### 12.3 What each option gives you
 - **TestFlight** — fast, ideal for a controlled pilot with specific societies/schools; builds expire after 90 days and testers must be invited.
 - **App Store** — permanent public listing; requires Apple's review but reaches everyone.
 
-> When you're ready, share your Apple Developer login (or add me as a developer) and I'll wire up the iOS build + TestFlight so iPhone users can install GateMate the same week.
+> When you're ready, share your Apple Developer login (or add me as a developer) and I'll wire up the iOS build + TestFlight so iPhone users can install GATEZO the same week.
 
 ---
 
-*GateMate — safe gate, simple payments, one community app for societies and preschools, on Android and iPhone.*
+*GATEZO — safe gate, simple payments, one community app for societies and preschools, on Android and iPhone.*

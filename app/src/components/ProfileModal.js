@@ -26,7 +26,7 @@ const ROLE_LABEL = {
   resident: "Resident",
   guard: "Gate desk / Guard",
   admin: "Society admin",
-  superadmin: "GateMate Platform owner",
+  superadmin: "GATEZO Platform owner",
 };
 const ID_LABEL = { resident: "Resident ID", guard: "Staff ID", admin: "Admin ID", superadmin: "Owner ID" };
 
@@ -108,7 +108,7 @@ export default function ProfileModal({ visible, onClose }) {
 
   const open = (url) => Linking.openURL(url).catch(() => Alert.alert("Unavailable", `Couldn't open ${url}`));
   const sendFeedback = () => {
-    const subject = encodeURIComponent(`GateMate feedback — ${user?.name} (${memberId(user)})`);
+    const subject = encodeURIComponent(`GATEZO feedback — ${user?.name} (${memberId(user)})`);
     const body = encodeURIComponent(
       `\n\n—\nFrom: ${user?.name}\nRole: ${roleLabel}\n` +
         (user?.societyName ? `${L.org}: ${user.societyName}\n` : "") +
@@ -184,7 +184,7 @@ export default function ProfileModal({ visible, onClose }) {
               />
             </View>
             {Platform.OS === "web" && (
-              <Text style={styles.note}>This preference applies to the GateMate mobile app.</Text>
+              <Text style={styles.note}>This preference applies to the GATEZO mobile app.</Text>
             )}
             {isResident && (
               <View style={[styles.prefRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#EAEEF0" }]}>
@@ -239,7 +239,7 @@ export default function ProfileModal({ visible, onClose }) {
           </Section>
 
           <Text style={styles.version}>
-            GateMate v{Constants.expoConfig?.version || "1.0.0"} · {ROLE_LABEL[user.role]}
+            GATEZO v{Constants.expoConfig?.version || "1.0.0"} · {ROLE_LABEL[user.role]}
           </Text>
         </ScrollView>
 

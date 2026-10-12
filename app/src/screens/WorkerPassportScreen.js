@@ -151,7 +151,7 @@ export default function WorkerPassportScreen() {
           {showQr && (
             <View style={styles.qrWrap}>
               <Image source={{ uri: qrUrlFor(worker.code) }} style={styles.qr} />
-              <Text style={styles.qrHint}>The worker carries this. Any GateMate gate can scan it to see this passport.</Text>
+              <Text style={styles.qrHint}>The worker carries this. Any GATEZO gate can scan it to see this passport.</Text>
             </View>
           )}
         </View>

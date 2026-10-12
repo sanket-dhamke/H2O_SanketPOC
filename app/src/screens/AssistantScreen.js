@@ -70,7 +70,7 @@ export default function AssistantScreen() {
       behavior="padding"
       keyboardVerticalOffset={tabBarHeight}
     >
-      <ScreenHeader icon="sparkles" title="Assistant" subtitle={`Ask anything about your ${place}`} />
+      <ScreenHeader icon="sparkles" title="Ask GATEZO" subtitle={`Ask anything about your ${place}`} />
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}

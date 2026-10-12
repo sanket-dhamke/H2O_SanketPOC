@@ -62,7 +62,7 @@ export default function HomeScreen({ navigation }) {
   const roleLabel = { resident: L.payer, admin: L.roleAdmin, guard: "Gate desk" }[user.role];
   const actions = getActions(user.role, L, isPreschool(user));
 
-  // A tenant's branded image (set by the GateMate owner) becomes the dashboard header
+  // A tenant's branded image (set by the GATEZO owner) becomes the dashboard header
   // background. Fall back to the default themed photo if it's unset or the URL
   // fails to load (e.g. not a direct image link).
   const customBg = !!user.societyLogoUrl && !bgError;
@@ -148,7 +148,7 @@ export default function HomeScreen({ navigation }) {
                 locked
                   ? Alert.alert(
                       `${requiredTierLabel(a.feature)} feature`,
-                      `“${a.label}” is available on the ${requiredTierLabel(a.feature)} plan. Ask your GateMate owner to upgrade your ${L.org.toLowerCase()}.`
+                      `“${a.label}” is available on the ${requiredTierLabel(a.feature)} plan. Ask your GATEZO owner to upgrade your ${L.org.toLowerCase()}.`
                     )
                   : navigation.navigate(a.route, a.params)
               }
@@ -172,7 +172,7 @@ function getActions(role, L, preschool) {
         { label: "Transparency", subtitle: `See where ${L.fees.toLowerCase()} money goes`, icon: "shield-checkmark-outline", tint: "#1E7A3D", route: "Maintenance", params: { screen: "Transparency" } },
         { label: "Helpdesk", subtitle: "Raise a request or call the office", icon: "help-buoy-outline", tint: "#1E7A3D", route: "Community", params: { screen: "Helpdesk" } },
         { label: "Trusted helpers", subtitle: "Rated tutors, nannies & services", icon: "ribbon-outline", tint: "#0B6E8F", route: "Community", params: { screen: "Workers" } },
-        { label: "Ask the assistant", subtitle: "Fees, attendance & school info", icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant", feature: "assistant" },
+        { label: "Ask GATEZO", subtitle: "Fees, attendance & school info", icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant", feature: "assistant" },
       ];
     }
     return [
@@ -187,7 +187,7 @@ function getActions(role, L, preschool) {
       { label: "Transparency", subtitle: `See where ${L.fees.toLowerCase()} money goes`, icon: "shield-checkmark-outline", tint: "#1E7A3D", route: "Maintenance", params: { screen: "Transparency" } },
       { label: "AGM & voting", subtitle: "Vote on motions & read minutes", icon: "people-outline", tint: "#6D3BD1", route: "Community", params: { screen: "Agm" } },
       { label: "Sustainability", subtitle: "Your green score & water use", icon: "leaf-outline", tint: "#1E7A3D", route: "Maintenance", params: { screen: "Sustainability" } },
-      { label: "Ask the assistant", subtitle: `Get instant answers about your ${L.unit.toLowerCase()}`, icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant", feature: "assistant" },
+      { label: "Ask GATEZO", subtitle: `Get instant answers about your ${L.unit.toLowerCase()}`, icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant", feature: "assistant" },
     ];
   }
   if (role === "admin") {
@@ -220,7 +220,7 @@ function getActions(role, L, preschool) {
       params: { screen: "Helpdesk" },
     });
     admin.push({
-      label: "Ask the assistant",
+      label: "Ask GATEZO",
       subtitle: preschool ? "Query visitors, fees & attendance" : "Query anything about the society",
       icon: "sparkles-outline",
       tint: "#6D3BD1",
@@ -248,7 +248,7 @@ function getActions(role, L, preschool) {
     { label: "Emergency SOS", subtitle: "Respond to active alerts", icon: "alert-circle-outline", tint: "#B42318", route: "Community", params: { screen: "Sos" } },
     { label: "Log a new visitor", subtitle: `Photo, ${L.unit.toLowerCase()} & purpose in seconds`, icon: "person-add-outline", tint: "#0B6E8F", route: "Gate" },
     { label: "View gate log", subtitle: "Today's entries & their status", icon: "list-outline", tint: "#C2571A", route: "Visitors" },
-    { label: "Ask the assistant", subtitle: "Voice & AI help at the gate", icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant", feature: "assistant" },
+    { label: "Ask GATEZO", subtitle: "Voice & AI help at the gate", icon: "sparkles-outline", tint: "#6D3BD1", route: "Assistant", feature: "assistant" },
   ];
   if (preschool) {
     guard.splice(1, 0, { label: "Child pickup", subtitle: "Scan pass & log pickup/drop", icon: "qr-code-outline", tint: "#6D3BD1", route: "Community", params: { screen: "Pickup" } });

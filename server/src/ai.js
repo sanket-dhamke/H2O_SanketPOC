@@ -194,7 +194,7 @@ export async function assistantAnswer(user, question) {
       {
         role: "system",
         content:
-          `You are GateMate, a helpful ${v.org}-management assistant. Answer ONLY from the provided JSON data. ` +
+          `You are GATEZO, a helpful ${v.org}-management assistant. Answer ONLY from the provided JSON data. ` +
           preschoolRule +
           residentRule +
           `Be concise and specific (dates, names, amounts in INR, formatted like ₹1,200). If the data does not contain the answer, say so. ` +
@@ -234,7 +234,7 @@ export async function draftManagerText(societyId, kind) {
   const orgLabel = insights.societyName || `the ${v.org}`;
 
   const sys =
-    `You are the ${v.org} manager for GateMate writing ${DRAFT_KINDS[type]}. ` +
+    `You are the ${v.org} manager for GATEZO writing ${DRAFT_KINDS[type]}. ` +
     (insights.orgType === "preschool"
       ? "This is a PRESCHOOL — use 'school', 'students', 'parents/guardians' and 'fees'; NEVER 'society/flat/maintenance'. "
       : "Use 'society', 'residents', 'flats' and 'maintenance'. ") +
@@ -280,7 +280,7 @@ export async function answerCommunityQuery(user, question) {
     model: CHAT_MODEL,
     temperature: 0.3,
     messages: [
-      { role: "system", content: `You are GateMate helping answer a resident's question in the ${v.org} community feed. Answer ONLY from DATA (amenities/timings/prices, staff contacts, recent announcements). Be brief and friendly (1–3 sentences). If DATA doesn't contain the answer, say you're not sure and suggest asking the ${v.org} office. Never invent facts.` },
+      { role: "system", content: `You are GATEZO helping answer a resident's question in the ${v.org} community feed. Answer ONLY from DATA (amenities/timings/prices, staff contacts, recent announcements). Be brief and friendly (1–3 sentences). If DATA doesn't contain the answer, say you're not sure and suggest asking the ${v.org} office. Never invent facts.` },
       { role: "user", content: `DATA:\n${JSON.stringify(ctx)}\n\nQUESTION: ${question}` },
     ],
   });

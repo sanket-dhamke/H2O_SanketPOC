@@ -254,7 +254,7 @@ export const api = {
   adminBackup: () => request("/api/admin/backup"),
   adminEmailBackup: () => request("/api/admin/backup/email", { method: "POST" }),
 
-  // Super admin (GateMate platform owner): cross-society overview + management
+  // Super admin (GATEZO platform owner): cross-society overview + management
   superOverview: (period) =>
     request(`/api/superadmin/overview${period ? `?period=${encodeURIComponent(period)}` : ""}`),
   superListSocieties: () => request("/api/superadmin/societies"),
@@ -286,7 +286,7 @@ export const api = {
   superSocietyBackupEmail: (societyId) =>
     request(`/api/superadmin/societies/${societyId}/backup/email`, { method: "POST", body: {} }),
 
-  // Admin: GateMate subscription ("Pay to GateMate")
+  // Admin: GATEZO subscription ("Pay to GATEZO")
   adminSubscription: () => request("/api/admin/subscription"),
   createSubscriptionOrder: () =>
     request("/api/admin/subscription/create-order", { method: "POST" }),

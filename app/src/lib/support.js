@@ -1,4 +1,4 @@
-// GateMate support contact details shown in every user's profile. Update these in one
+// GATEZO support contact details shown in every user's profile. Update these in one
 // place. (For a real launch, swap in your official support number/email/site.)
 export const SUPPORT = {
   phone: "+91 90000 12345",
@@ -19,5 +19,5 @@ export function memberId(user) {
       : user.role === "admin"
       ? "ADM"
       : "OWN";
-  return `GateMate-${prefix}-${short}`;
+  return `GATEZO-${prefix}-${short}`;
 }

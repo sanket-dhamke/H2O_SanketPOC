@@ -97,7 +97,7 @@ app.use("/api/ai", aiLimiter);
 app.get("/api/health", (_req, res) =>
   res.json({
     ok: true,
-    name: "GateMate",
+    name: "GATEZO",
     razorpay: razorpayEnabled,
     storage: storageEnabled,
     ai: aiEnabled,
@@ -292,7 +292,7 @@ async function ensurePlatformSetting() {
 }
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`GateMate server running on http://0.0.0.0:${PORT}`);
+  console.log(`GATEZO server running on http://0.0.0.0:${PORT}`);
   console.log(`[infra] cache=${cacheBackend} queue=${queueBackend}`);
   // Start the notification queue worker (only active in redis mode; the
   // in-process queue drains on its own when no REDIS_URL is set).
