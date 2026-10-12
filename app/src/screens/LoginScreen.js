@@ -140,8 +140,10 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.logoWrap}>
-            <Image source={require("../../assets/icon.png")} style={styles.logoMark} resizeMode="contain" />
-            <Text style={styles.logo}>GATEZO</Text>
+            <View style={styles.lockup}>
+              <Image source={require("../../assets/brand/gatezo/icon.png")} style={styles.logoMark} resizeMode="cover" />
+              <Text style={styles.logo}>GATEZO</Text>
+            </View>
             <Text style={styles.tagline}>{theme.tagline}</Text>
           </View>
 
@@ -149,20 +151,19 @@ export default function LoginScreen() {
         {tenantName ? (
           <Text style={styles.tenantName}>Signing in to {tenantName}</Text>
         ) : null}
-        <Text style={styles.label}>Email</Text>
+        <Text style={styles.signIn}>Sign in</Text>
         <TextInput
           style={styles.input}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
-          placeholder={theme.emailPlaceholder}
+          placeholder="Email"
           placeholderTextColor="#8895A0"
           returnKeyType="next"
           onSubmitEditing={() => passwordRef.current?.focus()}
           blurOnSubmit={false}
         />
-        <Text style={styles.label}>Password</Text>
         <View style={styles.passwordRow}>
           <TextInput
             ref={passwordRef}
@@ -170,7 +171,7 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
-            placeholder="Enter your password"
+            placeholder="Password"
             placeholderTextColor="#8895A0"
             autoCapitalize="none"
             autoCorrect={false}
@@ -194,13 +195,14 @@ export default function LoginScreen() {
           <Text style={styles.buttonText}>{busy ? "Signing in..." : "Sign In"}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setForgotOpen(true)}>
-          <Text style={styles.forgot}>Forgot password?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => setRegisterOpen(true)}>
-          <Text style={styles.register}>New resident? Register with a join code</Text>
-        </TouchableOpacity>
+        <View style={styles.footerRow}>
+          <TouchableOpacity onPress={() => setForgotOpen(true)} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+            <Text style={styles.footerLink}>Forgot password?</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setRegisterOpen(true)} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+            <Text style={styles.footerLink}>Register</Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity onPress={() => setShowAdvanced((v) => !v)}>
           <Text style={styles.advancedToggle}>
@@ -243,43 +245,50 @@ const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: "#0B3A49" },
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(6, 40, 52, 0.38)" },
   container: { flex: 1 },
-  scroll: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 20 },
-  logoWrap: { alignItems: "center", marginBottom: 22 },
-  logoMark: { width: 84, height: 84, borderRadius: 20, marginBottom: 12, shadowColor: "#000", shadowOpacity: 0.3, shadowOffset: { width: 0, height: 6 }, shadowRadius: 14, elevation: 8 },
-  logo: { fontSize: 40, fontWeight: "800", color: "#fff", letterSpacing: -0.5, textShadowColor: "rgba(0,0,0,0.35)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12 },
-  tagline: { color: "#EAF6FA", marginTop: 6, fontSize: 13, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "600", textShadowColor: "rgba(0,0,0,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 },
+  scroll: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 24 },
+  logoWrap: { alignItems: "center", marginBottom: 40 },
+  lockup: { flexDirection: "row", alignItems: "center", gap: 10 },
+  logoMark: { width: 36, height: 36, borderRadius: 9 },
+  logo: { fontSize: 28, fontWeight: "800", color: "#fff", letterSpacing: 1.4, textShadowColor: "rgba(0,0,0,0.28)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 },
+  tagline: { color: "#EAF6FA", marginTop: 10, fontSize: 11, letterSpacing: 1.8, textTransform: "uppercase", fontWeight: "600", textShadowColor: "rgba(0,0,0,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 },
   card: {
     width: "100%",
-    maxWidth: 380,
+    maxWidth: 420,
     alignSelf: "center",
-    backgroundColor: "rgba(255,255,255,0.97)",
-    borderRadius: 16,
-    padding: 18,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingHorizontal: 28,
+    paddingTop: 28,
+    paddingBottom: 24,
     shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 8,
+    shadowOpacity: 0.16,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
-  tenantName: { textAlign: "center", color: "#0B6E8F", fontWeight: "700", fontSize: 14, marginBottom: 4 },
+  tenantName: { textAlign: "center", color: "#0B6E8F", fontWeight: "700", fontSize: 13, marginBottom: 8 },
+  signIn: { textAlign: "center", color: "#1B2B33", fontSize: 22, marginBottom: 28, fontWeight: "700" },
   label: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 6, marginTop: 12 },
   input: {
     borderWidth: 1,
-    borderColor: "#D6DEE3",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderColor: "#D0D5DD",
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
+    lineHeight: 22,
     color: "#1B2B33",
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#fff",
+    marginBottom: 16,
   },
   passwordRow: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#D6DEE3",
-    borderRadius: 10,
-    backgroundColor: "#F8FAFB",
+    borderColor: "#D0D5DD",
+    borderRadius: 8,
+    backgroundColor: "#fff",
+    marginBottom: 8,
   },
   passwordInput: {
     flex: 1,
@@ -292,18 +301,23 @@ const styles = StyleSheet.create({
     // typed password to render dark (visible) instead of faint/white.
     ...Platform.select({ android: { fontFamily: "monospace" }, default: {} }),
   },
-  showBtn: { paddingHorizontal: 14, paddingVertical: 12 },
-  showBtnText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
+  showBtn: { paddingHorizontal: 14, paddingVertical: 14 },
+  showBtnText: { color: "#0B6E8F", fontWeight: "600", fontSize: 14 },
   button: {
     backgroundColor: "#0B6E8F",
-    borderRadius: 10,
+    borderRadius: 8,
     paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 16,
+  },
+  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  footerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     marginTop: 20,
   },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  forgot: { color: "#0B6E8F", fontWeight: "700", fontSize: 13, textAlign: "center", marginTop: 14 },
-  register: { color: "#0B6E8F", fontWeight: "700", fontSize: 13, textAlign: "center", marginTop: 12 },
-  advancedToggle: { color: "#0B6E8F", fontWeight: "600", fontSize: 13, textAlign: "center", marginTop: 16 },
+  footerLink: { color: "#0B6E8F", fontWeight: "600", fontSize: 14 },
+  advancedToggle: { color: "#8895A0", fontWeight: "500", fontSize: 12, textAlign: "center", marginTop: 16 },
   hint: { color: "#8895A0", fontSize: 12, textAlign: "center", marginTop: 16, lineHeight: 18 },
 });
