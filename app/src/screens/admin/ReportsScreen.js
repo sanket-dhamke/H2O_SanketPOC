@@ -34,16 +34,19 @@ function SocietyReports() {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [emailing, setEmailing] = useState(false);
+  const [gate, setGate] = useState(null);
 
   const loadReport = useCallback(async (block) => {
     setLoading(true);
     try {
-      const [{ blocks: bl }, { report: r }] = await Promise.all([
+      const [{ blocks: bl }, { report: r }, g] = await Promise.all([
         api.adminBlocks(),
         api.adminReport(block === "__all__" ? undefined : block),
+        api.adminEntryExit(),
       ]);
       setBlocks(bl || []);
       setReport(r);
+      setGate(g);
     } catch (e) {
       Alert.alert("Error", e.message);
     } finally {
@@ -150,6 +153,28 @@ function SocietyReports() {
               </View>
             ))}
             {(report.flats || []).length === 0 && <Text style={styles.muted}>No flats in this wing.</Text>}
+          </>
+        ) : null}
+
+        {gate ? (
+          <>
+            <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Entry–exit (last 30 days)</Text>
+            <View style={styles.kpiRow}>
+              <Kpi label="Entries" value={gate.total ?? 0} />
+              <Kpi label="Still inside" value={gate.stillInside ?? 0} color="#C2571A" />
+            </View>
+            {(gate.visitors || []).slice(0, 25).map((v) => (
+              <View key={v.id} style={styles.flatRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.flatNo}>{v.name}{v.flatNo ? ` · ${v.flatNo}` : ""}</Text>
+                  <Text style={styles.flatSub}>
+                    In {timeAt(v.inAt)}
+                    {v.outAt ? ` · Out ${timeAt(v.outAt)}` : " · still inside"}
+                    {v.minutes != null ? ` · ${v.minutes} min` : ""}
+                  </Text>
+                </View>
+              </View>
+            ))}
           </>
         ) : null}
 
