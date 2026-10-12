@@ -159,7 +159,8 @@ Admin dashboard with shortcut tiles and your profile icon.
 
 ### 7.2 📊 Finance / Fees tab
 Your money control centre. It opens on a finance overview and drills into:
-- **Overview:** **collected, pending and balance** at a glance, with a **month calendar** to check **month-wise collection** for any month.
+- **Society office:** MyGate-style **total dues, overdue, advance, security deposit**, **defaulters**, **move in/out**, **vendor bills**, **entry–exit report**, **escalated helpdesk**, and optional **auto-erase of visitor details** after N days.
+- **Overview:** **collected, pending, overdue, advance, security deposit and balance** at a glance, with a **month calendar** to check **month-wise collection** for any month.
 - **Collections / Student fees:** the full bill list. In preschool mode this is **student-wise**, with **partial-payment** tracking.
 - **📂 Fetching old records (audit trail):** tap any flat/student to open its **full ledger** — **every bill and every payment from day one**, with running totals. Use this to trace any dispute or miscalculation. The **month filter** on Collections also lets you pull up any past month.
 - **Generate monthly bills:** pick the **billing month** from the calendar (past months disabled), then either set a **flat amount per unit** or generate from your **maintenance heads** (breakdown shown to residents). Confirm to bill everyone.

@@ -52,6 +52,8 @@ h2o/
 - A phone with **Expo Go** (or a dev build), on the **same Wi-Fi** as your computer.
 - No database install needed — SQLite is a local file created automatically.
 
+**Mac (Apple Silicon M1–M5):** from the repo root run `bash scripts/setup-mac.sh`. That installs Node deps for `server/` and `app/`, generates Prisma, and (if Homebrew is present) Node + watchman. iOS Simulator needs Xcode; Android emulator on M-series needs an ARM system image. The hosted API in `app.json` works without a local server.
+
 ## 1. Set up the backend
 
 ```bash

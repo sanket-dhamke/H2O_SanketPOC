@@ -236,6 +236,14 @@ export const api = {
   adminVerifyLedger: () => request("/api/admin/ledger/verify"),
 
   // Admin: proactive AI Society Manager (insights + AI drafts)
+  adminOffice: () => request("/api/admin/office"),
+  adminOfficeSettings: (payload) => request("/api/admin/settings", { method: "PATCH", body: payload }),
+  adminMoves: () => request("/api/admin/moves"),
+  adminCreateMove: (payload) => request("/api/admin/moves", { method: "POST", body: payload }),
+  adminVendors: () => request("/api/admin/vendors"),
+  adminCreateVendor: (payload) => request("/api/admin/vendors", { method: "POST", body: payload }),
+  adminPayVendor: (id, payload) => request(`/api/admin/vendors/${id}/pay`, { method: "POST", body: payload || {} }),
+  adminEntryExit: (from, to) => request(`/api/admin/entry-exit${qs({ from, to })}`),
   adminInsights: () => request("/api/admin/insights"),
   adminAiDraft: (kind) => request("/api/admin/ai/draft", { method: "POST", body: { kind } }),
   suggestPostReply: (id) => request(`/api/posts/${id}/suggest-reply`, { method: "POST" }),

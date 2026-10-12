@@ -10,6 +10,7 @@ import { authRouter } from "./routes/auth.js";
 import { maintenanceRouter } from "./routes/maintenance.js";
 import { visitorsRouter } from "./routes/visitors.js";
 import { adminRouter } from "./routes/admin.js";
+import { officeRouter } from "./routes/office.js";
 import { superadminRouter } from "./routes/superadmin.js";
 import { communityRouter } from "./routes/community.js";
 import { amenitiesRouter } from "./routes/amenities.js";
@@ -40,6 +41,7 @@ import { backfillSlugs } from "./slug.js";
 import { recordPayment } from "./billing.js";
 import { runFeeReminders } from "./feeReminders.js";
 import { runRentExpiryChecks } from "./rentReminders.js";
+import { runVisitorRetention } from "./visitorRetention.js";
 
 const app = express();
 // Behind Render/other proxies: trust the first proxy hop so req.ip (used by the
@@ -108,6 +110,7 @@ app.use("/api", authRouter);
 app.use("/api", maintenanceRouter);
 app.use("/api", visitorsRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/admin", officeRouter);
 app.use("/api/superadmin", superadminRouter);
 app.use("/api", communityRouter);
 app.use("/api", amenitiesRouter);
@@ -188,6 +191,20 @@ app.post("/api/cron/rent-expiry", async (req, res) => {
   }
 });
 
+app.post("/api/cron/visitor-retention", async (req, res) => {
+  const secret = process.env.CRON_SECRET || "";
+  const provided = req.headers["x-cron-secret"] || req.query.secret;
+  if (!secret || provided !== secret) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  try {
+    const result = await runVisitorRetention();
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // In-process schedule (works whenever the server is awake): every day at 23:30,
 // if tomorrow is a new month, run the monthly backups. Disable with
 // BACKUP_CRON_ENABLED=false. For sleeping hosts, also wire the external endpoint.
@@ -242,6 +259,17 @@ if (process.env.RENT_EXPIRY_CRON_ENABLED !== "false") {
       if (r.notified) console.log(`[rent] expiry notices sent: ${r.notified}/${r.checked}`);
     } catch (e) {
       console.error("[rent] expiry run failed:", e.message);
+    }
+  });
+}
+
+if (process.env.VISITOR_RETENTION_CRON_ENABLED !== "false") {
+  cron.schedule(process.env.VISITOR_RETENTION_CRON || "20 3 * * *", async () => {
+    try {
+      const r = await runVisitorRetention();
+      if (r.erased) console.log(`[visitors] retention erased ${r.erased} across ${r.checked} societies`);
+    } catch (e) {
+      console.error("[visitors] retention run failed:", e.message);
     }
   });
 }
