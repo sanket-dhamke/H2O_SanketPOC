@@ -255,6 +255,14 @@ export const api = {
   adminVerifyLedger: () => request("/api/admin/ledger/verify"),
 
   // Admin: proactive AI Society Manager (insights + AI drafts)
+  adminOffice: () => request("/api/admin/office"),
+  adminOfficeSettings: (payload) => request("/api/admin/settings", { method: "PATCH", body: payload }),
+  adminMoves: () => request("/api/admin/moves"),
+  adminCreateMove: (payload) => request("/api/admin/moves", { method: "POST", body: payload }),
+  adminVendors: () => request("/api/admin/vendors"),
+  adminCreateVendor: (payload) => request("/api/admin/vendors", { method: "POST", body: payload }),
+  adminPayVendor: (id, payload) => request(`/api/admin/vendors/${id}/pay`, { method: "POST", body: payload || {} }),
+  adminEntryExit: (from, to) => request(`/api/admin/entry-exit${qs({ from, to })}`),
   adminInsights: () => request("/api/admin/insights"),
   adminAiDraft: (kind) => request("/api/admin/ai/draft", { method: "POST", body: { kind } }),
   suggestPostReply: (id) => request(`/api/posts/${id}/suggest-reply`, { method: "POST" }),
@@ -381,11 +389,25 @@ export const api = {
 
   // Bookable home services (cleaning, AC, painting, movers…)
   homeServices: () => request("/api/home-services"),
+  homeServiceAvailability: (serviceSlug, date) =>
+    request(`/api/home-services/availability?serviceSlug=${encodeURIComponent(serviceSlug)}&date=${encodeURIComponent(date)}`),
   homeServiceBookings: () => request("/api/home-service-bookings"),
   createHomeServiceBooking: (payload) =>
     request("/api/home-service-bookings", { method: "POST", body: payload }),
   updateHomeServiceBooking: (id, payload) =>
     request(`/api/home-service-bookings/${id}`, { method: "PATCH", body: payload }),
+  rateHomeServiceBooking: (id, payload) =>
+    request(`/api/home-service-bookings/${id}/rate`, { method: "POST", body: payload }),
+  providerJobs: () => request("/api/provider/jobs"),
+  providerAccept: (id) => request(`/api/provider/jobs/${id}/accept`, { method: "POST" }),
+  providerDecline: (id) => request(`/api/provider/jobs/${id}/decline`, { method: "POST" }),
+  providerStart: (id, otp) => request(`/api/provider/jobs/${id}/start`, { method: "POST", body: { otp } }),
+  providerComplete: (id) => request(`/api/provider/jobs/${id}/complete`, { method: "POST" }),
+  ownerProviders: () => request("/api/owner/providers"),
+  ownerCreateProvider: (payload) => request("/api/owner/providers", { method: "POST", body: payload }),
+  ownerUpdateProvider: (id, payload) => request(`/api/owner/providers/${id}`, { method: "PATCH", body: payload }),
+  ownerPayProviderPack: (id, payload) => request(`/api/owner/providers/${id}/pack-payment`, { method: "POST", body: payload || {} }),
+  ownerRemoveProvider: (id) => request(`/api/owner/providers/${id}/remove`, { method: "POST" }),
 
   // Gate passes / MyGate-style pre-approval
   gatePasses: () => request("/api/gate-passes"),

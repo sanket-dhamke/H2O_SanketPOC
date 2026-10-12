@@ -60,7 +60,12 @@ import ReportsScreen from "./src/screens/admin/ReportsScreen";
 import VenueMarketplaceScreen from "./src/screens/admin/VenueMarketplaceScreen";
 import AdminFeesScreen from "./src/screens/admin/AdminFeesScreen";
 import PayToH2OScreen from "./src/screens/admin/PayToH2OScreen";
+import AdminOfficeScreen from "./src/screens/admin/AdminOfficeScreen";
+import MovesScreen from "./src/screens/admin/MovesScreen";
+import VendorsScreen from "./src/screens/admin/VendorsScreen";
+import ProviderJobsScreen from "./src/screens/provider/ProviderJobsScreen";
 import SuperAdminDashboardScreen from "./src/screens/superadmin/SuperAdminDashboardScreen";
+import ProvidersScreen from "./src/screens/superadmin/ProvidersScreen";
 import SocietiesScreen from "./src/screens/superadmin/SocietiesScreen";
 import BackupRecoveryScreen from "./src/screens/superadmin/BackupRecoveryScreen";
 
@@ -172,6 +177,9 @@ function FinanceStackScreen() {
   return (
     <FinanceStack.Navigator screenOptions={{ headerShown: false }}>
       <FinanceStack.Screen name="FinanceHome" component={AdminDashboardScreen} />
+      <FinanceStack.Screen name="Office" component={AdminOfficeScreen} />
+      <FinanceStack.Screen name="Moves" component={MovesScreen} />
+      <FinanceStack.Screen name="Vendors" component={VendorsScreen} />
       <FinanceStack.Screen name="Manager" component={ManagerScreen} />
       <FinanceStack.Screen name="Transparency" component={TransparencyScreen} />
       <FinanceStack.Screen name="Collections" component={MaintenanceScreen} />
@@ -279,6 +287,16 @@ function SuperAdminTabs() {
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Overview" component={SuperAdminDashboardScreen} />
       <Tab.Screen name="Societies" component={SocietiesStackScreen} />
+      <Tab.Screen name="Professionals" component={ProvidersScreen} />
+    </Tab.Navigator>
+  );
+}
+
+function ProviderTabs() {
+  const tabScreenOptions = useTabScreenOptions();
+  return (
+    <Tab.Navigator screenOptions={tabScreenOptions}>
+      <Tab.Screen name="Jobs" component={ProviderJobsScreen} options={{ headerShown: false }} />
     </Tab.Navigator>
   );
 }
@@ -348,6 +366,8 @@ function AppInner() {
         <ResidentTabs />
       ) : user.role === "admin" ? (
         <AdminTabs />
+      ) : user.role === "provider" ? (
+        <ProviderTabs />
       ) : (
         <GuardTabs />
       )}

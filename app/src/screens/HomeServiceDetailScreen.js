@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import {
 } from "../lib/homeServices";
 import { body, head } from "../lib/type";
 import { imageForService } from "../lib/serviceImages";
+import { api } from "../lib/api";
 
 function todayISO() {
   const d = new Date();
@@ -57,6 +58,23 @@ export default function HomeServiceDetailScreen() {
   const [slot, setSlot] = useState(route.params?.slot || HOME_SERVICE_SLOTS[0]);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+  const [availability, setAvailability] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!service) return undefined;
+    api.homeServiceAvailability(service.slug, date)
+      .then((res) => {
+        if (cancelled) return;
+        setAvailability(res.slots || []);
+      })
+      .catch(() => {
+        if (!cancelled) setAvailability(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [service, date]);
 
   const pack = useMemo(
     () => service?.packages?.find((p) => p.id === packId) || service?.packages?.[0],
@@ -91,10 +109,8 @@ export default function HomeServiceDetailScreen() {
         notes,
       });
       const when = `${date} · ${slot}`;
-      const line =
-        booking.status === "confirmed"
-          ? `${pack.name} is confirmed for ${when}. ${service.partnerName || "A partner"} is on the way once the slot opens.`
-          : `${pack.name} requested for ${when}. Your society desk will confirm shortly.`;
+      const who = booking.partnerName ? `${booking.partnerName} accepted.` : "The best free professional has 60 seconds to accept, then the next one. If nobody does, the GATEZO desk takes it.";
+      const line = `${pack.name} for ${when}. ${who}`;
       Alert.alert(offline ? "Booked on this device" : "Booking placed", line, [
         {
           text: "View bookings",
@@ -151,12 +167,24 @@ export default function HomeServiceDetailScreen() {
           <Text style={styles.section}>When should they come?</Text>
           <DateField value={date} onChange={setDate} placeholder="Select date" minToday />
           <View style={styles.slots}>
-            {HOME_SERVICE_SLOTS.map((s) => (
-              <TouchableOpacity key={s} style={[styles.slot, s === slot && styles.slotOn]} onPress={() => setSlot(s)}>
-                <Text style={[styles.slotText, s === slot && styles.slotTextOn]}>{s}</Text>
-              </TouchableOpacity>
-            ))}
+            {HOME_SERVICE_SLOTS.map((s) => {
+              const known = availability?.find((row) => row.slot === s);
+              const full = availability ? !known || known.freeCount < 1 : false;
+              return (
+                <TouchableOpacity
+                  key={s}
+                  disabled={full}
+                  style={[styles.slot, s === slot && styles.slotOn, full && { opacity: 0.35 }]}
+                  onPress={() => setSlot(s)}
+                >
+                  <Text style={[styles.slotText, s === slot && styles.slotTextOn]}>{full ? `${s} full` : s}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
+          <Text style={styles.packDetail}>
+            Only times with a free professional are open. 14:00–15:00 is the 2–3 pm slot. A professional has 60 seconds to accept before it passes to the next one.
+          </Text>
 
           <Text style={styles.section}>Notes for the partner</Text>
           <TextInput

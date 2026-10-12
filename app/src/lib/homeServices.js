@@ -7,11 +7,16 @@ import { brand } from "./brand";
 // the live API has not been redeployed yet.
 
 export const HOME_SERVICE_SLOTS = [
-  "09:00–11:00",
-  "11:00–13:00",
-  "14:00–16:00",
-  "16:00–18:00",
-  "18:00–20:00",
+  "09:00–10:00",
+  "10:00–11:00",
+  "11:00–12:00",
+  "12:00–13:00",
+  "14:00–15:00",
+  "15:00–16:00",
+  "16:00–17:00",
+  "17:00–18:00",
+  "18:00–19:00",
+  "19:00–20:00",
 ];
 
 export const HOME_SERVICES = [
@@ -339,8 +344,13 @@ export async function updateServiceBooking(user, id, status) {
 
 export const BOOKING_STATUS = {
   requested: { label: "Requested", color: "#C2571A", bg: "#FBEADD" },
+  finding: { label: "Finding a pro", color: "#C2571A", bg: "#FBEADD" },
+  offered: { label: "Waiting for pro", color: "#C2571A", bg: "#FBEADD" },
   confirmed: { label: "Confirmed", color: "#0B6E8F", bg: "#EAF4F7" },
   assigned: { label: "Partner assigned", color: "#0B6E8F", bg: "#EAF4F7" },
+  accepted: { label: "Professional accepted", color: "#0B6E8F", bg: "#EAF4F7" },
+  started: { label: "Work started", color: "#6D3BD1", bg: "#F3EEFB" },
   completed: { label: "Completed", color: "#1E7A3D", bg: "#E6F5EC" },
+  unassigned: { label: "No professional free", color: "#B42318", bg: "#FDECEC" },
   cancelled: { label: "Cancelled", color: "#8794A0", bg: "#EEF2F4" },
 };

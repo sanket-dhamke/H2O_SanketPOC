@@ -330,6 +330,7 @@ function getActionGroups(role, L, preschool) {
   }
   if (role === "admin") {
     const run = [
+      { label: preschool ? "School office" : "Society office", subtitle: "Dues, defaulters, moves, vendors & reports", icon: "briefcase-outline", tint: "#0B6E8F", route: "Finance", params: { screen: "Office" } },
       { label: preschool ? "School manager" : "Society manager", subtitle: "AI insights, alerts & draft notices", icon: "bulb-outline", tint: "#6D3BD1", route: "Finance", params: { screen: "Manager" } },
       { label: preschool ? "Fees & collections" : "Finances & dues", subtitle: preschool ? "Balance, fees & reminders" : "Balance, collections & reminders", icon: "stats-chart-outline", tint: "#0B6E8F", route: "Finance" },
       { label: L.manageTile, subtitle: L.manageTileSub, icon: "people-circle-outline", tint: "#2E9E52", route: "Members" },

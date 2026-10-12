@@ -2,7 +2,7 @@
 // PostgreSQL (Supabase in production). Roles/statuses are kept as plain strings
 // for portability rather than DB enums.
 // Allowed values:
-//   User.role      : "superadmin" | "admin" | "guard" | "resident"
+//   User.role      : "superadmin" | "admin" | "guard" | "resident" | "provider"
 //   Bill.status    : "pending"  | "paid"
 //   Visitor.status : "pending" | "approved" | "rejected" | "leave_at_gate" | "no_response" | "sent_back" | "allowed_by_guard"
 //
@@ -46,9 +46,11 @@ model Society {
   planAmount    Float?           // agreed yearly subscription amount (INR)
   planNote      String?
   // Customer-facing product tier: "base" | "prime" | "platinum". Set by the
-  // GateMate superadmin; drives which features are unlocked in the app. Defaults
+  // GATEZO superadmin; drives which features are unlocked in the app. Defaults
   // to "platinum" so existing tenants keep all features until explicitly tiered.
   tier          String           @default("platinum")
+  // Auto-erase visitor PII after this many days. Null / 0 = keep forever.
+  visitorRetentionDays Int?
   createdAt     DateTime         @default(now())
   flats         Flat[]
   users         User[]
@@ -69,6 +71,8 @@ model Society {
   gateDevices   GateDevice[]
   vehicleEntries VehicleEntry[]
   serviceBookings ServiceBooking[]
+  occupancyMoves OccupancyMove[]
+  vendorBills    VendorBill[]
 }
 
 // A commercial booking of a society premise by an OUTSIDE vendor (not a resident):
@@ -186,6 +190,7 @@ model User {
   listingMessages ListingMessage[] @relation("ListingMsgFrom")
   listingJoins  ListingJoin[] @relation("ListingJoinUser")
   serviceBookings ServiceBooking[] @relation("ResidentServiceBookings")
+  serviceProvider ServiceProvider?
 
   // societyId+role: directory & admin/guard lookups. flatId: fast push targeting
   // (notify a flat's residents) and "residents of this flat" reads.
@@ -801,12 +806,66 @@ model ServiceBooking {
   slot          String
   notes         String?
   partnerName   String?
-  status        String   @default("requested") // requested | confirmed | assigned | completed | cancelled
+  provider      ServiceProvider? @relation("AssignedJobs", fields: [providerId], references: [id])
+  providerId    String?
+  // Professional who currently has the 60-second accept offer.
+  offerProviderId String?
+  offerExpiresAt  DateTime?
+  // Provider ids who declined or let this offer expire, comma-separated.
+  declinedIds   String   @default("")
+  // 4-digit code the resident reads out when work starts. Never sent to the provider.
+  startOtp      String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  rating        Int?
+  ratingNote    String?
+  // finding | offered | accepted | started | completed | cancelled | unassigned
+  // plus legacy requested | confirmed | assigned
+  status        String   @default("finding")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@index([societyId, status])
   @@index([residentId, createdAt])
+  @@index([providerId])
+  @@index([offerProviderId])
+  @@index([scheduledDate, slot])
+}
+
+// A home-services professional with their own login. Managed by the GATEZO
+// owner (superadmin). They pay an annual pack to receive jobs. `fallback` is
+// the house desk that takes a job only after every other free pro ignores it.
+model ServiceProvider {
+  id            String   @id @default(uuid())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String   @unique
+  phone         String
+  // Catalogue slugs they can do, comma-separated (ac,cleaning,salon,…).
+  serviceSlugs  String
+  active        Boolean  @default(true)
+  fallback      Boolean  @default(false)
+  packAmount    Float    @default(4999)
+  packPaidUntil DateTime?
+  ratingAvg     Float    @default(5)
+  ratingCount   Int      @default(0)
+  createdAt     DateTime @default(now())
+  jobs          ServiceBooking[] @relation("AssignedJobs")
+  packPayments  ProviderPackPayment[]
+
+  @@index([active])
+}
+
+model ProviderPackPayment {
+  id           String          @id @default(uuid())
+  provider     ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  providerId   String
+  amount       Float
+  paidOn       String
+  note         String?
+  recordedById String?
+  createdAt    DateTime        @default(now())
+
+  @@index([providerId])
 }
 
 // ---- SOS "neighbour mesh" (panic button + responder network) ----
@@ -1108,6 +1167,45 @@ model RentalCompliance {
   updatedAt      DateTime  @updatedAt
 
   @@index([societyId, flatId])
+}
+
+// Society office: move-in / move-out register (MyGate-style occupancy events).
+model OccupancyMove {
+  id           String   @id @default(uuid())
+  society      Society  @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId    String
+  flatId       String
+  kind         String   // move_in | move_out
+  residentName String
+  phone        String?
+  email        String?
+  date         String   // YYYY-MM-DD
+  notes        String?
+  depositAmount Float?
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  @@index([societyId, date])
+  @@index([flatId])
+}
+
+// Vendor / contractor payables (security agency, housekeeping, AMC, utilities).
+model VendorBill {
+  id          String    @id @default(uuid())
+  society     Society   @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId   String
+  vendorName  String
+  category    String    @default("other") // security | housekeeping | maintenance | utilities | other
+  description String?
+  amount      Float
+  dueDate     String?
+  status      String    @default("unpaid") // unpaid | paid
+  paidAt      DateTime?
+  paymentRef  String?
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  @@index([societyId, status])
 }
 
 // ---- Tier 3: Sustainability dashboard (per-flat water metering + green score) -

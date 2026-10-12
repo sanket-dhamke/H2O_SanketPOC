@@ -27,6 +27,7 @@ import { cacheWrap } from "../cache.js";
 import { computeSocietyInsights } from "../insights.js";
 import { aiEnabled, draftManagerText } from "../ai.js";
 import { computeTransparency, rebuildLedger, verifyLedger } from "../ledger.js";
+import { moneySplits, collectionMonths } from "../office.js";
 
 export const adminRouter = Router();
 
@@ -438,14 +439,24 @@ adminRouter.get("/finance", async (req, res) => {
   });
 
   const dueList = perFlat.filter((f) => f.pending > 0);
+  const splits = moneySplits(bills);
+  const depositHeld = await prisma.rentalCompliance.aggregate({
+    where: { societyId: sid(req), depositStatus: { in: ["held", "partially_returned"] } },
+    _sum: { depositAmount: true },
+  });
 
   res.json({
     totalCollected,
     totalPending,
     totalExpenses,
     balance,
+    overdue: splits.overdue,
+    advance: splits.advance,
+    securityDeposit: Math.round(depositHeld._sum.depositAmount || 0),
+    collectionByMonth: collectionMonths(bills),
     perFlat,
     dueList,
+    defaulters: dueList.slice().sort((a, b) => b.pending - a.pending),
   });
 });
 
