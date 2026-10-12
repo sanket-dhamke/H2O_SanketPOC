@@ -45,6 +45,7 @@ const catMeta = (id) => TICKET_CATEGORIES.find((c) => c.id === id) || TICKET_CAT
 export const STATUS_META = {
   open: { label: "Open", color: "#C2571A", bg: "#FBEadd" },
   in_progress: { label: "In progress", color: "#0B6E8F", bg: "#EAF4F7" },
+  escalated: { label: "Escalated", color: "#B42318", bg: "#FDECEC" },
   resolved: { label: "Resolved", color: "#2E9E52", bg: "#E3F5E8" },
 };
 
@@ -59,6 +60,7 @@ export default function HelpdeskScreen() {
   const [tickets, setTickets] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [ticketModal, setTicketModal] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const load = useCallback(async () => {
     try {
@@ -149,8 +151,18 @@ export default function HelpdeskScreen() {
           </TouchableOpacity>
         </View>
 
+        {isAdmin && (
+          <View style={styles.filterRow}>
+            {["all", "open", "in_progress", "escalated", "resolved"].map((s) => (
+              <TouchableOpacity key={s} onPress={() => setStatusFilter(s)} style={[styles.filterChip, statusFilter === s && styles.filterChipOn]}>
+                <Text style={[styles.filterText, statusFilter === s && styles.filterTextOn]}>{s === "all" ? "All" : (STATUS_META[s]?.label || s)}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         {tickets.length === 0 && <Text style={styles.empty}>No tickets yet. Tap “Raise a ticket” to report an issue.</Text>}
-        {tickets.map((t) => {
+        {tickets.filter((t) => statusFilter === "all" || t.status === statusFilter).map((t) => {
           const meta = catMeta(t.category);
           const sm = STATUS_META[t.status] || STATUS_META.open;
           return (
@@ -288,6 +300,11 @@ const styles = StyleSheet.create({
   contactRole: { color: "#6B7B85", fontSize: 12.5, marginTop: 2 },
   callBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: "#EAF4F7", alignItems: "center", justifyContent: "center" },
   ticketsHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 18 },
+  filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
+  filterChip: { borderWidth: 1, borderColor: "#CFE0E6", borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: "#fff" },
+  filterChipOn: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },
+  filterText: { fontSize: 12, fontWeight: "700", color: "#0B6E8F" },
+  filterTextOn: { color: "#fff" },
   raiseLink: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
   empty: { color: "#6B7B85", textAlign: "center", marginTop: 16, marginBottom: 8 },
   ticketCard: { backgroundColor: "#fff", borderRadius: 14, padding: 14, marginTop: 12 },

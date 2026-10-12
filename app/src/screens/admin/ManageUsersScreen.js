@@ -76,8 +76,8 @@ export default function ManageUsersScreen({ navigation }) {
     try {
       await Share.share({
         message:
-          `Join our ${preschool ? "preschool" : "society"} on GateMate.\n\n` +
-          `1. Install GateMate\n2. Tap "New resident? Register with a join code"\n` +
+          `Join our ${preschool ? "preschool" : "society"} on GATEZO.\n\n` +
+          `1. Install GATEZO\n2. Tap "New resident? Register with a join code"\n` +
           `3. Enter join code: ${joinCode}\n4. Enter your ${L.unit.toLowerCase()} number and set a password.\n\n` +
           `An admin will approve your account. (Share this only with your ${noun}.)`,
       });

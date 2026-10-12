@@ -102,7 +102,7 @@ export async function payBooking(booking) {
   return { paid: true };
 }
 
-// Web version of the GateMate subscription payment (mirrors payBooking).
+// Web version of the GATEZO subscription payment (mirrors payBooking).
 export async function paySubscription() {
   const order = await api.createSubscriptionOrder();
 

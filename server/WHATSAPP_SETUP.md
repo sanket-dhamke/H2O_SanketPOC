@@ -1,6 +1,6 @@
 # WhatsApp fee reminders — Meta Cloud API setup
 
-This turns the **automated** WhatsApp reminders in GateMate from "dev mode"
+This turns the **automated** WhatsApp reminders in GATEZO from "dev mode"
 (logs a message + gives a `wa.me` click‑to‑send link) into real, hands‑off
 messages sent by Meta on a schedule.
 

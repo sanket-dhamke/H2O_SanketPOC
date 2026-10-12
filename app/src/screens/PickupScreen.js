@@ -78,7 +78,7 @@ export default function PickupScreen() {
             <Text style={styles.verifyText}>{busy ? "…" : "Verify"}</Text>
           </TouchableOpacity>
         </View>
-        <Text style={styles.hint}>Ask the parent/guardian to show their pickup QR from the GateMate app. Type the code under it.</Text>
+        <Text style={styles.hint}>Ask the parent/guardian to show their pickup QR from the GATEZO app. Type the code under it.</Text>
 
         {result && (
           <View style={styles.resultCard}>

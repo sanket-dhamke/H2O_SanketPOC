@@ -53,6 +53,9 @@ import ReportsScreen from "./src/screens/admin/ReportsScreen";
 import VenueMarketplaceScreen from "./src/screens/admin/VenueMarketplaceScreen";
 import AdminFeesScreen from "./src/screens/admin/AdminFeesScreen";
 import PayToH2OScreen from "./src/screens/admin/PayToH2OScreen";
+import AdminOfficeScreen from "./src/screens/admin/AdminOfficeScreen";
+import MovesScreen from "./src/screens/admin/MovesScreen";
+import VendorsScreen from "./src/screens/admin/VendorsScreen";
 import SuperAdminDashboardScreen from "./src/screens/superadmin/SuperAdminDashboardScreen";
 import SocietiesScreen from "./src/screens/superadmin/SocietiesScreen";
 import BackupRecoveryScreen from "./src/screens/superadmin/BackupRecoveryScreen";
@@ -151,6 +154,9 @@ function FinanceStackScreen() {
   return (
     <FinanceStack.Navigator screenOptions={{ headerShown: false }}>
       <FinanceStack.Screen name="FinanceHome" component={AdminDashboardScreen} />
+      <FinanceStack.Screen name="Office" component={AdminOfficeScreen} />
+      <FinanceStack.Screen name="Moves" component={MovesScreen} />
+      <FinanceStack.Screen name="Vendors" component={VendorsScreen} />
       <FinanceStack.Screen name="Manager" component={ManagerScreen} />
       <FinanceStack.Screen name="Transparency" component={TransparencyScreen} />
       <FinanceStack.Screen name="Collections" component={MaintenanceScreen} />

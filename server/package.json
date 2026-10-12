@@ -1,11 +1,12 @@
 {
   "name": "h2o-server",
   "version": "1.0.0",
-  "description": "H2O society management backend (accounts, maintenance, visitors, gate approvals)",
+  "description": "GATEZO society management backend (accounts, maintenance, visitors, gate approvals)",
   "type": "module",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "test": "node --test test/*.test.js",
     "dev": "node --watch src/index.js",
     "seed": "node src/seed.js",
     "db:reset": "node src/reset.js",

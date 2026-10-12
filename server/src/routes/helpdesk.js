@@ -14,7 +14,7 @@ const sid = (req) => req.user.societyId || "__none__";
 
 const CATEGORIES = ["plumbing", "electrical", "housekeeping", "security", "billing", "general", "other"];
 const PRIORITIES = ["low", "normal", "high"];
-const STATUSES = ["open", "in_progress", "resolved"];
+const STATUSES = ["open", "in_progress", "escalated", "resolved"];
 
 // Push helper: notify a set of users (skips those without a token / opted out).
 async function notifyUsers(userIds, title, body, data = {}) {

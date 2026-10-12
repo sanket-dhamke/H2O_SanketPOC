@@ -32,7 +32,7 @@ function confirm(title, message, onYes, yesLabel = "Delete") {
   ]);
 }
 
-// Full-screen moderation console for the GateMate owner: browse every Buy & Sell
+// Full-screen moderation console for the GATEZO owner: browse every Buy & Sell
 // post across all societies and disable (hide) or delete anything inappropriate.
 export default function MarketplaceModerationModal({ visible, onClose }) {
   const insets = useSafeAreaInsets();

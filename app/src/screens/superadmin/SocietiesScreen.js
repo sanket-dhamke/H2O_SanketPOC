@@ -807,8 +807,8 @@ function EditPlanModal({ society, onClose, onDone }) {
   );
 }
 
-// Owner-editable GateMate platform settings: the contact email shown to admins and
-// GateMate's own bank/UPI details (reference for "Pay to GateMate").
+// Owner-editable GATEZO platform settings: the contact email shown to admins and
+// GATEZO's own bank/UPI details (reference for "Pay to GATEZO").
 function PlatformSettingsModal({ visible, onClose }) {
   const [contactEmail, setContactEmail] = useState("");
   const [accountName, setAccountName] = useState("");
@@ -839,7 +839,7 @@ function PlatformSettingsModal({ visible, onClose }) {
     try {
       await api.superUpdateSettings({ contactEmail, accountName, bankName, accountNumber, ifsc, upiId });
       onClose();
-      notify("Saved", "GateMate platform settings updated.");
+      notify("Saved", "GATEZO platform settings updated.");
     } catch (e) {
       notify("Error", e.message);
     } finally {
@@ -848,11 +848,11 @@ function PlatformSettingsModal({ visible, onClose }) {
   };
 
   return (
-    <FormModal visible={visible} onClose={onClose} title="GateMate settings" icon="settings-outline" busy={busy} onSubmit={submit}>
+    <FormModal visible={visible} onClose={onClose} title="GATEZO settings" icon="settings-outline" busy={busy} onSubmit={submit}>
       <Label>Platform contact email</Label>
       <TextInput style={styles.input} value={contactEmail} onChangeText={setContactEmail} placeholder="sanket.dhamke@gmail.com" autoCapitalize="none" keyboardType="email-address" />
-      <Text style={styles.helpText}>Shown on the owner profile and used as the GateMate reply-to contact.</Text>
-      <Label>GateMate bank / UPI (for "Pay to GateMate")</Label>
+      <Text style={styles.helpText}>Shown on the owner profile and used as the GATEZO reply-to contact.</Text>
+      <Label>GATEZO bank / UPI (for "Pay to GATEZO")</Label>
       <TextInput style={styles.input} value={accountName} onChangeText={setAccountName} placeholder="Account holder name" />
       <TextInput style={styles.input} value={bankName} onChangeText={setBankName} placeholder="Bank name" />
       <TextInput style={styles.input} value={accountNumber} onChangeText={setAccountNumber} placeholder="Account number" keyboardType="number-pad" />

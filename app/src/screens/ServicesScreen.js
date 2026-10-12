@@ -145,7 +145,7 @@ export default function ServicesScreen() {
   );
 
   const subtitle = isSuperadmin
-    ? "GateMate-curated helplines (all societies)"
+    ? "GATEZO-curated helplines (all societies)"
     : "Trusted numbers for your society";
 
   return (
@@ -275,7 +275,7 @@ const ContactCard = React.memo(function ContactCard({ c, canEdit, canFeature, on
           <View style={styles.nameRow}>
             <Text style={styles.name}>{c.name}</Text>
             {c.featured && <Ionicons name="star" size={13} color="#C99000" />}
-            {c.scope === "platform" && <Badge text="GateMate" tint="#0B6E8F" />}
+            {c.scope === "platform" && <Badge text="GATEZO" tint="#0B6E8F" />}
             {c.scope === "personal" && <Badge text="Private" tint="#8895A0" />}
           </View>
           <Text style={styles.sub}>

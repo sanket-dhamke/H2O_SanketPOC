@@ -103,7 +103,7 @@ export default function GateDevicesScreen() {
           <Ionicons name="information-circle-outline" size={18} color="#0B6E8F" />
           <Text style={styles.infoText}>
             Add a scanner for each entry lane, then configure the device (or your installer) with its device key and the verify URL below. The
-            scanner posts each scanned QR to GateMate and opens the barrier when we return “open”.
+            scanner posts each scanned QR to GATEZO and opens the barrier when we return “open”.
           </Text>
         </View>
 
@@ -181,7 +181,7 @@ function DeviceDetailModal({ device, onClose }) {
   const shareAll = () =>
     Share.share({
       message:
-        `GateMate scanner setup — ${device.name}\n\n` +
+        `GATEZO scanner setup — ${device.name}\n\n` +
         `Device key: ${device.deviceKey}\n` +
         `Verify URL (POST): ${device.verifyUrl}\n` +
         `Whitelist URL (GET): ${device.whitelistUrl}\n\n` +

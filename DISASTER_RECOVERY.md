@@ -1,6 +1,6 @@
-# GateMate — Disaster Recovery (DR) Runbook
+# GATEZO — Disaster Recovery (DR) Runbook
 
-This is the step-by-step guide for the GateMate owner (superadmin) to recover the
+This is the step-by-step guide for the GATEZO owner (superadmin) to recover the
 platform after data loss, a bad deploy, an accidental delete, or losing the
 Supabase/Render account. Keep a copy of this file **off the platform** (print it
 or store it in a personal drive) — you may not be able to open the repo during an
@@ -94,7 +94,7 @@ Rebuild on a fresh Postgres (new Supabase project or any Postgres), then load th
    ```bash
    cd server
    BACKUP_ENCRYPTION_KEY="<your key>" DATABASE_URL="<new db url>" \
-     node scripts/restore-platform-backup.js /path/to/gatemate-platform-*.gmb
+     node scripts/restore-platform-backup.js /path/to/gatezo-platform-*.gmb
    ```
 
    The script decrypts, verifies, and inserts every table in FK-safe order

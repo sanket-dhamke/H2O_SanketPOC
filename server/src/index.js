@@ -10,6 +10,7 @@ import { authRouter } from "./routes/auth.js";
 import { maintenanceRouter } from "./routes/maintenance.js";
 import { visitorsRouter } from "./routes/visitors.js";
 import { adminRouter } from "./routes/admin.js";
+import { officeRouter } from "./routes/office.js";
 import { superadminRouter } from "./routes/superadmin.js";
 import { communityRouter } from "./routes/community.js";
 import { amenitiesRouter } from "./routes/amenities.js";
@@ -40,6 +41,7 @@ import { backfillSlugs } from "./slug.js";
 import { recordPayment } from "./billing.js";
 import { runFeeReminders } from "./feeReminders.js";
 import { runRentExpiryChecks } from "./rentReminders.js";
+import { runVisitorRetention } from "./visitorRetention.js";
 
 const app = express();
 // Behind Render/other proxies: trust the first proxy hop so req.ip (used by the
@@ -95,7 +97,7 @@ app.use("/api/ai", aiLimiter);
 app.get("/api/health", (_req, res) =>
   res.json({
     ok: true,
-    name: "GateMate",
+    name: "GATEZO",
     razorpay: razorpayEnabled,
     storage: storageEnabled,
     ai: aiEnabled,
@@ -108,6 +110,7 @@ app.use("/api", authRouter);
 app.use("/api", maintenanceRouter);
 app.use("/api", visitorsRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/admin", officeRouter);
 app.use("/api/superadmin", superadminRouter);
 app.use("/api", communityRouter);
 app.use("/api", amenitiesRouter);
@@ -188,6 +191,20 @@ app.post("/api/cron/rent-expiry", async (req, res) => {
   }
 });
 
+app.post("/api/cron/visitor-retention", async (req, res) => {
+  const secret = process.env.CRON_SECRET || "";
+  const provided = req.headers["x-cron-secret"] || req.query.secret;
+  if (!secret || provided !== secret) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  try {
+    const result = await runVisitorRetention();
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // In-process schedule (works whenever the server is awake): every day at 23:30,
 // if tomorrow is a new month, run the monthly backups. Disable with
 // BACKUP_CRON_ENABLED=false. For sleeping hosts, also wire the external endpoint.
@@ -246,6 +263,17 @@ if (process.env.RENT_EXPIRY_CRON_ENABLED !== "false") {
   });
 }
 
+if (process.env.VISITOR_RETENTION_CRON_ENABLED !== "false") {
+  cron.schedule(process.env.VISITOR_RETENTION_CRON || "20 3 * * *", async () => {
+    try {
+      const r = await runVisitorRetention();
+      if (r.erased) console.log(`[visitors] retention erased ${r.erased} across ${r.checked} societies`);
+    } catch (e) {
+      console.error("[visitors] retention run failed:", e.message);
+    }
+  });
+}
+
 const PORT = process.env.PORT || 4000;
 // Bind explicitly to IPv4 all-interfaces so phones on the LAN can connect.
 // Creates the singleton platform settings row with sensible defaults the first
@@ -264,7 +292,7 @@ async function ensurePlatformSetting() {
 }
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`GateMate server running on http://0.0.0.0:${PORT}`);
+  console.log(`GATEZO server running on http://0.0.0.0:${PORT}`);
   console.log(`[infra] cache=${cacheBackend} queue=${queueBackend}`);
   // Start the notification queue worker (only active in redis mode; the
   // in-process queue drains on its own when no REDIS_URL is set).

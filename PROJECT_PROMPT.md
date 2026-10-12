@@ -1,4 +1,4 @@
-# GateMate — Master Build Prompt
+# GATEZO — Master Build Prompt
 
 Paste the block below into any fresh agent window to reconstruct or continue this app.
 It captures the full scope of what has been built so far.
@@ -15,14 +15,14 @@ It captures the full scope of what has been built so far.
 >   superadmin login + platform settings). Do NOT run `db:setup`/`seed` for a QA handoff — those
 >   repopulate the fake demo societies. `reset.js` refuses to run if no superadmin exists.
 > - Windows/PowerShell: chain commands with `;` (not `&&`).
-> - Branding: the app is now **GateMate** (icon, splash, and all user-visible text). The internal
+> - Branding: the app is now **GATEZO** (icon, splash, and all user-visible text). The internal
 >   Expo `slug` (`h2o`) and Android package (`com.h2o.society`) are intentionally kept for
 >   EAS/Play continuity. Deep-link scheme is `h2o://`. The `PayToH2O` route id is an internal
->   identifier only (screen title reads "Pay to GateMate").
+>   identifier only (screen title reads "Pay to GATEZO").
 
 ```
 You are building a production-grade, multi-tenant community & premises management mobile app
-(React Native / Expo) called "GateMate" (internally "H2O"). It is a MyGate-style app with AI,
+(React Native / Expo) called "GATEZO" (internally "H2O"). It is a MyGate-style app with AI,
 serving TWO tenant types from ONE codebase and ONE app binary:
   1. Residential SOCIETIES (gate + maintenance + community)
   2. PRESCHOOLS (visitor entry/exit + staff attendance + student fee management)

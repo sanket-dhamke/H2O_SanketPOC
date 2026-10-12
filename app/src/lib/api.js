@@ -236,6 +236,14 @@ export const api = {
   adminVerifyLedger: () => request("/api/admin/ledger/verify"),
 
   // Admin: proactive AI Society Manager (insights + AI drafts)
+  adminOffice: () => request("/api/admin/office"),
+  adminOfficeSettings: (payload) => request("/api/admin/settings", { method: "PATCH", body: payload }),
+  adminMoves: () => request("/api/admin/moves"),
+  adminCreateMove: (payload) => request("/api/admin/moves", { method: "POST", body: payload }),
+  adminVendors: () => request("/api/admin/vendors"),
+  adminCreateVendor: (payload) => request("/api/admin/vendors", { method: "POST", body: payload }),
+  adminPayVendor: (id, payload) => request(`/api/admin/vendors/${id}/pay`, { method: "POST", body: payload || {} }),
+  adminEntryExit: (from, to) => request(`/api/admin/entry-exit${qs({ from, to })}`),
   adminInsights: () => request("/api/admin/insights"),
   adminAiDraft: (kind) => request("/api/admin/ai/draft", { method: "POST", body: { kind } }),
   suggestPostReply: (id) => request(`/api/posts/${id}/suggest-reply`, { method: "POST" }),
@@ -246,7 +254,7 @@ export const api = {
   adminBackup: () => request("/api/admin/backup"),
   adminEmailBackup: () => request("/api/admin/backup/email", { method: "POST" }),
 
-  // Super admin (GateMate platform owner): cross-society overview + management
+  // Super admin (GATEZO platform owner): cross-society overview + management
   superOverview: (period) =>
     request(`/api/superadmin/overview${period ? `?period=${encodeURIComponent(period)}` : ""}`),
   superListSocieties: () => request("/api/superadmin/societies"),
@@ -278,7 +286,7 @@ export const api = {
   superSocietyBackupEmail: (societyId) =>
     request(`/api/superadmin/societies/${societyId}/backup/email`, { method: "POST", body: {} }),
 
-  // Admin: GateMate subscription ("Pay to GateMate")
+  // Admin: GATEZO subscription ("Pay to GATEZO")
   adminSubscription: () => request("/api/admin/subscription"),
   createSubscriptionOrder: () =>
     request("/api/admin/subscription/create-order", { method: "POST" }),

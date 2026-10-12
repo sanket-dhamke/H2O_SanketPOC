@@ -119,7 +119,7 @@ async function loadSummaries() {
 //   collected  = money actually RECEIVED that calendar month (Payment.createdAt)
 //   billed     = maintenance/fees BILLED for that period (Bill.period)
 //   pending    = still-unpaid portion of that period's bills
-//   revenue    = GateMate's own income that month (subscriptions + vendor fees)
+//   revenue    = GATEZO's own income that month (subscriptions + vendor fees)
 // Everything is aggregated in SQL so it scales to large datasets.
 async function loadMonthOverview(period) {
   const [y, m] = period.split("-").map(Number);
@@ -211,7 +211,7 @@ superadminRouter.get("/overview", async (req, res) => {
     { flats: 0, residents: 0, guards: 0, admins: 0, collected: 0, pending: 0, expenses: 0, platformFees: 0 }
   );
 
-  // GateMate's own revenue: yearly subscriptions from premium societies + platform
+  // GATEZO's own revenue: yearly subscriptions from premium societies + platform
   // fees earned from vendor venue bookings.
   const premiumSocieties = rows.filter((s) => s.premium);
   const subscriptionRevenue = premiumSocieties.reduce((s, r) => s + (r.planAmount || 0), 0);
@@ -246,9 +246,9 @@ superadminRouter.get("/societies", async (_req, res) => {
   res.json({ societies: rows });
 });
 
-/* --------------------- Platform (GateMate owner) settings --------------------- */
-// The platform contact email + GateMate's own bank/UPI details (shown to society
-// admins on the "Pay to GateMate" screen for reference).
+/* --------------------- Platform (GATEZO owner) settings --------------------- */
+// The platform contact email + GATEZO's own bank/UPI details (shown to society
+// admins on the "Pay to GATEZO" screen for reference).
 superadminRouter.get("/settings", async (_req, res) => {
   const s = await prisma.platformSetting.findUnique({ where: { id: "platform" } });
   res.json({ settings: s || { id: "platform" } });
@@ -388,7 +388,7 @@ superadminRouter.get("/flats/:flatId/ledger", async (req, res) => {
   res.json({ ledger });
 });
 
-// Recent subscription payments made by societies to GateMate.
+// Recent subscription payments made by societies to GATEZO.
 superadminRouter.get("/platform-payments", async (_req, res) => {
   const payments = await prisma.platformPayment.findMany({ orderBy: { paidAt: "desc" }, take: 100 });
   res.json({ payments });
@@ -515,9 +515,9 @@ superadminRouter.post("/test-email", async (req, res) => {
   if (!to) return res.status(400).json({ message: "Provide a 'to' address" });
   const r = await sendEmail({
     to,
-    subject: "GateMate test email",
-    text: "This is a test email from GateMate. If you received this, email delivery is working.",
-    html: "<p>This is a <b>test email</b> from GateMate. If you received this, email delivery is working. ✅</p>",
+    subject: "GATEZO test email",
+    text: "This is a test email from GATEZO. If you received this, email delivery is working.",
+    html: "<p>This is a <b>test email</b> from GATEZO. If you received this, email delivery is working. ✅</p>",
   });
   res.json({ configured: emailConfigured, to, ...r });
 });

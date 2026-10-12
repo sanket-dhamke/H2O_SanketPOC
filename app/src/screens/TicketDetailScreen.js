@@ -163,6 +163,12 @@ export default function TicketDetailScreen({ navigation, route }) {
                 <Text style={[styles.adminBtnText, { color: "#0B6E8F" }]}>Mark in progress</Text>
               </TouchableOpacity>
             )}
+            {ticket.status !== "escalated" && (
+              <TouchableOpacity style={[styles.adminBtn, { backgroundColor: "#FDECEC" }]} onPress={() => setStatus("escalated")} disabled={busy}>
+                <Ionicons name="alert-circle-outline" size={16} color="#B42318" />
+                <Text style={[styles.adminBtnText, { color: "#B42318" }]}>Escalate</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={[styles.adminBtn, { backgroundColor: "#2E9E52" }]} onPress={resolveWithNote} disabled={busy}>
               <Ionicons name="checkmark-done" size={16} color="#fff" />
               <Text style={[styles.adminBtnText, { color: "#fff" }]}>Resolve</Text>
@@ -223,8 +229,8 @@ const styles = StyleSheet.create({
   meta: { color: "#9AA7AF", fontSize: 12, marginTop: 10, fontWeight: "600" },
   resolutionBox: { flexDirection: "row", gap: 8, backgroundColor: "#E3F5E8", borderRadius: 10, padding: 12, marginTop: 12 },
   resolutionText: { flex: 1, color: "#1F7A3D", fontSize: 13, fontWeight: "600" },
-  adminRow: { flexDirection: "row", gap: 10, marginTop: 12 },
-  adminBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 10, paddingVertical: 12 },
+  adminRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 },
+  adminBtn: { flexGrow: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 10, paddingVertical: 12, minWidth: "30%" },
   adminBtnText: { fontWeight: "700", fontSize: 13 },
   threadTitle: { fontSize: 15, fontWeight: "800", color: "#1B2B33", marginTop: 22, marginBottom: 10 },
   empty: { color: "#8895A0", fontSize: 13 },

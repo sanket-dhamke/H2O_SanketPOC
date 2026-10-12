@@ -112,6 +112,13 @@ export default function AdminDashboardScreen() {
         <Stat label="Collected" value={money(data?.totalCollected)} color="#2E9E52" />
         <Stat label="Pending" value={money(data?.totalPending)} color="#C2571A" />
       </View>
+      <View style={styles.statRow}>
+        <Stat label="Overdue" value={money(data?.overdue)} color="#B42318" />
+        <Stat label="Advance" value={money(data?.advance)} color="#1E7A3D" />
+      </View>
+      <View style={styles.statRow}>
+        <Stat label="Security deposit" value={money(data?.securityDeposit)} color="#0B6E8F" />
+      </View>
 
       <View style={styles.actionsRow}>
         <TouchableOpacity style={styles.actionBtn} onPress={() => setBillModal(true)}>
@@ -156,6 +163,18 @@ export default function AdminDashboardScreen() {
         <Ionicons name="calendar-outline" size={18} color="#0B6E8F" />
         <Text style={styles.collectText}>{L.amenitiesAdminBtn}</Text>
       </TouchableOpacity>
+      <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("Office")}>
+        <Ionicons name="briefcase-outline" size={18} color="#0B6E8F" />
+        <Text style={styles.collectText}>Society office — dues, moves, vendors</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("Moves")}>
+        <Ionicons name="swap-horizontal-outline" size={18} color="#0B6E8F" />
+        <Text style={styles.collectText}>Move in / out register</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("Vendors")}>
+        <Ionicons name="receipt-outline" size={18} color="#0B6E8F" />
+        <Text style={styles.collectText}>Vendor bills (security, AMC…)</Text>
+      </TouchableOpacity>
       <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("Reports")}>
         <Ionicons name="document-text-outline" size={18} color="#0B6E8F" />
         <Text style={styles.collectText}>{preschool ? "Reports & backup (visitors, staff)" : "Reports & backup (wing-wise, PDF)"}</Text>
@@ -168,7 +187,7 @@ export default function AdminDashboardScreen() {
       )}
       <TouchableOpacity style={styles.collectBtn} onPress={() => navigation.navigate("PayToH2O")}>
         <Ionicons name="ribbon-outline" size={18} color="#0B6E8F" />
-        <Text style={styles.collectText}>GateMate subscription — Pay to GateMate</Text>
+        <Text style={styles.collectText}>GATEZO subscription — Pay to GATEZO</Text>
       </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>{L.unit}-wise status</Text>
