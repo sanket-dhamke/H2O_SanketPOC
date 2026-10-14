@@ -116,6 +116,10 @@ export const api = {
   // Public self-registration with a society join code (admin approves after).
   register: (payload) =>
     request("/api/auth/register", { method: "POST", body: payload }),
+  // Public catalogue + self-registration for service professionals (owner approves).
+  providerServices: () => request("/api/auth/provider-services"),
+  registerProvider: (payload) =>
+    request("/api/auth/register-provider", { method: "POST", body: payload }),
   forgotPassword: (email) =>
     request("/api/auth/forgot-password", { method: "POST", body: { email } }),
   resetPassword: (email, otp, newPassword) =>
@@ -404,8 +408,11 @@ export const api = {
   providerStart: (id, otp) => request(`/api/provider/jobs/${id}/start`, { method: "POST", body: { otp } }),
   providerComplete: (id) => request(`/api/provider/jobs/${id}/complete`, { method: "POST" }),
   ownerProviders: () => request("/api/owner/providers"),
+  ownerRotateProviderCode: () => request("/api/owner/provider-join-code/rotate", { method: "POST" }),
   ownerCreateProvider: (payload) => request("/api/owner/providers", { method: "POST", body: payload }),
   ownerUpdateProvider: (id, payload) => request(`/api/owner/providers/${id}`, { method: "PATCH", body: payload }),
+  ownerApproveProvider: (id) => request(`/api/owner/providers/${id}/approve`, { method: "POST" }),
+  ownerRejectProvider: (id) => request(`/api/owner/providers/${id}/reject`, { method: "POST" }),
   ownerPayProviderPack: (id, payload) => request(`/api/owner/providers/${id}/pack-payment`, { method: "POST", body: payload || {} }),
   ownerRemoveProvider: (id) => request(`/api/owner/providers/${id}/remove`, { method: "POST" }),
 

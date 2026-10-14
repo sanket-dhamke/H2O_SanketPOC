@@ -7,6 +7,7 @@ import { publicUser } from "../serializers.js";
 import { validatePassword } from "../passwordPolicy.js";
 import { sendEmail } from "../email.js";
 import { sendPush } from "../push.js";
+import { providerServiceChoices, registerProviderAccount } from "../providerJoin.js";
 
 export const authRouter = Router();
 
@@ -25,9 +26,13 @@ authRouter.post("/auth/login", async (req, res) => {
     const org = user.society.orgType === "preschool" ? "preschool" : "society";
     return res.status(403).json({ message: `This ${org} is currently inactive. Contact GATEZO support.` });
   }
-  // Self-registered residents wait for an admin to approve them.
+  // Self-registered residents wait for a society admin. Self-registered
+  // professionals wait for the GATEZO owner. Neither can sign in until then.
   if (user.pendingApproval) {
-    return res.status(403).json({ message: "Your account is awaiting admin approval. You'll be able to sign in once your admin approves it." });
+    const who = user.role === "provider" ? "the GATEZO owner" : "your admin";
+    return res.status(403).json({
+      message: `Your account is awaiting approval from ${who}. You'll be able to sign in once it is approved.`,
+    });
   }
   res.json({ token: signToken(user), user: publicUser(user) });
 });
@@ -97,6 +102,18 @@ authRouter.post("/auth/register", async (req, res) => {
     societyName: society.name,
     message: `Request sent to ${society.name}. You'll be able to sign in once an admin approves your account.`,
   });
+});
+
+// Service catalogue for the public professional registration form.
+authRouter.get("/auth/provider-services", (_req, res) => {
+  res.json({ services: providerServiceChoices() });
+});
+
+// PUBLIC self-registration for service professionals. They use the owner's
+// provider code (not a society resident code) and wait for owner approval.
+authRouter.post("/auth/register-provider", async (req, res) => {
+  const result = await registerProviderAccount(req.body || {});
+  res.status(result.status).json(result.body);
 });
 
 authRouter.get("/me", authRequired, async (req, res) => {

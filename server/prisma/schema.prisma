@@ -521,6 +521,10 @@ model PlatformSetting {
   accountNumber String?
   ifsc          String?
   upiId         String?
+  // Separate from a society's resident join code. A service professional types
+  // this on the Register screen to create their own GATEZO login. The owner
+  // approves it before they can sign in. Owner can rotate it.
+  providerJoinCode String?
   updatedBy     String?
   updatedAt     DateTime @updatedAt @default(now())
 }

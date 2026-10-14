@@ -7,11 +7,14 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
+  Share,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import ScreenHeader from "../../components/ScreenHeader";
 import TextInput from "../../components/AppTextInput";
 import { api } from "../../lib/api";
+import { brand } from "../../lib/brand";
 import { body, head } from "../../lib/type";
 
 const empty = { name: "", email: "", phone: "", password: "Password123", packAmount: "4999", serviceSlugs: [], fallback: false };
@@ -20,6 +23,7 @@ export default function ProvidersScreen() {
   const [rows, setRows] = useState([]);
   const [services, setServices] = useState([]);
   const [revenue, setRevenue] = useState(0);
+  const [joinCode, setJoinCode] = useState("");
   const [form, setForm] = useState(empty);
   const [filter, setFilter] = useState("all");
   const [phoneEdit, setPhoneEdit] = useState({});
@@ -30,6 +34,7 @@ export default function ProvidersScreen() {
     setRows(res.providers || []);
     setServices(res.services || []);
     setRevenue(res.revenue || 0);
+    setJoinCode(res.providerJoinCode || "");
   }, []);
 
   useFocusEffect(useCallback(() => { load().catch((e) => Alert.alert("Providers", e.message)); }, [load]));
@@ -51,7 +56,54 @@ export default function ProvidersScreen() {
     }
   };
 
-  const shown = rows.filter((p) => filter === "all" || p.serviceSlugs.includes(filter) || (filter === "desk" && p.fallback));
+  const shareCode = async () => {
+    if (!joinCode) return;
+    try {
+      await Share.share({
+        message:
+          `Register as a service professional on ${brand.name}.\n\n` +
+          `1. Install ${brand.name}\n2. Tap Register\n3. Choose Service professional\n` +
+          `4. Enter provider code: ${joinCode}\n5. Pick the services you do and set a password.\n\n` +
+          `The ${brand.name} owner approves your account. This code is not a society resident join code.`,
+      });
+    } catch {}
+  };
+
+  const rotateCode = () => {
+    Alert.alert("Generate a new provider code?", "The current code stops working immediately.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Generate new",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const res = await api.ownerRotateProviderCode();
+            setJoinCode(res.providerJoinCode || "");
+          } catch (e) {
+            Alert.alert("Code", e.message);
+          }
+        },
+      },
+    ]);
+  };
+
+  const approve = (p) => {
+    api.ownerApproveProvider(p.id).then(load).catch((e) => Alert.alert("Approve", e.message));
+  };
+
+  const reject = (p) => {
+    Alert.alert("Decline registration", `Remove ${p.name}'s request?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Decline",
+        style: "destructive",
+        onPress: () => api.ownerRejectProvider(p.id).then(load).catch((e) => Alert.alert("Decline", e.message)),
+      },
+    ]);
+  };
+
+  const pending = rows.filter((p) => p.pendingApproval);
+  const shown = rows.filter((p) => !p.pendingApproval && (filter === "all" || p.serviceSlugs.includes(filter) || (filter === "desk" && p.fallback)));
 
   return (
     <View style={styles.container}>
@@ -61,8 +113,46 @@ export default function ProvidersScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} />}
       >
         <Text style={styles.note}>
-          Only the GATEZO owner adds, edits or removes professional logins. Each one pays an annual pack (default ₹4,999) before they receive jobs. The house desk is exempt and accepts a job only after every other free professional ignores the 60-second offer.
+          Share the provider code so a professional can register themselves, or add the login here. Either way you approve them, then mark the annual pack paid (default ₹4,999) before they receive jobs. The house desk is exempt and accepts a job only after every other free professional ignores the 60-second offer.
         </Text>
+
+        <View style={styles.codeCard}>
+          <View style={styles.codeTop}>
+            <Ionicons name="qr-code-outline" size={18} color="#0B6E8F" />
+            <Text style={styles.codeTitle}>Provider registration code</Text>
+          </View>
+          <Text style={styles.meta}>Professionals enter this on Register → Service professional. It is not the society resident code.</Text>
+          <Text style={styles.code}>{joinCode || "…"}</Text>
+          <View style={styles.row}>
+            <TouchableOpacity style={styles.primary} onPress={shareCode} disabled={!joinCode}>
+              <Text style={styles.primaryText}>Share code</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.ghost} onPress={rotateCode} disabled={!joinCode}>
+              <Text style={styles.ghostText}>New code</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {pending.length ? (
+          <>
+            <Text style={styles.h}>Waiting for approval ({pending.length})</Text>
+            {pending.map((p) => (
+              <View key={p.id} style={styles.card}>
+                <Text style={styles.title}>{p.name}</Text>
+                <Text style={styles.meta}>{p.email} · {p.phone}</Text>
+                <Text style={styles.meta}>{p.serviceSlugs.join(", ")}</Text>
+                <View style={styles.row}>
+                  <TouchableOpacity style={styles.primary} onPress={() => approve(p)}>
+                    <Text style={styles.primaryText}>Approve</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.ghost} onPress={() => reject(p)}>
+                    <Text style={styles.ghostText}>Decline</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </>
+        ) : null}
 
         <Text style={styles.h}>Add a professional</Text>
         <TextInput style={styles.input} placeholder="Name" value={form.name} onChangeText={(name) => setForm({ ...form, name })} />
@@ -136,6 +226,10 @@ export default function ProvidersScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
   note: { color: "#5C6B73", ...body(400), fontSize: 13, lineHeight: 18 },
+  codeCard: { backgroundColor: "#EAF4F7", borderRadius: 12, padding: 14, marginTop: 14 },
+  codeTop: { flexDirection: "row", alignItems: "center", gap: 8 },
+  codeTitle: { ...head(700), color: "#0B6E8F", fontSize: 15 },
+  code: { fontSize: 24, fontWeight: "800", color: "#0B6E8F", letterSpacing: 3, textAlign: "center", marginVertical: 10 },
   h: { ...head(700), color: "#1B2B33", marginTop: 18, marginBottom: 8 },
   input: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#D0D5DD", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 8 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

@@ -15,11 +15,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 
-// Resident self-registration. They enter the society join code (shared by their
-// admin) + their flat number, then set their own name/email/password. The
-// account is created in a pending state until an admin approves it — so admins
-// never hand-create hundreds of logins.
+// Two public registrations share this screen:
+// - Resident: society join code + flat. A society admin approves them.
+// - Service professional: a separate provider code from the GATEZO owner, plus
+//   the services they do. The owner approves them before they can sign in.
 export default function RegisterModal({ visible, onClose }) {
+  const [mode, setMode] = useState("resident");
   const [joinCode, setJoinCode] = useState("");
   const [flatNo, setFlatNo] = useState("");
   const [name, setName] = useState("");
@@ -27,10 +28,13 @@ export default function RegisterModal({ visible, onClose }) {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [services, setServices] = useState([]);
+  const [serviceSlugs, setServiceSlugs] = useState([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (visible) {
+      setMode("resident");
       setJoinCode("");
       setFlatNo("");
       setName("");
@@ -38,32 +42,60 @@ export default function RegisterModal({ visible, onClose }) {
       setPhone("");
       setPassword("");
       setConfirm("");
+      setServiceSlugs([]);
     }
   }, [visible]);
 
+  useEffect(() => {
+    if (!visible || mode !== "provider" || services.length) return;
+    api.providerServices().then((res) => setServices(res.services || [])).catch(() => setServices([]));
+  }, [visible, mode, services.length]);
+
+  const toggleSlug = (slug) => {
+    setServiceSlugs((list) => (list.includes(slug) ? list.filter((s) => s !== slug) : [...list, slug]));
+  };
+
   const submit = async () => {
-    if (!joinCode.trim() || !flatNo.trim() || !name.trim() || !email.trim() || !password) {
-      Alert.alert("Missing info", "Please fill the join code, flat, name, email and password.");
-      return;
-    }
     if (password !== confirm) {
       Alert.alert("Passwords don't match", "The password and confirmation are different.");
       return;
     }
+    if (mode === "provider") {
+      if (!joinCode.trim() || !name.trim() || !email.trim() || !phone.trim() || !password) {
+        Alert.alert("Missing info", "Please fill the provider code, name, email, phone and password.");
+        return;
+      }
+      if (!serviceSlugs.length) {
+        Alert.alert("Pick a service", "Choose at least one service you can do.");
+        return;
+      }
+    } else if (!joinCode.trim() || !flatNo.trim() || !name.trim() || !email.trim() || !password) {
+      Alert.alert("Missing info", "Please fill the join code, flat, name, email and password.");
+      return;
+    }
     setBusy(true);
     try {
-      const res = await api.register({
-        joinCode: joinCode.trim(),
-        flatNo: flatNo.trim(),
-        name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        password,
-      });
+      const res = mode === "provider"
+        ? await api.registerProvider({
+            joinCode: joinCode.trim(),
+            name: name.trim(),
+            email: email.trim(),
+            phone: phone.trim(),
+            password,
+            serviceSlugs,
+          })
+        : await api.register({
+            joinCode: joinCode.trim(),
+            flatNo: flatNo.trim(),
+            name: name.trim(),
+            email: email.trim(),
+            phone: phone.trim(),
+            password,
+          });
       onClose();
       Alert.alert(
         "Request sent",
-        res.message || "You'll be able to sign in once an admin approves your account."
+        res.message || "You'll be able to sign in once your account is approved."
       );
     } catch (e) {
       Alert.alert("Couldn't register", e.message);
@@ -85,33 +117,57 @@ export default function RegisterModal({ visible, onClose }) {
             <View style={styles.headerIcon}>
               <Ionicons name="person-add-outline" size={20} color="#fff" />
             </View>
-            <Text style={styles.headerTitle}>Register as a resident</Text>
+            <Text style={styles.headerTitle}>
+              {mode === "provider" ? "Register as a professional" : "Register as a resident"}
+            </Text>
           </LinearGradient>
 
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+            <View style={styles.modes}>
+              <TouchableOpacity style={[styles.mode, mode === "resident" && styles.modeOn]} onPress={() => setMode("resident")}>
+                <Text style={[styles.modeText, mode === "resident" && styles.modeTextOn]}>Resident</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.mode, mode === "provider" && styles.modeOn]} onPress={() => setMode("provider")}>
+                <Text style={[styles.modeText, mode === "provider" && styles.modeTextOn]}>Service professional</Text>
+              </TouchableOpacity>
+            </View>
+
             <Text style={styles.intro}>
-              Ask your society admin for the <Text style={{ fontWeight: "800" }}>join code</Text>, then
-              register below. Your admin approves new residents before first sign-in.
+              {mode === "provider" ? (
+                <>
+                  Ask the GATEZO owner for the <Text style={{ fontWeight: "800" }}>provider code</Text>.
+                  This is separate from a society join code. The owner approves you before first sign-in.
+                </>
+              ) : (
+                <>
+                  Ask your society admin for the <Text style={{ fontWeight: "800" }}>join code</Text>, then
+                  register below. Your admin approves new residents before first sign-in.
+                </>
+              )}
             </Text>
 
-            <Text style={styles.label}>Society join code</Text>
+            <Text style={styles.label}>{mode === "provider" ? "Provider code" : "Society join code"}</Text>
             <TextInput
               style={styles.input}
               value={joinCode}
               onChangeText={setJoinCode}
               autoCapitalize="characters"
               autoCorrect={false}
-              placeholder="e.g. GM7K2Q"
+              placeholder={mode === "provider" ? "e.g. SP7K2QAB" : "e.g. GM7K2Q"}
             />
 
-            <Text style={styles.label}>Your flat / unit number</Text>
-            <TextInput
-              style={styles.input}
-              value={flatNo}
-              onChangeText={setFlatNo}
-              autoCapitalize="characters"
-              placeholder="e.g. A-1002"
-            />
+            {mode === "resident" ? (
+              <>
+                <Text style={styles.label}>Your flat / unit number</Text>
+                <TextInput
+                  style={styles.input}
+                  value={flatNo}
+                  onChangeText={setFlatNo}
+                  autoCapitalize="characters"
+                  placeholder="e.g. A-1002"
+                />
+              </>
+            ) : null}
 
             <Text style={styles.label}>Full name</Text>
             <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Aarav Sharma" />
@@ -126,8 +182,31 @@ export default function RegisterModal({ visible, onClose }) {
               placeholder="you@email.com"
             />
 
-            <Text style={styles.label}>Phone (optional)</Text>
-            <TextInput style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="Optional" />
+            <Text style={styles.label}>{mode === "provider" ? "Phone" : "Phone (optional)"}</Text>
+            <TextInput
+              style={styles.input}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              placeholder={mode === "provider" ? "Mobile number" : "Optional"}
+            />
+
+            {mode === "provider" ? (
+              <>
+                <Text style={styles.label}>Services you do</Text>
+                <View style={styles.chips}>
+                  {services.map((s) => {
+                    const on = serviceSlugs.includes(s.slug);
+                    return (
+                      <TouchableOpacity key={s.slug} style={[styles.chip, on && styles.chipOn]} onPress={() => toggleSlug(s.slug)}>
+                        <Text style={[styles.chipText, on && styles.chipTextOn]}>{s.name}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                {!services.length ? <Text style={styles.mismatch}>Service list is still loading. Check the server, then reopen this form.</Text> : null}
+              </>
+            ) : null}
 
             <Text style={styles.label}>Password</Text>
             <PasswordInput value={password} onChangeText={setPassword} placeholder="At least 8 chars, 1 upper, 1 lower, 1 number" />
@@ -163,6 +242,16 @@ const styles = StyleSheet.create({
   intro: { color: "#48606B", fontSize: 13.5, lineHeight: 20, marginBottom: 4 },
   label: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 6, marginTop: 12 },
   input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, backgroundColor: "#F8FAFB" },
+  modes: { flexDirection: "row", gap: 8, marginBottom: 12 },
+  mode: { flex: 1, borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingVertical: 10, alignItems: "center", backgroundColor: "#F8FAFB" },
+  modeOn: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },
+  modeText: { color: "#334", fontWeight: "700", fontSize: 13 },
+  modeTextOn: { color: "#fff" },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: "#F8FAFB" },
+  chipOn: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },
+  chipText: { color: "#334", fontSize: 12, fontWeight: "700" },
+  chipTextOn: { color: "#fff" },
   mismatch: { color: "#C0392B", fontSize: 12, marginTop: 6 },
   actions: { flexDirection: "row", gap: 12, marginTop: 22 },
   btn: { flex: 1, backgroundColor: "#0B6E8F", borderRadius: 10, paddingVertical: 13, alignItems: "center" },

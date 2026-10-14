@@ -5,6 +5,7 @@ import { authRequired, roleRequired } from "../auth.js";
 import { validatePassword } from "../passwordPolicy.js";
 import { HOME_SERVICES } from "../homeServicesCatalog.js";
 import { acceptOffer, declineOffer, tickOffers } from "../providerDispatch.js";
+import { approveProviderAccount, ensureProviderJoinCode, rejectProviderAccount, rotateProviderJoinCode } from "../providerJoin.js";
 
 export const providersRouter = Router();
 
@@ -37,6 +38,7 @@ function serializeProvider(row) {
     packActive,
     ratingAvg: row.ratingAvg,
     ratingCount: row.ratingCount,
+    pendingApproval: !!row.user?.pendingApproval,
     createdAt: row.createdAt,
   };
 }
@@ -66,6 +68,7 @@ function jobView(row) {
 
 providersRouter.get("/owner/providers", authRequired, roleRequired("superadmin"), async (_req, res) => {
   await tickOffers().catch(() => {});
+  const providerJoinCode = await ensureProviderJoinCode();
   const rows = await prisma.serviceProvider.findMany({
     include: { user: true, packPayments: true },
     orderBy: { createdAt: "desc" },
@@ -79,8 +82,14 @@ providersRouter.get("/owner/providers", authRequired, roleRequired("superadmin")
     services: HOME_SERVICES.map((s) => ({ slug: s.slug, name: s.name })),
     annualPackDefault: 4999,
     acceptWindowSeconds: 60,
+    providerJoinCode,
     revenue,
   });
+});
+
+providersRouter.post("/owner/provider-join-code/rotate", authRequired, roleRequired("superadmin"), async (_req, res) => {
+  const providerJoinCode = await rotateProviderJoinCode();
+  res.json({ providerJoinCode });
 });
 
 providersRouter.post("/owner/providers", authRequired, roleRequired("superadmin"), async (req, res) => {
@@ -181,6 +190,17 @@ providersRouter.post("/owner/providers/:id/pack-payment", authRequired, roleRequ
     include: { user: true, packPayments: true },
   });
   res.json({ provider: serializeProvider(updated) });
+});
+
+providersRouter.post("/owner/providers/:id/approve", authRequired, roleRequired("superadmin"), async (req, res) => {
+  const result = await approveProviderAccount(req.params.id);
+  if (result.status !== 200) return res.status(result.status).json(result.body);
+  res.json({ provider: serializeProvider(result.row) });
+});
+
+providersRouter.post("/owner/providers/:id/reject", authRequired, roleRequired("superadmin"), async (req, res) => {
+  const result = await rejectProviderAccount(req.params.id);
+  res.status(result.status).json(result.body);
 });
 
 providersRouter.post("/owner/providers/:id/remove", authRequired, roleRequired("superadmin"), async (req, res) => {

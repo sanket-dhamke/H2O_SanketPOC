@@ -103,7 +103,7 @@ async function busyIdsFor(date, slot, ignoreBookingId) {
 
 async function eligibleProviders() {
   return prisma.serviceProvider.findMany({
-    where: { active: true, user: { active: true } },
+    where: { active: true, user: { active: true, pendingApproval: false } },
     include: { user: true },
   });
 }
