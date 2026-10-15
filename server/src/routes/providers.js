@@ -4,8 +4,8 @@ import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
 import { validatePassword } from "../passwordPolicy.js";
 import { HOME_SERVICES } from "../homeServicesCatalog.js";
-import { acceptOffer, declineOffer, tickOffers } from "../providerDispatch.js";
-import { approveProviderAccount, ensureProviderJoinCode, rejectProviderAccount, rotateProviderJoinCode } from "../providerJoin.js";
+import { acceptOffer, declineOffer, completionMatches, tickOffers } from "../providerDispatch.js";
+import { approveProviderAccount, ensureProviderJoinCode, normalizeProviderCode, rejectProviderAccount, rotateProviderJoinCode } from "../providerJoin.js";
 
 export const providersRouter = Router();
 
@@ -19,6 +19,13 @@ function cleanSlugs(value) {
   const list = Array.isArray(value) ? value : String(value || "").split(",");
   const slugs = [...new Set(list.map((s) => String(s).trim()).filter((s) => SLUGS.has(s)))];
   return slugs;
+}
+
+function lastPackPayment(row) {
+  const payments = [...(row.packPayments || [])].sort((a, b) => String(b.paidOn || "").localeCompare(String(a.paidOn || "")));
+  const last = payments[0];
+  if (!last) return null;
+  return { amount: last.amount, paidOn: last.paidOn, note: last.note || "" };
 }
 
 function serializeProvider(row) {
@@ -36,6 +43,10 @@ function serializeProvider(row) {
     packAmount: row.packAmount,
     packPaidUntil: paidUntil,
     packActive,
+    workStart: row.workStart || "09:00",
+    workEnd: row.workEnd || "20:00",
+    offDays: String(row.offDays ?? "0").split(",").map((s) => s.trim()).filter(Boolean),
+    lastPayment: lastPackPayment(row),
     ratingAvg: row.ratingAvg,
     ratingCount: row.ratingCount,
     pendingApproval: !!row.user?.pendingApproval,
@@ -90,6 +101,18 @@ providersRouter.get("/owner/providers", authRequired, roleRequired("superadmin")
 providersRouter.post("/owner/provider-join-code/rotate", authRequired, roleRequired("superadmin"), async (_req, res) => {
   const providerJoinCode = await rotateProviderJoinCode();
   res.json({ providerJoinCode });
+});
+
+providersRouter.post("/owner/provider-join-code/check", authRequired, roleRequired("superadmin"), async (req, res) => {
+  const code = normalizeProviderCode(req.body?.code);
+  const current = await ensureProviderJoinCode();
+  const ok = !!code && code === current;
+  res.json({
+    ok,
+    message: ok
+      ? "That code is correct. A professional can register with it."
+      : "That code is not the current provider code.",
+  });
 });
 
 providersRouter.post("/owner/providers", authRequired, roleRequired("superadmin"), async (req, res) => {
@@ -217,7 +240,10 @@ async function providerFor(req) {
 
 providersRouter.get("/provider/jobs", authRequired, roleRequired("provider"), async (req, res) => {
   await tickOffers().catch(() => {});
-  const me = await providerFor(req);
+  const me = await prisma.serviceProvider.findUnique({
+    where: { userId: req.user.id },
+    include: { user: true, packPayments: true },
+  });
   if (!me || !me.active) return res.status(403).json({ message: "This professional account is not active." });
   const rows = await prisma.serviceBooking.findMany({
     where: {
@@ -228,7 +254,7 @@ providersRouter.get("/provider/jobs", authRequired, roleRequired("provider"), as
     take: 100,
   });
   res.json({
-    provider: serializeProvider({ ...me, packPayments: [] }),
+    provider: serializeProvider(me),
     jobs: rows.map(jobView),
     acceptWindowSeconds: 60,
   });
@@ -268,9 +294,10 @@ providersRouter.post("/provider/jobs/:id/start", authRequired, roleRequired("pro
   if (!/^\d{4}$/.test(code) || code !== booking.startOtp) {
     return res.status(400).json({ message: "That OTP does not match. Ask the resident for the 4-digit start code." });
   }
+  const completeOtp = booking.completeOtp || String(Math.floor(1000 + Math.random() * 9000));
   await prisma.serviceBooking.update({
     where: { id: booking.id },
-    data: { status: "started", startedAt: new Date() },
+    data: { status: "started", startedAt: new Date(), completeOtp },
   });
   res.json({ ok: true });
 });
@@ -279,11 +306,35 @@ providersRouter.post("/provider/jobs/:id/complete", authRequired, roleRequired("
   const me = await providerFor(req);
   const booking = await prisma.serviceBooking.findUnique({ where: { id: req.params.id } });
   if (!me || !booking || booking.providerId !== me.id || booking.status !== "started") {
-    return res.status(409).json({ message: "Mark the job complete only after the resident OTP has started it." });
+    return res.status(409).json({ message: "Finish the job only after the resident has given the start code." });
+  }
+  if (!completionMatches(booking, req.body?.otp)) {
+    return res.status(400).json({ message: "That finish code does not match. Ask the resident for the 4-digit code shown on their booking." });
   }
   await prisma.serviceBooking.update({
     where: { id: booking.id },
     data: { status: "completed", completedAt: new Date() },
   });
   res.json({ ok: true });
+});
+
+const HM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+providersRouter.patch("/provider/hours", authRequired, roleRequired("provider"), async (req, res) => {
+  const me = await providerFor(req);
+  if (!me) return res.status(403).json({ message: "This professional account is not active." });
+  const workStart = String(req.body?.workStart || "").trim();
+  const workEnd = String(req.body?.workEnd || "").trim();
+  const offDays = [...new Set((Array.isArray(req.body?.offDays) ? req.body.offDays : String(req.body?.offDays || "").split(","))
+    .map((d) => String(d).trim())
+    .filter((d) => /^[0-6]$/.test(d)))];
+  if (!HM.test(workStart) || !HM.test(workEnd) || workStart >= workEnd) {
+    return res.status(400).json({ message: "Choose a start time that is earlier than the end time." });
+  }
+  const updated = await prisma.serviceProvider.update({
+    where: { id: me.id },
+    data: { workStart, workEnd, offDays: offDays.join(",") },
+    include: { user: true, packPayments: true },
+  });
+  res.json({ provider: serializeProvider(updated) });
 });

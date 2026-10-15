@@ -819,6 +819,8 @@ model ServiceBooking {
   declinedIds   String   @default("")
   // 4-digit code the resident reads out when work starts. Never sent to the provider.
   startOtp      String?
+  // Second code the resident reads out only when the work is actually finished.
+  completeOtp   String?
   startedAt     DateTime?
   completedAt   DateTime?
   rating        Int?
@@ -850,6 +852,11 @@ model ServiceProvider {
   fallback      Boolean  @default(false)
   packAmount    Float    @default(4999)
   packPaidUntil DateTime?
+  // Weekly hours the professional is free for visits. Sunday (0) is off by default.
+  // A slot is offered only when it sits inside this window and the day is not off.
+  workStart     String   @default("09:00")
+  workEnd       String   @default("20:00")
+  offDays       String   @default("0")
   ratingAvg     Float    @default(5)
   ratingCount   Int      @default(0)
   createdAt     DateTime @default(now())

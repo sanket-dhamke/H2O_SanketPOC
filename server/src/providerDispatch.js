@@ -22,6 +22,36 @@ export function offersService(provider, slug) {
   return slugList(provider).includes(slug);
 }
 
+export function slotWindow(slot) {
+  const match = String(slot || "").match(/(\d{2}:\d{2}).*?(\d{2}:\d{2})/);
+  if (!match) return null;
+  return { start: match[1], end: match[2] };
+}
+
+// date is YYYY-MM-DD. offDays is comma-separated weekday numbers, 0 = Sunday.
+export function worksAt(provider, date, slot) {
+  if (!provider) return false;
+  if (provider.fallback) return true;
+  const off = new Set(
+    String(provider.offDays ?? "0")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+  const day = new Date(`${date}T00:00:00Z`).getUTCDay();
+  if (off.has(String(day))) return false;
+  const window = slotWindow(slot);
+  if (!window) return true;
+  const start = provider.workStart || "09:00";
+  const end = provider.workEnd || "20:00";
+  return window.start >= start && window.end <= end;
+}
+
+export function completionMatches(booking, code) {
+  const given = String(code || "").trim();
+  return /^\d{4}$/.test(given) && given === String(booking?.completeOtp || "");
+}
+
 export function packCovers(provider, now = new Date()) {
   if (!provider?.active) return false;
   if (provider.fallback) return true;
@@ -62,7 +92,12 @@ export function rankProviders(providers) {
 export function nextOffer(providers, booking, busyIds) {
   const skipped = declinedSet(booking);
   const ranked = rankProviders(providers).filter(
-    (p) => !skipped.has(p.id) && !busyIds.has(p.id) && offersService(p, booking.serviceSlug) && packCovers(p)
+    (p) =>
+      !skipped.has(p.id) &&
+      !busyIds.has(p.id) &&
+      offersService(p, booking.serviceSlug) &&
+      packCovers(p) &&
+      worksAt(p, booking.scheduledDate, booking.slot)
   );
   return ranked[0] || null;
 }
@@ -75,7 +110,8 @@ export function fallbackProvider(providers, booking, busyIds) {
       p.active &&
       !skipped.has(p.id) &&
       !busyIds.has(p.id) &&
-      offersService(p, booking.serviceSlug)
+      offersService(p, booking.serviceSlug) &&
+      worksAt(p, booking.scheduledDate, booking.slot)
   ) || null;
 }
 
@@ -198,7 +234,7 @@ export async function slotAvailability(serviceSlug, date, now = new Date()) {
     select: { slot: true, providerId: true, offerProviderId: true, status: true, scheduledDate: true },
   });
   return HOME_SERVICE_SLOTS.map((slot) => {
-    const free = providers.filter((p) => !isBusy(p.id, bookings, date, slot));
+    const free = providers.filter((p) => worksAt(p, date, slot) && !isBusy(p.id, bookings, date, slot));
     return { slot, freeCount: free.length };
   });
 }

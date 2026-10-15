@@ -14,7 +14,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import { brand, brandIcon } from "../../lib/brand";
-import { useAuth } from "../../lib/auth";
 import ScreenHeader from "../../components/ScreenHeader";
 import ProfileModal from "../../components/ProfileModal";
 import MonthField from "../../components/MonthField";
@@ -45,7 +44,6 @@ const BREAKDOWNS = {
 
 export default function SuperAdminDashboardScreen() {
   const navigation = useNavigation();
-  const { logout } = useAuth();
   const [data, setData] = useState(null);
   const [rows, setRows] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -89,9 +87,6 @@ export default function SuperAdminDashboardScreen() {
       </TouchableOpacity>
       <TouchableOpacity onPress={() => setProfileOpen(true)} style={styles.logoutBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Ionicons name="person-circle-outline" size={24} color="#fff" />
-      </TouchableOpacity>
-      <TouchableOpacity onPress={logout} style={styles.logoutBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-        <Ionicons name="log-out-outline" size={22} color="#fff" />
       </TouchableOpacity>
     </View>
   );

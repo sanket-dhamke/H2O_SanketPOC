@@ -64,6 +64,8 @@ import AdminOfficeScreen from "./src/screens/admin/AdminOfficeScreen";
 import MovesScreen from "./src/screens/admin/MovesScreen";
 import VendorsScreen from "./src/screens/admin/VendorsScreen";
 import ProviderJobsScreen from "./src/screens/provider/ProviderJobsScreen";
+import ProviderHoursScreen from "./src/screens/provider/ProviderHoursScreen";
+import ProviderGuideScreen from "./src/screens/provider/ProviderGuideScreen";
 import SuperAdminDashboardScreen from "./src/screens/superadmin/SuperAdminDashboardScreen";
 import ProvidersScreen from "./src/screens/superadmin/ProvidersScreen";
 import SocietiesScreen from "./src/screens/superadmin/SocietiesScreen";
@@ -94,6 +96,11 @@ const TAB_ICONS = {
   Staff: "id-card",
   Overview: "planet",
   Societies: "business",
+  Professionals: "people",
+  Jobs: "briefcase",
+  Hours: "time",
+  Guide: "book",
+  Logout: "log-out",
 };
 
 function TabLabel({ children, color }) {
@@ -263,6 +270,7 @@ function AdminTabs() {
       {preschool && <Tab.Screen name="Staff" component={StaffAttendanceScreen} />}
       <Tab.Screen name="Community" component={CommunityStackScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: L.gate }} />
+      <LogoutTab />
     </Tab.Navigator>
   );
 }
@@ -277,7 +285,24 @@ function ResidentTabs() {
       <Tab.Screen name="Maintenance" component={MaintenanceStackScreen} options={{ title: L.feesShort }} />
       <Tab.Screen name="Visitors" component={VisitorsStackScreen} options={{ title: L.visitors }} />
       <Tab.Screen name="Community" component={CommunityStackScreen} />
+      <LogoutTab />
     </Tab.Navigator>
+  );
+}
+
+function LogoutTab() {
+  const { logout } = useAuth();
+  return (
+    <Tab.Screen
+      name="Logout"
+      component={View}
+      listeners={{
+        tabPress: (e) => {
+          e.preventDefault();
+          logout();
+        },
+      }}
+    />
   );
 }
 
@@ -288,6 +313,7 @@ function SuperAdminTabs() {
       <Tab.Screen name="Overview" component={SuperAdminDashboardScreen} />
       <Tab.Screen name="Societies" component={SocietiesStackScreen} />
       <Tab.Screen name="Professionals" component={ProvidersScreen} />
+      <LogoutTab />
     </Tab.Navigator>
   );
 }
@@ -297,6 +323,9 @@ function ProviderTabs() {
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Jobs" component={ProviderJobsScreen} options={{ headerShown: false }} />
+      <Tab.Screen name="Hours" component={ProviderHoursScreen} options={{ headerShown: false }} />
+      <Tab.Screen name="Guide" component={ProviderGuideScreen} options={{ headerShown: false }} />
+      <LogoutTab />
     </Tab.Navigator>
   );
 }
@@ -314,6 +343,7 @@ function GuardTabs() {
       <Tab.Screen name="Staff" component={StaffAttendanceScreen} />
       <Tab.Screen name="Community" component={CommunityStackScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: L.gate }} />
+      <LogoutTab />
     </Tab.Navigator>
   );
 }

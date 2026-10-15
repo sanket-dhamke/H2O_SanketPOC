@@ -234,7 +234,8 @@ function ServiceTile({ service, onPress, width }) {
 function BookingCard({ booking, isAdmin, onStatus, onRate }) {
   const meta = BOOKING_STATUS[booking.status] || BOOKING_STATUS.requested;
   const canCancel = ["requested", "finding", "offered", "accepted", "confirmed", "assigned"].includes(booking.status);
-  const showOtp = booking.startOtp && (booking.status === "accepted" || booking.status === "started");
+  const startCode = booking.status === "accepted" && booking.startOtp;
+  const finishCode = booking.status === "started" && booking.completeOtp;
   return (
     <View style={styles.bookCard}>
       <View style={styles.bookTop}>
@@ -256,8 +257,17 @@ function BookingCard({ booking, isAdmin, onStatus, onRate }) {
           </View>
         </View>
       </View>
-      {showOtp ? (
-        <Text style={styles.bookMeta}>Give this start OTP to the professional: {booking.startOtp}</Text>
+      {startCode ? (
+        <View style={styles.otpBox}>
+          <Text style={styles.otpLabel}>Read this start code to the professional. Work begins only after they enter it.</Text>
+          <Text style={styles.otpCode}>{booking.startOtp}</Text>
+        </View>
+      ) : null}
+      {finishCode ? (
+        <View style={styles.otpBox}>
+          <Text style={styles.otpLabel}>Work has started. When it is really finished, read this finish code. The visit stays open until they enter it.</Text>
+          <Text style={styles.otpCode}>{booking.completeOtp}</Text>
+        </View>
       ) : null}
       {booking.status === "completed" && !booking.rating && !isAdmin ? (
         <View style={styles.adminRow}>
@@ -326,6 +336,9 @@ const styles = StyleSheet.create({
   bookName: { fontSize: 15, ...head(800), color: "#1B2B33" },
   bookPkg: { fontSize: 13, color: "#48606B", marginTop: 2, ...body(500) },
   bookMeta: { fontSize: 12, color: "#8895A0", marginTop: 4, ...body(400) },
+  otpBox: { marginTop: 12, backgroundColor: "#EAF4F7", borderRadius: 12, padding: 12 },
+  otpLabel: { color: "#1B2B33", ...body(400), lineHeight: 18 },
+  otpCode: { marginTop: 6, fontSize: 28, letterSpacing: 6, color: "#0B6E8F", ...head(800), textAlign: "center" },
   bookAmt: { fontSize: 16, ...head(800), color: "#1B2B33", textAlign: "right" },
   status: { alignSelf: "flex-end", marginTop: 6, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
   statusText: { fontSize: 11, ...body(700) },

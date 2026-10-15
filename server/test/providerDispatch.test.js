@@ -8,6 +8,8 @@ import {
   rankProviders,
   nextOffer,
   fallbackProvider,
+  worksAt,
+  completionMatches,
 } from "../src/providerDispatch.js";
 
 const now = new Date("2026-10-12T12:00:00Z");
@@ -60,6 +62,31 @@ test("next offer is the highest-rated free pro, skipping declines and the desk",
   const picked = nextOffer(providers, booking, new Set(["busy"]));
   assert.equal(picked.id, "high");
   assert.equal(rankProviders(providers).some((p) => p.fallback), false);
+});
+
+test("a professional is bookable only inside their hours", () => {
+  const monday = "2026-10-12";
+  const tuesday = "2026-10-13";
+  const slot = "14:00–15:00";
+  assert.equal(worksAt(pro({ offDays: "1" }), monday, slot), false);
+  assert.equal(worksAt(pro({ workEnd: "13:00" }), tuesday, slot), false);
+  assert.equal(worksAt(pro({}), tuesday, slot), true);
+  assert.equal(worksAt(pro({ fallback: true, offDays: "1", workEnd: "13:00" }), monday, slot), true);
+});
+
+test("next offer skips a professional who is off that day", () => {
+  const providers = [
+    pro({ id: "off", ratingAvg: 5, offDays: "1" }),
+    pro({ id: "on", ratingAvg: 4, offDays: "0" }),
+  ];
+  const booking = { serviceSlug: "ac", declinedIds: "", scheduledDate: "2026-10-12", slot: "14:00–15:00" };
+  assert.equal(nextOffer(providers, booking, new Set()).id, "on");
+});
+
+test("finish code must match the second OTP", () => {
+  assert.equal(completionMatches({ completeOtp: "4321" }, "4321"), true);
+  assert.equal(completionMatches({ completeOtp: "4321" }, "0000"), false);
+  assert.equal(completionMatches({ completeOtp: "4321" }, "432"), false);
 });
 
 test("house desk is the last stop after everyone else has passed", () => {

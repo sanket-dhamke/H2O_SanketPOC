@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   RefreshControl,
   Share,
 } from "react-native";
@@ -18,6 +17,38 @@ import { brand } from "../../lib/brand";
 import { body, head } from "../../lib/type";
 
 const empty = { name: "", email: "", phone: "", password: "Password123", packAmount: "4999", serviceSlugs: [], fallback: false };
+const DAY = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
+
+function rupees(n) {
+  return `₹${Number(n || 0).toLocaleString("en-IN")}`;
+}
+
+function day(value) {
+  return String(value || "").slice(0, 10);
+}
+
+function packFacts(p) {
+  if (p.fallback) {
+    return {
+      ok: true,
+      text: "House desk. No annual pack. This login takes a visit only after every other professional passes the 60-second offer.",
+    };
+  }
+  const until = day(p.packPaidUntil);
+  if (p.lastPayment && p.packActive) {
+    return {
+      ok: true,
+      text: `Paid ${rupees(p.lastPayment.amount)} on ${p.lastPayment.paidOn}. Valid until ${until}. They can receive jobs.`,
+    };
+  }
+  if (p.packActive && until) {
+    return { ok: true, text: `Paid. Valid until ${until}. They can receive jobs.` };
+  }
+  return {
+    ok: false,
+    text: `Not paid. The login exists, but they will not get jobs until you record ${rupees(p.packAmount)}.`,
+  };
+}
 
 export default function ProvidersScreen() {
   const [rows, setRows] = useState([]);
@@ -28,6 +59,16 @@ export default function ProvidersScreen() {
   const [filter, setFilter] = useState("all");
   const [phoneEdit, setPhoneEdit] = useState({});
   const [refreshing, setRefreshing] = useState(false);
+  const [probe, setProbe] = useState("");
+  const [probeResult, setProbeResult] = useState(null);
+  const [notice, setNotice] = useState("");
+  const [noticeOk, setNoticeOk] = useState(false);
+  const [confirm, setConfirm] = useState(null);
+
+  const say = (text, ok = false) => {
+    setNotice(text);
+    setNoticeOk(ok);
+  };
 
   const load = useCallback(async () => {
     const res = await api.ownerProviders();
@@ -37,7 +78,7 @@ export default function ProvidersScreen() {
     setJoinCode(res.providerJoinCode || "");
   }, []);
 
-  useFocusEffect(useCallback(() => { load().catch((e) => Alert.alert("Providers", e.message)); }, [load]));
+  useFocusEffect(useCallback(() => { load().catch((e) => say(e.message)); }, [load]));
 
   const toggleSlug = (slug) => {
     setForm((f) => ({
@@ -47,12 +88,30 @@ export default function ProvidersScreen() {
   };
 
   const create = async () => {
+    const name = form.name.trim() || "This professional";
+    const amount = form.packAmount;
+    const desk = form.fallback;
     try {
       await api.ownerCreateProvider({ ...form, packAmount: Number(form.packAmount) });
       setForm(empty);
+      say(
+        desk
+          ? `${name} can log in. The house desk does not pay a pack.`
+          : `${name} can log in. They will not receive jobs until you record ${rupees(amount)} on their card below.`,
+        true
+      );
       await load();
     } catch (e) {
-      Alert.alert("Could not add", e.message);
+      say(e.message);
+    }
+  };
+
+  const checkCode = async () => {
+    try {
+      const res = await api.ownerCheckProviderCode(probe);
+      setProbeResult(res);
+    } catch (e) {
+      setProbeResult({ ok: false, message: e.message });
     }
   };
 
@@ -69,37 +128,65 @@ export default function ProvidersScreen() {
     } catch {}
   };
 
-  const rotateCode = () => {
-    Alert.alert("Generate a new provider code?", "The current code stops working immediately.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Generate new",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            const res = await api.ownerRotateProviderCode();
-            setJoinCode(res.providerJoinCode || "");
-          } catch (e) {
-            Alert.alert("Code", e.message);
-          }
-        },
-      },
-    ]);
+  const rotateCode = async () => {
+    if (confirm !== "rotate") {
+      setConfirm("rotate");
+      say("Tap New code again. The current code stops working immediately.");
+      return;
+    }
+    try {
+      const res = await api.ownerRotateProviderCode();
+      setJoinCode(res.providerJoinCode || "");
+      setConfirm(null);
+      say(`New provider code is ${res.providerJoinCode}. Share this one. The previous code no longer works.`, true);
+    } catch (e) {
+      say(e.message);
+    }
   };
 
   const approve = (p) => {
-    api.ownerApproveProvider(p.id).then(load).catch((e) => Alert.alert("Approve", e.message));
+    api.ownerApproveProvider(p.id).then(() => {
+      say(`${p.name} is approved. Record the annual pack on their card before they can receive jobs.`, true);
+      return load();
+    }).catch((e) => say(e.message));
   };
 
   const reject = (p) => {
-    Alert.alert("Decline registration", `Remove ${p.name}'s request?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Decline",
-        style: "destructive",
-        onPress: () => api.ownerRejectProvider(p.id).then(load).catch((e) => Alert.alert("Decline", e.message)),
-      },
-    ]);
+    if (confirm !== `reject:${p.id}`) {
+      setConfirm(`reject:${p.id}`);
+      say(`Tap Decline again to remove ${p.name}'s request.`);
+      return;
+    }
+    api.ownerRejectProvider(p.id).then(() => {
+      setConfirm(null);
+      say(`${p.name}'s request was declined.`, true);
+      return load();
+    }).catch((e) => say(e.message));
+  };
+
+  const recordPack = async (p) => {
+    try {
+      const res = await api.ownerPayProviderPack(p.id, { amount: p.packAmount });
+      const until = day(res.provider?.packPaidUntil);
+      say(`Recorded. ${p.name} paid ${rupees(p.packAmount)} today. Jobs stay open until ${until}.`, true);
+      await load();
+    } catch (e) {
+      say(e.message);
+    }
+  };
+
+  const remove = (p) => {
+    if (!p.active) return;
+    if (confirm !== `remove:${p.id}`) {
+      setConfirm(`remove:${p.id}`);
+      say(`Tap Remove again to turn off ${p.name}'s login.`);
+      return;
+    }
+    api.ownerRemoveProvider(p.id).then(() => {
+      setConfirm(null);
+      say(`${p.name} can no longer log in.`, true);
+      return load();
+    }).catch((e) => say(e.message));
   };
 
   const pending = rows.filter((p) => p.pendingApproval);
@@ -113,8 +200,9 @@ export default function ProvidersScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} />}
       >
         <Text style={styles.note}>
-          Share the provider code so a professional can register themselves, or add the login here. Either way you approve them, then mark the annual pack paid (default ₹4,999) before they receive jobs. The house desk is exempt and accepts a job only after every other free professional ignores the 60-second offer.
+          Share the provider code so a professional can register themselves, or add the login here. A login can exist before payment. They receive jobs only after you record the annual pack (default ₹4,999) on their card. The house desk is exempt.
         </Text>
+        {!!notice && <Text style={[styles.notice, noticeOk && styles.noticeOk]}>{notice}</Text>}
 
         <View style={styles.codeCard}>
           <View style={styles.codeTop}>
@@ -123,6 +211,23 @@ export default function ProvidersScreen() {
           </View>
           <Text style={styles.meta}>Professionals enter this on Register → Service professional. It is not the society resident code.</Text>
           <Text style={styles.code}>{joinCode || "…"}</Text>
+          <Text style={styles.meta}>Type a code below to see if it still matches this one.</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Type a code to test"
+            autoCapitalize="characters"
+            value={probe}
+            onChangeText={(value) => {
+              setProbe(value);
+              setProbeResult(null);
+            }}
+          />
+          <TouchableOpacity style={styles.ghost} onPress={checkCode}>
+            <Text style={styles.ghostText}>Check this code</Text>
+          </TouchableOpacity>
+          {probeResult ? (
+            <Text style={[styles.probe, probeResult.ok ? styles.probeOk : styles.probeBad]}>{probeResult.message}</Text>
+          ) : null}
           <View style={styles.row}>
             <TouchableOpacity style={styles.primary} onPress={shareCode} disabled={!joinCode}>
               <Text style={styles.primaryText}>Share code</Text>
@@ -197,22 +302,28 @@ export default function ProvidersScreen() {
             <Text style={styles.title}>{p.name}{p.fallback ? " · desk" : ""}</Text>
             <Text style={styles.meta}>{p.email}</Text>
             <Text style={styles.meta}>{p.serviceSlugs.join(", ")} · {p.ratingAvg}★ ({p.ratingCount})</Text>
-            <Text style={styles.meta}>{p.packActive ? `Pack active until ${String(p.packPaidUntil || "").slice(0, 10)}` : "Pack not paid — will not get jobs"} · ₹{p.packAmount}</Text>
+            <Text style={styles.meta}>
+              Works {p.workStart}–{p.workEnd}
+              {p.offDays?.length ? `, off ${p.offDays.map((d) => DAY[d] || d).join(", ")}` : ""}
+            </Text>
+            <Text style={[styles.pack, packFacts(p).ok ? styles.packOk : styles.packWait]}>{packFacts(p).text}</Text>
             <TextInput
               style={styles.input}
               value={phoneEdit[p.id] ?? p.phone}
               onChangeText={(phone) => setPhoneEdit((s) => ({ ...s, [p.id]: phone }))}
             />
             <View style={styles.row}>
-              <TouchableOpacity style={styles.ghost} onPress={() => api.ownerUpdateProvider(p.id, { phone: phoneEdit[p.id] ?? p.phone }).then(load).catch((e) => Alert.alert("Phone", e.message))}>
+              <TouchableOpacity style={styles.ghost} onPress={() => api.ownerUpdateProvider(p.id, { phone: phoneEdit[p.id] ?? p.phone }).then(() => { say("Phone saved.", true); return load(); }).catch((e) => say(e.message))}>
                 <Text style={styles.ghostText}>Save phone</Text>
               </TouchableOpacity>
               {!p.fallback ? (
-                <TouchableOpacity style={styles.primary} onPress={() => api.ownerPayProviderPack(p.id, { amount: p.packAmount }).then(load).catch((e) => Alert.alert("Pack", e.message))}>
-                  <Text style={styles.primaryText}>Mark pack paid</Text>
+                <TouchableOpacity style={styles.primary} onPress={() => recordPack(p)}>
+                  <Text style={styles.primaryText}>
+                    {p.packActive ? `Record another year (${rupees(p.packAmount)})` : `Record ${rupees(p.packAmount)} received`}
+                  </Text>
                 </TouchableOpacity>
               ) : null}
-              <TouchableOpacity style={styles.ghost} onPress={() => api.ownerRemoveProvider(p.id).then(load).catch((e) => Alert.alert("Remove", e.message))}>
+              <TouchableOpacity style={styles.ghost} onPress={() => remove(p)}>
                 <Text style={styles.ghostText}>{p.active ? "Remove" : "Removed"}</Text>
               </TouchableOpacity>
             </View>
@@ -226,6 +337,14 @@ export default function ProvidersScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
   note: { color: "#5C6B73", ...body(400), fontSize: 13, lineHeight: 18 },
+  notice: { backgroundColor: "#FDECEC", color: "#8A1F18", borderRadius: 10, padding: 12, marginTop: 10, ...body(700), lineHeight: 20 },
+  noticeOk: { backgroundColor: "#E7F6EC", color: "#1E7A3D" },
+  probe: { marginTop: 8, ...body(700), lineHeight: 20 },
+  probeOk: { color: "#1E7A3D" },
+  probeBad: { color: "#8A1F18" },
+  pack: { marginTop: 8, borderRadius: 8, padding: 10, ...body(700), lineHeight: 20 },
+  packOk: { backgroundColor: "#E7F6EC", color: "#1E7A3D" },
+  packWait: { backgroundColor: "#FFF4E8", color: "#8A4B12" },
   codeCard: { backgroundColor: "#EAF4F7", borderRadius: 12, padding: 14, marginTop: 14 },
   codeTop: { flexDirection: "row", alignItems: "center", gap: 8 },
   codeTitle: { ...head(700), color: "#0B6E8F", fontSize: 15 },

@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { body, head } from "../lib/type";
+import { useAuth } from "../lib/auth";
 
 // Consistent gradient page header used across the inner screens. Matches the
 // Home hero styling: teal gradient, rounded bottom, icon chip + title/subtitle,
@@ -13,6 +14,7 @@ import { body, head } from "../lib/type";
 // Ionicon (used for the GATEZO owner headers).
 export default function ScreenHeader({ icon, title, subtitle, right, onBack, logo }) {
   const insets = useSafeAreaInsets();
+  const { logout } = useAuth();
   return (
     <LinearGradient
       colors={["#0E85AC", "#0B6E8F", "#075064"]}
@@ -49,7 +51,12 @@ export default function ScreenHeader({ icon, title, subtitle, right, onBack, log
             </Text>
           )}
         </View>
-        {right ? <View style={styles.rightSlot}>{right}</View> : null}
+        <View style={styles.rightSlot}>
+          {right || null}
+          <TouchableOpacity onPress={logout} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.logout}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </LinearGradient>
   );
@@ -69,7 +76,8 @@ const styles = StyleSheet.create({
   backText: { color: "#fff", fontSize: 14, ...body(700), marginLeft: 2 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   titleWrap: { flex: 1, minWidth: 0 },
-  rightSlot: { flexShrink: 1, minWidth: 0, marginLeft: 8 },
+  rightSlot: { flexShrink: 1, minWidth: 0, marginLeft: 8, alignItems: "flex-end", gap: 6 },
+  logout: { color: "#fff", fontSize: 13, ...body(700) },
   iconChip: {
     width: 46,
     height: 46,
