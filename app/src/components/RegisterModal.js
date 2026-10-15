@@ -6,7 +6,6 @@ import {
   Modal,
   TouchableOpacity,
   ScrollView,
-  Alert,
 } from "react-native";
 import TextInput from "./AppTextInput";
 import PasswordInput from "./PasswordInput";
@@ -31,6 +30,8 @@ export default function RegisterModal({ visible, onClose }) {
   const [services, setServices] = useState([]);
   const [serviceSlugs, setServiceSlugs] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [sent, setSent] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -43,6 +44,8 @@ export default function RegisterModal({ visible, onClose }) {
       setPassword("");
       setConfirm("");
       setServiceSlugs([]);
+      setNotice("");
+      setSent(false);
     }
   }, [visible]);
 
@@ -56,21 +59,22 @@ export default function RegisterModal({ visible, onClose }) {
   };
 
   const submit = async () => {
+    setNotice("");
     if (password !== confirm) {
-      Alert.alert("Passwords don't match", "The password and confirmation are different.");
+      setNotice("The password and confirmation are different.");
       return;
     }
     if (mode === "provider") {
       if (!joinCode.trim() || !name.trim() || !email.trim() || !phone.trim() || !password) {
-        Alert.alert("Missing info", "Please fill the provider code, name, email, phone and password.");
+        setNotice("Fill the provider code, name, email, phone and password.");
         return;
       }
       if (!serviceSlugs.length) {
-        Alert.alert("Pick a service", "Choose at least one service you can do.");
+        setNotice("Choose at least one service you can do.");
         return;
       }
     } else if (!joinCode.trim() || !flatNo.trim() || !name.trim() || !email.trim() || !password) {
-      Alert.alert("Missing info", "Please fill the join code, flat, name, email and password.");
+      setNotice("Fill the join code, flat, name, email and password.");
       return;
     }
     setBusy(true);
@@ -92,13 +96,10 @@ export default function RegisterModal({ visible, onClose }) {
             phone: phone.trim(),
             password,
           });
-      onClose();
-      Alert.alert(
-        "Request sent",
-        res.message || "You'll be able to sign in once your account is approved."
-      );
+      setNotice(res.message || "You'll be able to sign in once your account is approved.");
+      setSent(true);
     } catch (e) {
-      Alert.alert("Couldn't register", e.message);
+      setNotice(e.message || "Couldn't register. Check the code and try again.");
     } finally {
       setBusy(false);
     }
@@ -132,6 +133,18 @@ export default function RegisterModal({ visible, onClose }) {
               </TouchableOpacity>
             </View>
 
+            {!!notice && (
+              <Text style={[styles.notice, sent && styles.noticeOk]} accessibilityRole="alert">
+                {notice}
+              </Text>
+            )}
+
+            {sent ? (
+              <TouchableOpacity style={[styles.btn, { marginTop: 16 }]} onPress={onClose}>
+                <Text style={styles.btnText}>Close</Text>
+              </TouchableOpacity>
+            ) : (
+            <>
             <Text style={styles.intro}>
               {mode === "provider" ? (
                 <>
@@ -225,6 +238,8 @@ export default function RegisterModal({ visible, onClose }) {
                 <Text style={styles.btnText}>{busy ? "Sending…" : "Register"}</Text>
               </TouchableOpacity>
             </View>
+            </>
+            )}
           </ScrollView>
         </View>
       </KeyboardAvoider>
@@ -240,6 +255,8 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 17, fontWeight: "800", color: "#fff", flex: 1 },
   body: { padding: 20, paddingTop: 16 },
   intro: { color: "#48606B", fontSize: 13.5, lineHeight: 20, marginBottom: 4 },
+  notice: { backgroundColor: "#FDECEC", color: "#8A1F18", borderRadius: 10, padding: 12, fontSize: 14, lineHeight: 20, marginBottom: 8, fontWeight: "700" },
+  noticeOk: { backgroundColor: "#E7F6EE", color: "#0E6B3C" },
   label: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 6, marginTop: 12 },
   input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, backgroundColor: "#F8FAFB" },
   modes: { flexDirection: "row", gap: 8, marginBottom: 12 },

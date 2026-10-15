@@ -36,6 +36,8 @@ import { homeRouter } from "./routes/home.js";
 import { homeServicesRouter } from "./routes/homeServices.js";
 import { providersRouter } from "./routes/providers.js";
 import { tickOffers } from "./providerDispatch.js";
+import { ensureJoinCode } from "./joinCode.js";
+import { ensureProviderJoinCode } from "./providerJoin.js";
 import { paymentsRouter } from "./routes/payments.js";
 import { globalLimiter, authLimiter, aiLimiter } from "./rateLimit.js";
 import { startQueueWorkers, queueBackend } from "./queue.js";
@@ -319,6 +321,11 @@ app.listen(PORT, "0.0.0.0", () => {
   ensurePlatformSetting()
     .then((created) => created && console.log("Created default platform settings."))
     .catch((e) => console.error("Platform settings init failed:", e.message));
+  ensureProviderJoinCode().catch((e) => console.error("Provider join code init failed:", e.message));
+  prisma.society
+    .findMany({ select: { id: true } })
+    .then((rows) => Promise.all(rows.map((s) => ensureJoinCode(s.id))))
+    .catch((e) => console.error("Join code init failed:", e.message));
   // Seed national helplines into the platform-curated services layer (idempotent).
   ensureDefaultHelplines().catch((e) => console.error("Helpline seed failed:", e.message));
   // Close unanswered gate visits after 3 minutes, and place the one follow-up call.

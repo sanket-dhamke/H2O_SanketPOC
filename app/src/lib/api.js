@@ -17,14 +17,12 @@ function remoteApiUrl(value) {
 // its own hostname on port 4000 and login never reached GATEZO.
 function webApiUrl() {
   if (Platform.OS === "web" && typeof window !== "undefined" && window.location?.hostname) {
-    const configured =
-      remoteApiUrl(process.env.EXPO_PUBLIC_API_URL) ||
-      remoteApiUrl(Constants.expoConfig?.extra?.apiUrl);
-    if (configured) return configured;
+    // An explicit public API (set for a store build) wins. The value baked into
+    // extra.apiUrl must not, or a browser preview sends logins to the hosted
+    // server, where the demo professional accounts do not exist.
+    const explicit = remoteApiUrl(process.env.EXPO_PUBLIC_API_URL);
+    if (explicit) return explicit;
     const host = window.location.hostname;
-    // A local web preview talks to the API on port 4000. A public page (one
-    // shared address) calls /api on that same address, so Safari is not sent
-    // to a second host that can disappear.
     if (host === "localhost" || host === "127.0.0.1") {
       return `${window.location.protocol}//${host}:${API_PORT}`;
     }
