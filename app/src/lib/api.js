@@ -21,7 +21,14 @@ function webApiUrl() {
       remoteApiUrl(process.env.EXPO_PUBLIC_API_URL) ||
       remoteApiUrl(Constants.expoConfig?.extra?.apiUrl);
     if (configured) return configured;
-    return `${window.location.protocol}//${window.location.hostname}:${API_PORT}`;
+    const host = window.location.hostname;
+    // A local web preview talks to the API on port 4000. A public page (one
+    // shared address) calls /api on that same address, so Safari is not sent
+    // to a second host that can disappear.
+    if (host === "localhost" || host === "127.0.0.1") {
+      return `${window.location.protocol}//${host}:${API_PORT}`;
+    }
+    return window.location.origin;
   }
   return null;
 }
