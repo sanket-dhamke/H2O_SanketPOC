@@ -258,7 +258,7 @@ function SocietiesStackScreen() {
 }
 
 function AdminTabs() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const preschool = isPreschool(user);
   const L = labelsFor(user);
   const tabScreenOptions = useTabScreenOptions();
@@ -270,13 +270,13 @@ function AdminTabs() {
       {preschool && <Tab.Screen name="Staff" component={StaffAttendanceScreen} />}
       <Tab.Screen name="Community" component={CommunityStackScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: L.gate }} />
-      <LogoutTab />
+      {logoutTab(logout)}
     </Tab.Navigator>
   );
 }
 
 function ResidentTabs() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const L = labelsFor(user);
   const tabScreenOptions = useTabScreenOptions();
   return (
@@ -285,13 +285,12 @@ function ResidentTabs() {
       <Tab.Screen name="Maintenance" component={MaintenanceStackScreen} options={{ title: L.feesShort }} />
       <Tab.Screen name="Visitors" component={VisitorsStackScreen} options={{ title: L.visitors }} />
       <Tab.Screen name="Community" component={CommunityStackScreen} />
-      <LogoutTab />
+      {logoutTab(logout)}
     </Tab.Navigator>
   );
 }
 
-function LogoutTab() {
-  const { logout } = useAuth();
+function logoutTab(logout) {
   return (
     <Tab.Screen
       name="Logout"
@@ -307,31 +306,33 @@ function LogoutTab() {
 }
 
 function SuperAdminTabs() {
+  const { logout } = useAuth();
   const tabScreenOptions = useTabScreenOptions();
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Overview" component={SuperAdminDashboardScreen} />
       <Tab.Screen name="Societies" component={SocietiesStackScreen} />
       <Tab.Screen name="Professionals" component={ProvidersScreen} />
-      <LogoutTab />
+      {logoutTab(logout)}
     </Tab.Navigator>
   );
 }
 
 function ProviderTabs() {
+  const { logout } = useAuth();
   const tabScreenOptions = useTabScreenOptions();
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Jobs" component={ProviderJobsScreen} options={{ headerShown: false }} />
       <Tab.Screen name="Hours" component={ProviderHoursScreen} options={{ headerShown: false }} />
       <Tab.Screen name="Guide" component={ProviderGuideScreen} options={{ headerShown: false }} />
-      <LogoutTab />
+      {logoutTab(logout)}
     </Tab.Navigator>
   );
 }
 
 function GuardTabs() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const L = labelsFor(user);
   const tabScreenOptions = useTabScreenOptions();
   return (
@@ -343,7 +344,7 @@ function GuardTabs() {
       <Tab.Screen name="Staff" component={StaffAttendanceScreen} />
       <Tab.Screen name="Community" component={CommunityStackScreen} />
       <Tab.Screen name="Visitors" component={VisitorsScreen} options={{ title: L.gate }} />
-      <LogoutTab />
+      {logoutTab(logout)}
     </Tab.Navigator>
   );
 }

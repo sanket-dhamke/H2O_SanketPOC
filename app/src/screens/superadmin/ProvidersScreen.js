@@ -302,10 +302,12 @@ export default function ProvidersScreen() {
             <Text style={styles.title}>{p.name}{p.fallback ? " · desk" : ""}</Text>
             <Text style={styles.meta}>{p.email}</Text>
             <Text style={styles.meta}>{p.serviceSlugs.join(", ")} · {p.ratingAvg}★ ({p.ratingCount})</Text>
-            <Text style={styles.meta}>
-              Works {p.workStart}–{p.workEnd}
-              {p.offDays?.length ? `, off ${p.offDays.map((d) => DAY[d] || d).join(", ")}` : ""}
-            </Text>
+            {p.fallback ? null : (
+              <Text style={styles.meta}>
+                Works {p.workStart}–{p.workEnd}
+                {p.offDays?.length ? `, off ${p.offDays.map((d) => DAY[d] || d).join(", ")}` : ""}
+              </Text>
+            )}
             <Text style={[styles.pack, packFacts(p).ok ? styles.packOk : styles.packWait]}>{packFacts(p).text}</Text>
             <TextInput
               style={styles.input}
