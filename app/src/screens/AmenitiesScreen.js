@@ -20,6 +20,7 @@ import { api } from "../lib/api";
 import { payBooking } from "../lib/pay";
 import { useAuth } from "../lib/auth";
 import { labelsFor } from "../lib/org";
+import { calendarDay } from "../lib/attentionDates";
 import ScreenHeader from "../components/ScreenHeader";
 import DateField from "../components/DateField";
 import OffersRail from "../components/OffersRail";
@@ -31,6 +32,12 @@ const prettyDate = (iso) => {
   const dt = new Date(y, (m || 1) - 1, d || 1);
   return dt.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 };
+
+function datePassed(iso) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(iso || "")) && String(iso) < calendarDay();
+}
+
+const PASSED_META = { label: "Date passed", color: "#8794A0", bg: "#EEF2F4", icon: "calendar-outline" };
 
 const STATUS_META = {
   requested: { label: "Pending approval", color: "#C2571A", bg: "#FBEADD", icon: "hourglass-outline" },
@@ -238,7 +245,12 @@ function BookCard({ amenity, onBooked }) {
 // A resident's own booking with pay/cancel actions.
 function BookingRow({ booking, onChanged }) {
   const [busy, setBusy] = useState(false);
-  const meta = STATUS_META[booking.status] || STATUS_META.requested;
+  const passed = datePassed(booking.date);
+  const meta = passed && (booking.status === "approved" || booking.status === "requested")
+    ? PASSED_META
+    : STATUS_META[booking.status] || STATUS_META.requested;
+  const canPay = booking.status === "approved" && !passed;
+  const canCancel = (booking.status === "approved" || booking.status === "requested") && !passed;
 
   const pay = async () => {
     setBusy(true);
@@ -286,17 +298,22 @@ function BookingRow({ booking, onChanged }) {
       {!!booking.notes && <Text style={styles.bkNote}>“{booking.notes}”</Text>}
       {!!booking.paymentRef && <Text style={styles.bkRef}>Ref: {booking.paymentRef}</Text>}
 
-      {(booking.status === "approved" || booking.status === "requested") && (
+      {passed && (booking.status === "approved" || booking.status === "requested") ? (
+        <Text style={styles.bkNote}>This date has passed, so payment is closed.</Text>
+      ) : null}
+      {(canPay || canCancel) && (
         <View style={styles.bkActions}>
-          {booking.status === "approved" && (
+          {canPay && (
             <TouchableOpacity style={[styles.payBtn, busy && { opacity: 0.6 }]} onPress={pay} disabled={busy}>
               <Ionicons name="card-outline" size={16} color="#fff" />
               <Text style={styles.payBtnText}>{busy ? "Paying…" : `Pay ${money(booking.amount)}`}</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.ghostBtn} onPress={cancel}>
-            <Text style={styles.ghostBtnText}>Cancel</Text>
-          </TouchableOpacity>
+          {canCancel && (
+            <TouchableOpacity style={styles.ghostBtn} onPress={cancel}>
+              <Text style={styles.ghostBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>

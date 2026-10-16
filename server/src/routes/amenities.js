@@ -6,6 +6,7 @@ import { serializeAmenity, serializeBooking } from "../serializers.js";
 import { enqueuePush } from "../queue.js";
 import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorpay.js";
 import { brand } from "../brand.js";
+import { bookingDatePassed } from "../bookingDates.js";
 
 // Amenity / clubhouse booking engine (per society).
 // Flow: admin enables an amenity + slots (price) -> resident requests a slot on a
@@ -130,6 +131,10 @@ async function getPayableBooking(req, res) {
   }
   if (booking.status !== "approved") {
     res.status(400).json({ message: "Only approved bookings can be paid" });
+    return null;
+  }
+  if (bookingDatePassed(booking.date)) {
+    res.status(409).json({ message: "This booking date has passed, so it can no longer be paid." });
     return null;
   }
   return booking;
