@@ -168,6 +168,12 @@ test("a resident's open home-service visit is an attention row with the code the
   assert.match(rows[0].detail, /Oct 19/);
   assert.deepEqual(rows[0].params, { screen: "HomeServices", params: { tab: "orders" } });
   assert.equal(rows.length, 2);
+  const once = visitNotices([
+    { id: "first", serviceSlug: "ac", packageId: "svc", serviceName: "AC Service & Appliances", packageName: "AC wet service", scheduledDate: "2026-10-19", slot: "10:00–11:00", status: "accepted", startOtp: "8080", createdAt: "2026-10-16T04:00:00.000Z" },
+    { id: "second", serviceSlug: "ac", packageId: "svc", serviceName: "AC Service & Appliances", packageName: "AC wet service", scheduledDate: "2026-10-19", slot: "10:00–11:00", status: "accepted", startOtp: "8257", createdAt: "2026-10-16T04:05:00.000Z" },
+  ]);
+  assert.equal(once.length, 1);
+  assert.match(once[0].detail, /Start code 8080/);
   const merged = withVisitNotices({ pending: [{ key: "bills", label: "dues" }] }, [
     { id: "live", serviceName: "AC Service", scheduledDate: "2026-10-19", slot: "10:00–11:00", status: "accepted", startOtp: "1111" },
   ]);

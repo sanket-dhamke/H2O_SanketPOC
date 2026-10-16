@@ -300,7 +300,7 @@ export async function loadServiceBookings(user) {
 export async function createServiceBooking(user, payload) {
   try {
     const data = await api.createHomeServiceBooking(payload);
-    return { booking: data.booking, offline: false };
+    return { booking: data.booking, offline: false, alreadyBooked: !!data.alreadyBooked };
   } catch (e) {
     if (!isOfflineErr(e)) throw e;
     const service = findHomeService(payload.serviceSlug);

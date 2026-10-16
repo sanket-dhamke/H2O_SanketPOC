@@ -5,6 +5,7 @@ import { authRequired, roleRequired } from "../auth.js";
 import { validatePassword } from "../passwordPolicy.js";
 import { HOME_SERVICES } from "../homeServicesCatalog.js";
 import { acceptOffer, declineOffer, completionMatches, tickOffers } from "../providerDispatch.js";
+import { collapseDuplicateVisits } from "../duplicateVisits.js";
 import { approveProviderAccount, ensureProviderJoinCode, normalizeProviderCode, rejectProviderAccount, rotateProviderJoinCode } from "../providerJoin.js";
 
 export const providersRouter = Router();
@@ -245,10 +246,17 @@ providersRouter.get("/provider/jobs", authRequired, roleRequired("provider"), as
     include: { user: true, packPayments: true },
   });
   if (!me || !me.active) return res.status(403).json({ message: "This professional account is not active." });
+  const scope = {
+    OR: [{ offerProviderId: me.id, status: "offered" }, { providerId: me.id }],
+  };
+  const seen = await prisma.serviceBooking.findMany({
+    where: scope,
+    select: { residentId: true },
+  });
+  const residentIds = [...new Set(seen.map((row) => row.residentId).filter(Boolean))];
+  if (residentIds.length) await collapseDuplicateVisits(prisma, { residentId: { in: residentIds } });
   const rows = await prisma.serviceBooking.findMany({
-    where: {
-      OR: [{ offerProviderId: me.id, status: "offered" }, { providerId: me.id }],
-    },
+    where: scope,
     include: { resident: { include: { flat: true } }, society: true },
     orderBy: { createdAt: "desc" },
     take: 100,

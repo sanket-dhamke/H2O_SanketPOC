@@ -4,6 +4,7 @@ import { authRequired, roleRequired } from "../auth.js";
 import { enqueuePush } from "../queue.js";
 import { HOME_SERVICES, HOME_SERVICE_SLOTS, findHomeService, findPackage } from "../homeServicesCatalog.js";
 import { offerBooking, slotAvailability, slotIsOpen, tickOffers, ACCEPT_WINDOW_MS } from "../providerDispatch.js";
+import { collapseDuplicateVisits, isOpenVisit } from "../duplicateVisits.js";
 
 export const homeServicesRouter = Router();
 
@@ -70,6 +71,7 @@ homeServicesRouter.get("/home-service-bookings", authRequired, async (req, res) 
         : { societyId }
       : { residentId: req.user.id };
   try {
+    const dropped = await collapseDuplicateVisits(prisma, where);
     const rows = await prisma.serviceBooking.findMany({
       where,
       include: { resident: { include: { flat: true } } },
@@ -77,7 +79,8 @@ homeServicesRouter.get("/home-service-bookings", authRequired, async (req, res) 
       take: 200,
     });
     const includeOtp = req.user.role === "resident" || req.user.role === "superadmin";
-    res.json({ bookings: rows.map((r) => serialize(r, { includeOtp })) });
+    const hidden = new Set(dropped);
+    res.json({ bookings: rows.filter((row) => !hidden.has(row.id)).map((r) => serialize(r, { includeOtp })) });
   } catch (e) {
     console.error("[home-services] list failed:", e.message);
     res.status(503).json({ message: "Home services bookings are not available yet." });
@@ -100,15 +103,31 @@ homeServicesRouter.post("/home-service-bookings", authRequired, roleRequired("re
     return res.status(400).json({ message: "Pick a valid time slot" });
   }
   await tickOffers().catch(() => {});
-  if (!(await slotIsOpen(service.slug, date, slot))) {
-    return res.status(409).json({ message: "That slot is full. Pick a time when a professional is free." });
-  }
-
   const me = await prisma.user.findUnique({
     where: { id: req.user.id },
     include: { flat: true },
   });
   try {
+    await collapseDuplicateVisits(prisma, { residentId: req.user.id });
+    const existing = await prisma.serviceBooking.findFirst({
+      where: {
+        residentId: req.user.id,
+        serviceSlug: service.slug,
+        packageId: pack.id,
+        scheduledDate: date,
+        slot,
+        status: { in: ["requested", "finding", "offered", "accepted", "started", "confirmed", "assigned"] },
+      },
+      orderBy: { createdAt: "asc" },
+      include: { resident: { include: { flat: true } } },
+    });
+    if (existing && isOpenVisit(existing)) {
+      const booking = serialize(existing, { residentName: me?.name, flatNo: me?.flat?.flatNo, includeOtp: true });
+      return res.status(200).json({ booking, alreadyBooked: true, acceptWindowSeconds: ACCEPT_WINDOW_MS / 1000 });
+    }
+    if (!(await slotIsOpen(service.slug, date, slot))) {
+      return res.status(409).json({ message: "That slot is full. Pick a time when a professional is free." });
+    }
     const row = await prisma.serviceBooking.create({
       data: {
         societyId: req.user.societyId,

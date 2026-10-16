@@ -27,10 +27,30 @@ function detailFor(booking) {
   return when;
 }
 
+const STEP = { started: 6, accepted: 5, confirmed: 4, assigned: 4, offered: 3, finding: 2, requested: 1 };
+
+function sameVisit(a, b) {
+  return a.serviceSlug === b.serviceSlug && a.packageId === b.packageId && a.scheduledDate === b.scheduledDate && a.slot === b.slot;
+}
+
+function oneVisitEach(bookings) {
+  const kept = [];
+  for (const booking of bookings) {
+    const index = kept.findIndex((row) => sameVisit(row, booking));
+    if (index < 0) {
+      kept.push(booking);
+      continue;
+    }
+    const current = kept[index];
+    const betterStep = (STEP[booking.status] || 0) - (STEP[current.status] || 0);
+    const earlier = betterStep === 0 && new Date(booking.createdAt).getTime() < new Date(current.createdAt).getTime();
+    if (betterStep > 0 || earlier) kept[index] = booking;
+  }
+  return kept;
+}
+
 export function visitNotices(bookings) {
-  return (bookings || [])
-    .filter((booking) => booking && booking.id && OPEN.has(booking.status))
-    .slice()
+  return oneVisitEach((bookings || []).filter((booking) => booking && booking.id && OPEN.has(booking.status)))
     .sort((a, b) => String(a.scheduledDate || "").localeCompare(String(b.scheduledDate || "")) || String(a.slot || "").localeCompare(String(b.slot || "")))
     .slice(0, 3)
     .map((booking) => ({

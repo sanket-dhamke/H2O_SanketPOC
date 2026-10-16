@@ -123,7 +123,7 @@ export default function HomeServiceDetailScreen() {
     setBusy(true);
     setNotice(null);
     try {
-      const { booking, offline } = await createServiceBooking(user, {
+      const { booking, offline, alreadyBooked } = await createServiceBooking(user, {
         serviceSlug: service.slug,
         packageId: pack.id,
         scheduledDate: date,
@@ -137,7 +137,9 @@ export default function HomeServiceDetailScreen() {
       setBooked(booking);
       setNotice({
         tone: "ok",
-        text: `${offline ? "Booked on this device." : "Booking placed."} ${pack.name} for ${when}. ${who}`,
+        text: alreadyBooked
+          ? `This visit is already booked. ${pack.name} for ${when}. There is one booking and one start code.`
+          : `${offline ? "Booked on this device." : "Booking placed."} ${pack.name} for ${when}. ${who}`,
       });
     } catch (e) {
       setBooked(null);
