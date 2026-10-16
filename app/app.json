@@ -14,7 +14,7 @@
     },
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#0C4A8C",
+    "backgroundColor": "#FFFFFF",
     "icon": "./assets/icon.png",
     "assetBundlePatterns": [
       "**/*"
@@ -29,7 +29,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon-fg.png",
         "backgroundImage": "./assets/adaptive-icon-bg.png",
-        "backgroundColor": "#0C4A8C"
+        "backgroundColor": "#FFFFFF"
       },
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
@@ -67,7 +67,7 @@
           "image": "./assets/splash.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#0C4A8C"
+          "backgroundColor": "#FFFFFF"
         }
       ],
       "expo-font"
