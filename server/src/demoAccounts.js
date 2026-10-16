@@ -65,14 +65,20 @@ export async function ensureDemoAccounts() {
         },
       });
     }
-    if (!p.fallback && provider.packPaidUntil == null) {
-      await prisma.serviceProvider.update({
-        where: { id: provider.id },
-        data: { packPaidUntil: until, packAmount: provider.packAmount || 4999 },
-      });
-      await prisma.providerPackPayment.create({
-        data: { providerId: provider.id, amount: provider.packAmount || 4999, paidOn: ymd(), note: "Annual pack" },
-      });
+    if (!p.fallback) {
+      const payments = await prisma.providerPackPayment.count({ where: { providerId: provider.id } });
+      if (payments === 0) {
+        const amount = provider.packAmount || 4999;
+        if (provider.packPaidUntil == null) {
+          await prisma.serviceProvider.update({
+            where: { id: provider.id },
+            data: { packPaidUntil: until, packAmount: amount },
+          });
+        }
+        await prisma.providerPackPayment.create({
+          data: { providerId: provider.id, amount, paidOn: ymd(), note: "Annual pack" },
+        });
+      }
     }
   }
 
