@@ -1,4 +1,7 @@
 node_modules/
+# Expo's web export stores icon and text fonts on this path. They belong in the deploy.
+!public/assets/node_modules/
+!public/assets/node_modules/**
 data.json
 .env
 
