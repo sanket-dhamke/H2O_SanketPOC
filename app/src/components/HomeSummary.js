@@ -10,6 +10,8 @@ import { api } from "../lib/api";
 import { getCurrentUser } from "../lib/auth";
 import { withAnnouncementNotices } from "../lib/announcementNotices";
 import { withBookingNotices } from "../lib/bookingNotices";
+import { withVisitNotices } from "../lib/visitNotices";
+import { withoutPassedDates } from "../lib/attentionDates";
 
 const DISMISSED_NOTICES_KEY = "gatezo.dismissedAnnouncements";
 
@@ -143,10 +145,14 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
     }
     let cancelled = false;
     (async () => {
-      const [dismissed, announcements, bookings] = await Promise.all([
+      const resident = data.role === "resident";
+      const [dismissed, announcements, bookings, serviceBookings] = await Promise.all([
         readDismissedNotices(),
         api.announcements().then((res) => res.announcements || []).catch(() => []),
-        api.bookings().then((res) => res.bookings || []).catch(() => []),
+        api.bookings().then((res) => res.bookings || []).catch(() => null),
+        resident
+          ? api.homeServiceBookings().then((res) => res.bookings || []).catch(() => [])
+          : Promise.resolve(null),
       ]);
       if (cancelled) return;
       dismissedRef.current = dismissed;
@@ -157,7 +163,9 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
         residentId = null;
       }
       const withNotices = withAnnouncementNotices(data, announcements, { dismissed });
-      setNoticeSummary(withBookingNotices(withNotices, bookings, { residentId }));
+      const withBookings = withBookingNotices(withNotices, bookings, { residentId });
+      const withVisits = withVisitNotices(withBookings, serviceBookings);
+      setNoticeSummary(withoutPassedDates(withVisits));
     })();
     return () => {
       cancelled = true;

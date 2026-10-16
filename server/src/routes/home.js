@@ -26,6 +26,17 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const pad2 = (n) => String(n).padStart(2, "0");
 const periodOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
 
+function indiaToday() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type) => parts.find((part) => part.type === type)?.value || "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
 function lastPeriods(count) {
   const now = new Date();
   const out = [];
@@ -123,7 +134,7 @@ async function residentSummary(user) {
       select: { amount: true, status: true, paidAmount: true, lateFee: true, dueDate: true, period: true },
     }),
     prisma.visitor.count({ where: { flatId, status: "pending" } }),
-    prisma.booking.count({ where: { residentId: user.id, status: "approved" } }),
+    prisma.booking.count({ where: { residentId: user.id, status: "approved", date: { gte: indiaToday() } } }),
     prisma.rentAgreement.findMany({
       where: { flatId },
       select: { status: true, endDate: true },

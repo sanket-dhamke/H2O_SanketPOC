@@ -1,9 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { announcementNotices, withAnnouncementNotices } from "../../app/src/lib/announcementNotices.js";
+import { eventDatePassed } from "../../app/src/lib/attentionDates.js";
 import { buildAnnouncementEmail, channelsFor, deliverAnnouncementReminders, reminderAudience } from "../src/announcementNotify.js";
 import { buildNoticeText, societyNoticePayload } from "../src/whatsapp.js";
 import { bookingNotices, withBookingNotices } from "../../app/src/lib/bookingNotices.js";
+import { visitNotices, withVisitNotices } from "../../app/src/lib/visitNotices.js";
+import { groupActiveVisits } from "../../app/src/lib/providerVisits.js";
 
 const NOW = new Date("2026-09-23T12:00:00.000Z").getTime();
 const day = 864e5;
@@ -21,6 +24,21 @@ test("a pinned notice stays on the attention list and an old unpinned one does n
   assert.equal(rows[0].route, "Community");
   assert.equal(rows[0].label, "AGM scheduled on 15th October 2026 at 10 am");
   assert.match(rows[0].detail, /club house/);
+});
+
+test("a meeting whose date has passed leaves the attention list, including a pinned one", () => {
+  const later = new Date("2026-10-16T08:00:00.000Z").getTime();
+  assert.equal(eventDatePassed("Society meeting of 2 Oct", later), true);
+  assert.equal(eventDatePassed("AGM scheduled on 15th October 2026 at 10 am", NOW), false);
+  const rows = announcementNotices(
+    [
+      { id: "meet", title: "Society meeting of 2 Oct", body: "Club house at 6 pm", pinned: true, createdAt: new Date(later - 3 * day).toISOString() },
+      { id: "next", title: "Society meeting on 19 Oct", body: "Please attend", pinned: true, createdAt: new Date(later - day).toISOString() },
+      { id: "water", title: "Store water tonight", body: "Tank cleaning has no fixed calendar day", createdAt: new Date(later - day).toISOString() },
+    ],
+    { now: later }
+  );
+  assert.deepEqual(rows.map((r) => r.announcementId), ["next", "water"]);
 });
 
 test("opening a notice removes it and leaves the other attention rows", () => {
@@ -114,8 +132,9 @@ test("an approved clubhouse booking is called out with the amount to pay", () =>
       { id: "b2", residentId: "me", amenityName: "Clubhouse", slotLabel: "Evening", date: "2026-09-24", status: "requested", amount: 1000 },
       { id: "b3", residentId: "me", amenityName: "Clubhouse", slotLabel: "Morning", date: "2026-09-20", status: "paid", amount: 1000 },
       { id: "b4", residentId: "other", amenityName: "Clubhouse", slotLabel: "Morning", date: "2026-09-23", status: "approved", amount: 500 },
+      { id: "old", residentId: "me", amenityName: "Clubhouse", slotLabel: "Morning", date: "2026-09-02", status: "approved", amount: 800 },
     ],
-    { residentId: "me" }
+    { residentId: "me", now: NOW }
   );
   assert.equal(rows.length, 1);
   assert.equal(rows[0].label, "Clubhouse approved");
@@ -125,9 +144,49 @@ test("an approved clubhouse booking is called out with the amount to pay", () =>
 
   const merged = withBookingNotices(
     { pending: [{ key: "bookings", label: "1 booking approved" }, { key: "bills", label: "dues" }] },
-    [{ id: "b1", residentId: "me", amenityName: "Clubhouse", status: "approved", amount: 1000, date: "2026-09-23" }]
+    [{ id: "b1", residentId: "me", amenityName: "Clubhouse", status: "approved", amount: 1000, date: "2026-09-23" }],
+    { now: NOW }
   );
   assert.deepEqual(merged.pending.map((p) => p.key), ["booking:b1", "bills"]);
+
+  const past = withBookingNotices(
+    { pending: [{ key: "bookings", label: "Society meeting of 2 Oct" }, { key: "bills", label: "dues" }] },
+    [{ id: "old", residentId: "me", amenityName: "Clubhouse", status: "approved", amount: 500, date: "2026-10-02" }],
+    { now: new Date("2026-10-16T08:00:00.000Z").getTime() }
+  );
+  assert.deepEqual(past.pending.map((p) => p.key), ["bills"]);
+});
+
+test("a resident's open home-service visit is an attention row with the code they must read", () => {
+  const rows = visitNotices([
+    { id: "done", serviceName: "AC Service", packageName: "AC wet service", scheduledDate: "2026-10-10", slot: "10:00–11:00", status: "completed" },
+    { id: "live", serviceName: "AC Service & Appliances", packageName: "AC wet service", scheduledDate: "2026-10-19", slot: "10:00–11:00", status: "accepted", startOtp: "4821" },
+    { id: "wait", serviceName: "Cleaning", packageName: "Full home", scheduledDate: "2026-10-20", slot: "11:00–12:00", status: "finding" },
+  ]);
+  assert.equal(rows[0].label, "AC Service & Appliances");
+  assert.match(rows[0].detail, /Start code 4821/);
+  assert.match(rows[0].detail, /Oct 19/);
+  assert.deepEqual(rows[0].params, { screen: "HomeServices", params: { tab: "orders" } });
+  assert.equal(rows.length, 2);
+  const merged = withVisitNotices({ pending: [{ key: "bills", label: "dues" }] }, [
+    { id: "live", serviceName: "AC Service", scheduledDate: "2026-10-19", slot: "10:00–11:00", status: "accepted", startOtp: "1111" },
+  ]);
+  assert.deepEqual(merged.pending.map((p) => p.key), ["visit:live", "bills"]);
+});
+
+test("an accepted visit on a later date is upcoming, not today's work", () => {
+  const groups = groupActiveVisits(
+    [
+      { id: "future", status: "accepted", scheduledDate: "2026-10-19" },
+      { id: "today", status: "started", scheduledDate: "2026-10-16" },
+      { id: "old", status: "accepted", scheduledDate: "2026-10-02" },
+      { id: "offer", status: "offered", scheduledDate: "2026-10-16" },
+    ],
+    "2026-10-16"
+  );
+  assert.deepEqual(groups.today.map((job) => job.id), ["today"]);
+  assert.deepEqual(groups.upcoming.map((job) => job.id), ["future"]);
+  assert.deepEqual(groups.earlier.map((job) => job.id), ["old"]);
 });
 
 test("a society notice never uses the fee reminder template", () => {

@@ -1,6 +1,9 @@
 // Approved clubhouse bookings that still need payment. Home reads the same
 // bookings list as My bookings, so the reminder shows even when the live
-// home summary does not mention them.
+// home summary does not mention them. A slot whose date has passed is no
+// longer something to act on.
+
+import { calendarDay } from "./attentionDates.js";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -16,10 +19,12 @@ function rupee(amount) {
   return `₹${Number(amount || 0).toLocaleString("en-IN")}`;
 }
 
-export function bookingNotices(bookings, { residentId } = {}) {
+export function bookingNotices(bookings, { residentId, now = Date.now() } = {}) {
+  const today = calendarDay(now);
   return (bookings || [])
     .filter((b) => b && b.status === "approved")
     .filter((b) => !residentId || !b.residentId || b.residentId === residentId)
+    .filter((b) => !b.date || b.date >= today)
     .slice(0, 3)
     .map((b) => {
       const place = b.amenityName || "Booking";
@@ -39,9 +44,8 @@ export function bookingNotices(bookings, { residentId } = {}) {
 }
 
 export function withBookingNotices(summary, bookings, opts) {
-  if (!summary) return summary;
+  if (!summary || bookings == null) return summary;
   const extra = bookingNotices(bookings, opts);
-  if (!extra.length) return summary;
   const rest = (summary.pending || []).filter((p) => p.key !== "bookings" && !String(p.key || "").startsWith("booking:"));
   return { ...summary, pending: [...extra, ...rest] };
 }

@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -59,6 +58,8 @@ export default function HomeServiceDetailScreen() {
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [availability, setAvailability] = useState(null);
+  const [notice, setNotice] = useState(null);
+  const [booked, setBooked] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,16 +91,37 @@ export default function HomeServiceDetailScreen() {
     );
   }
 
+  const choosePack = (id) => {
+    setPackId(id);
+    setBooked(null);
+    setNotice(null);
+  };
+  const chooseDate = (value) => {
+    setDate(value);
+    setBooked(null);
+    setNotice(null);
+  };
+  const chooseSlot = (value) => {
+    setSlot(value);
+    setBooked(null);
+    setNotice(null);
+  };
+
   const book = async () => {
+    if (booked) {
+      navigation.navigate("HomeServices", { tab: "orders" });
+      return;
+    }
     if (!pack) {
-      Alert.alert("Pick a package", "Choose what you need before booking.");
+      setNotice({ tone: "err", text: "Choose a package before booking." });
       return;
     }
     if (!date || !slot) {
-      Alert.alert("Pick a slot", "Choose a date and time window.");
+      setNotice({ tone: "err", text: "Choose a date and a time window." });
       return;
     }
     setBusy(true);
+    setNotice(null);
     try {
       const { booking, offline } = await createServiceBooking(user, {
         serviceSlug: service.slug,
@@ -109,16 +131,17 @@ export default function HomeServiceDetailScreen() {
         notes,
       });
       const when = `${date} · ${slot}`;
-      const who = booking.partnerName ? `${booking.partnerName} accepted.` : "The best free professional has 60 seconds to accept, then the next one. If nobody does, the GATEZO desk takes it.";
-      const line = `${pack.name} for ${when}. ${who}`;
-      Alert.alert(offline ? "Booked on this device" : "Booking placed", line, [
-        {
-          text: "View bookings",
-          onPress: () => navigation.navigate("HomeServices", { tab: "orders" }),
-        },
-      ]);
+      const who = booking.partnerName
+        ? `${booking.partnerName} accepted this visit.`
+        : "A free professional has 60 seconds to accept, then the next one. If nobody does, the GATEZO desk takes it.";
+      setBooked(booking);
+      setNotice({
+        tone: "ok",
+        text: `${offline ? "Booked on this device." : "Booking placed."} ${pack.name} for ${when}. ${who}`,
+      });
     } catch (e) {
-      Alert.alert("Could not book", e.message);
+      setBooked(null);
+      setNotice({ tone: "err", text: e.message || "Could not book this visit." });
     } finally {
       setBusy(false);
     }
@@ -149,7 +172,7 @@ export default function HomeServiceDetailScreen() {
               {section.packs.map((p) => {
                 const on = p.id === pack?.id;
                 return (
-                  <TouchableOpacity key={p.id} style={[styles.pack, on && styles.packOn]} onPress={() => setPackId(p.id)} activeOpacity={0.85}>
+                  <TouchableOpacity key={p.id} style={[styles.pack, on && styles.packOn]} onPress={() => choosePack(p.id)} activeOpacity={0.85}>
                     <View style={[styles.radio, on && styles.radioOn]} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.packName}>{p.name}</Text>
@@ -165,7 +188,7 @@ export default function HomeServiceDetailScreen() {
           ))}
 
           <Text style={styles.section}>When should they come?</Text>
-          <DateField value={date} onChange={setDate} placeholder="Select date" minToday />
+          <DateField value={date} onChange={chooseDate} placeholder="Select date" minToday />
           <View style={styles.slots}>
             {HOME_SERVICE_SLOTS.map((s) => {
               const known = availability?.find((row) => row.slot === s);
@@ -175,7 +198,7 @@ export default function HomeServiceDetailScreen() {
                   key={s}
                   disabled={full}
                   style={[styles.slot, s === slot && styles.slotOn, full && { opacity: 0.35 }]}
-                  onPress={() => setSlot(s)}
+                  onPress={() => chooseSlot(s)}
                 >
                   <Text style={[styles.slotText, s === slot && styles.slotTextOn]}>{full ? `${s} full` : s}</Text>
                 </TouchableOpacity>
@@ -206,13 +229,18 @@ export default function HomeServiceDetailScreen() {
             </TouchableOpacity>
           ) : null}
 
+          {notice ? (
+            <View style={[styles.notice, notice.tone === "err" ? styles.noticeErr : styles.noticeOk]}>
+              <Text style={[styles.noticeText, notice.tone === "err" ? styles.noticeTextErr : styles.noticeTextOk]}>{notice.text}</Text>
+            </View>
+          ) : null}
           <View style={styles.payBox}>
             <View>
               <Text style={styles.payLabel}>Payable at visit</Text>
               <Text style={styles.payAmt}>{pack?.price === 0 ? "Free" : inr(pack?.price)}</Text>
             </View>
             <TouchableOpacity style={[styles.bookBtn, busy && { opacity: 0.6 }]} onPress={book} disabled={busy}>
-              {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.bookText}>Book visit</Text>}
+              {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.bookText}>{booked ? "View booking" : "Book visit"}</Text>}
             </TouchableOpacity>
           </View>
           <Text style={styles.fine}>
@@ -306,6 +334,12 @@ const styles = StyleSheet.create({
     marginTop: 18,
     gap: 12,
   },
+  notice: { borderRadius: 12, padding: 12, marginTop: 16 },
+  noticeOk: { backgroundColor: "#E6F5EC" },
+  noticeErr: { backgroundColor: "#FDECEC" },
+  noticeText: { fontSize: 14, lineHeight: 20, ...body(600) },
+  noticeTextOk: { color: "#1E7A3D" },
+  noticeTextErr: { color: "#8A1F18" },
   payLabel: { fontSize: 12, color: "#6B7B85", ...body(500) },
   payAmt: { fontSize: 22, ...head(800), color: "#1B2B33" },
   bookBtn: { backgroundColor: "#0B6E8F", borderRadius: 12, paddingHorizontal: 22, paddingVertical: 14, minWidth: 130, alignItems: "center" },

@@ -2,6 +2,8 @@
 // The live home-summary API does not know about notices yet, so Home reads
 // the announcements list that already exists and adds these rows itself.
 
+import { eventDatePassed } from "./attentionDates.js";
+
 const RECENT_MS = 14 * 864e5;
 const MAX_NOTICES = 3;
 
@@ -16,12 +18,15 @@ function createdAtMs(announcement) {
   return Number.isNaN(t) ? 0 : t;
 }
 
-// Pinned notices stay until the person opens them. Other notices stay for
-// two weeks. Dismissed ids are the ones this phone has already opened.
+// A notice that names a meeting day leaves the list once that day has passed,
+// even when it is pinned. Other pinned notices stay until the person opens
+// them. Unpinned notices stay for two weeks. Dismissed ids are the ones this
+// phone has already opened.
 export function announcementNotices(announcements, { now = Date.now(), dismissed = [] } = {}) {
   const hide = new Set(dismissed || []);
   return (announcements || [])
     .filter((a) => a && a.id && a.title && !hide.has(a.id))
+    .filter((a) => !eventDatePassed(`${a.title || ""} ${a.body || ""}`, now))
     .filter((a) => {
       if (a.pinned) return true;
       const t = createdAtMs(a);

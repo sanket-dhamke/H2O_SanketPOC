@@ -12,6 +12,8 @@ import ScreenHeader from "../../components/ScreenHeader";
 import TextInput from "../../components/AppTextInput";
 import { api } from "../../lib/api";
 import { brand } from "../../lib/brand";
+import { calendarDay } from "../../lib/attentionDates";
+import { groupActiveVisits } from "../../lib/providerVisits";
 import { body, head } from "../../lib/type";
 
 export default function ProviderJobsScreen() {
@@ -50,7 +52,7 @@ export default function ProviderJobsScreen() {
   };
 
   const offers = jobs.filter((j) => j.status === "offered");
-  const active = jobs.filter((j) => j.status === "accepted" || j.status === "started");
+  const grouped = groupActiveVisits(jobs, calendarDay());
   const done = jobs.filter((j) => j.status === "completed");
   const desk = me?.fallback;
 
@@ -103,48 +105,19 @@ export default function ProviderJobsScreen() {
         ))}
 
         <Text style={styles.h}>Today’s visits</Text>
-        {active.length === 0 ? <Text style={styles.empty}>Nothing in progress.</Text> : null}
-        {active.map((job) => (
-          <View key={job.id} style={styles.card}>
-            <Text style={styles.title}>{job.serviceName}</Text>
-            <Text style={styles.meta}>{job.packageName} · {job.scheduledDate} · {job.slot}</Text>
-            <Text style={styles.meta}>{job.residentName}{job.flatNo ? ` · Flat ${job.flatNo}` : ""}</Text>
-            {job.status === "accepted" ? (
-              <>
-                <Text style={styles.step}>Step 1. Ask the resident for the 4-digit start code on their booking. Work begins only after it matches.</Text>
-                <View style={styles.row}>
-                  <TextInput
-                    style={styles.otp}
-                    value={otp[job.id] || ""}
-                    onChangeText={(v) => setOtp((s) => ({ ...s, [job.id]: v.replace(/\D/g, "").slice(0, 4) }))}
-                    keyboardType="number-pad"
-                    placeholder="Start code"
-                    maxLength={4}
-                  />
-                  <TouchableOpacity style={styles.primary} onPress={() => act(() => api.providerStart(job.id, otp[job.id]))}>
-                    <Text style={styles.primaryText}>Start work</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            ) : (
-              <>
-                <Text style={styles.step}>Step 2. When the work is finished, ask the resident for the finish code. They see it only after the visit has started.</Text>
-                <View style={styles.row}>
-                  <TextInput
-                    style={styles.otp}
-                    value={otp[`${job.id}-done`] || ""}
-                    onChangeText={(v) => setOtp((s) => ({ ...s, [`${job.id}-done`]: v.replace(/\D/g, "").slice(0, 4) }))}
-                    keyboardType="number-pad"
-                    placeholder="Finish code"
-                    maxLength={4}
-                  />
-                  <TouchableOpacity style={styles.primary} onPress={() => act(() => api.providerComplete(job.id, otp[`${job.id}-done`]))}>
-                    <Text style={styles.primaryText}>Mark done</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </View>
+        {grouped.today.length === 0 ? <Text style={styles.empty}>Nothing scheduled for today.</Text> : null}
+        {grouped.today.map((job) => (
+          <ActiveVisit key={job.id} job={job} otp={otp} setOtp={setOtp} act={act} />
+        ))}
+
+        {grouped.upcoming.length ? <Text style={styles.h}>Upcoming visits</Text> : null}
+        {grouped.upcoming.map((job) => (
+          <ActiveVisit key={job.id} job={job} otp={otp} setOtp={setOtp} act={act} />
+        ))}
+
+        {grouped.earlier.length ? <Text style={styles.h}>Still open from an earlier date</Text> : null}
+        {grouped.earlier.map((job) => (
+          <ActiveVisit key={job.id} job={job} otp={otp} setOtp={setOtp} act={act} />
         ))}
 
         <Text style={styles.h}>Finished</Text>
@@ -156,6 +129,51 @@ export default function ProviderJobsScreen() {
           </View>
         ))}
       </ScrollView>
+    </View>
+  );
+}
+
+function ActiveVisit({ job, otp, setOtp, act }) {
+  return (
+    <View style={styles.card}>
+      <Text style={styles.title}>{job.serviceName}</Text>
+      <Text style={styles.meta}>{job.packageName} · {job.scheduledDate} · {job.slot}</Text>
+      <Text style={styles.meta}>{job.residentName}{job.flatNo ? ` · Flat ${job.flatNo}` : ""}</Text>
+      {job.status === "accepted" ? (
+        <>
+          <Text style={styles.step}>Step 1. Ask the resident for the 4-digit start code on their booking. Work begins only after it matches.</Text>
+          <View style={styles.row}>
+            <TextInput
+              style={styles.otp}
+              value={otp[job.id] || ""}
+              onChangeText={(v) => setOtp((s) => ({ ...s, [job.id]: v.replace(/\D/g, "").slice(0, 4) }))}
+              keyboardType="number-pad"
+              placeholder="Start code"
+              maxLength={4}
+            />
+            <TouchableOpacity style={styles.primary} onPress={() => act(() => api.providerStart(job.id, otp[job.id]))}>
+              <Text style={styles.primaryText}>Start work</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      ) : (
+        <>
+          <Text style={styles.step}>Step 2. When the work is finished, ask the resident for the finish code. They see it only after the visit has started.</Text>
+          <View style={styles.row}>
+            <TextInput
+              style={styles.otp}
+              value={otp[`${job.id}-done`] || ""}
+              onChangeText={(v) => setOtp((s) => ({ ...s, [`${job.id}-done`]: v.replace(/\D/g, "").slice(0, 4) }))}
+              keyboardType="number-pad"
+              placeholder="Finish code"
+              maxLength={4}
+            />
+            <TouchableOpacity style={styles.primary} onPress={() => act(() => api.providerComplete(job.id, otp[`${job.id}-done`]))}>
+              <Text style={styles.primaryText}>Mark done</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
     </View>
   );
 }
