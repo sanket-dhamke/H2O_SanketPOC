@@ -1,6 +1,9 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { createHmac } from "crypto";
 import { prisma } from "./prisma.js";
 import { razorpayEnabled } from "./razorpay.js";
@@ -38,6 +41,7 @@ import { providersRouter } from "./routes/providers.js";
 import { tickOffers } from "./providerDispatch.js";
 import { ensureJoinCode } from "./joinCode.js";
 import { ensureProviderJoinCode } from "./providerJoin.js";
+import { ensureDemoAccounts } from "./demoAccounts.js";
 import { paymentsRouter } from "./routes/payments.js";
 import { globalLimiter, authLimiter, aiLimiter } from "./rateLimit.js";
 import { startQueueWorkers, queueBackend } from "./queue.js";
@@ -287,6 +291,15 @@ if (process.env.VISITOR_RETENTION_CRON_ENABLED !== "false") {
   });
 }
 
+const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../public");
+if (fs.existsSync(path.join(publicDir, "index.html"))) {
+  app.use(express.static(publicDir, { index: false, maxAge: "1h" }));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api")) return next();
+    res.sendFile(path.join(publicDir, "index.html"), (err) => err && next());
+  });
+}
+
 const PORT = process.env.PORT || 4000;
 // Bind explicitly to IPv4 all-interfaces so phones on the LAN can connect.
 // Creates the singleton platform settings row with sensible defaults the first
@@ -322,6 +335,7 @@ app.listen(PORT, "0.0.0.0", () => {
     .then((created) => created && console.log("Created default platform settings."))
     .catch((e) => console.error("Platform settings init failed:", e.message));
   ensureProviderJoinCode().catch((e) => console.error("Provider join code init failed:", e.message));
+  ensureDemoAccounts().catch((e) => console.error("Demo account init failed:", e.message));
   prisma.society
     .findMany({ select: { id: true } })
     .then((rows) => Promise.all(rows.map((s) => ensureJoinCode(s.id))))
