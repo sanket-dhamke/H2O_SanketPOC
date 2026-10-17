@@ -6,20 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Modal,
   Image,
   Linking,
   useWindowDimensions,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import TextInput from "../components/AppTextInput";
-import KeyboardAvoider from "../components/KeyboardAvoider";
 import { useFocusEffect } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import ScreenHeader from "../components/ScreenHeader";
-import ModalClose from "../components/ModalClose";
 import PhotoLightbox from "../components/PhotoLightbox";
 import { catMeta, kindMeta } from "./MarketplaceScreen";
 
@@ -27,30 +24,59 @@ const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 const cleanPhone = (p) => String(p || "").replace(/[^\d+]/g, "");
 const fmt = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
 
+function tell(message) {
+  if (Platform.OS === "web" && typeof window !== "undefined" && window.alert) window.alert(message);
+  else Alert.alert("Buy & Sell", message);
+}
+
+function groupThreads(messages) {
+  const order = [];
+  const map = new Map();
+  for (const message of messages || []) {
+    const otherId = message.mine ? message.toUserId : message.fromUserId;
+    const key = otherId || message.fromUserId || message.id;
+    if (!map.has(key)) {
+      map.set(key, { id: key, name: message.mine ? "Resident" : message.fromName, flat: message.fromFlat, phone: message.fromPhone, items: [] });
+      order.push(key);
+    }
+    const thread = map.get(key);
+    if (!message.mine) {
+      thread.name = message.fromName || thread.name;
+      thread.flat = message.fromFlat || thread.flat;
+      thread.phone = message.fromPhone || thread.phone;
+    }
+    thread.items.push(message);
+  }
+  return order.map((key) => map.get(key));
+}
+
 export default function ListingDetailScreen({ navigation, route }) {
   const id = route?.params?.id;
   const { width } = useWindowDimensions();
   const [listing, setListing] = useState(null);
   const [photoAt, setPhotoAt] = useState(null);
   const [messages, setMessages] = useState(null);
+  const [threadRole, setThreadRole] = useState("buyer");
   const [participants, setParticipants] = useState(null);
-  const [msgModal, setMsgModal] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [replyDrafts, setReplyDrafts] = useState({});
+  const [sentNote, setSentNote] = useState("");
+  const [sending, setSending] = useState(false);
   const [joining, setJoining] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const { listing } = await api.listing(id);
       setListing(listing);
-      if (listing.isOwner) {
-        const { messages } = await api.listingMessages(id).catch(() => ({ messages: [] }));
-        setMessages(messages || []);
-        if (listing.kind === "group_buy" || listing.kind === "borrow") {
-          const { participants } = await api.listingParticipants(id).catch(() => ({ participants: [] }));
-          setParticipants(participants || []);
-        }
+      const thread = await api.listingMessages(id).catch(() => ({ messages: [], role: listing.isOwner ? "seller" : "buyer" }));
+      setMessages(thread.messages || []);
+      setThreadRole(thread.role || (listing.isOwner ? "seller" : "buyer"));
+      if (listing.isOwner && (listing.kind === "group_buy" || listing.kind === "borrow")) {
+        const { participants } = await api.listingParticipants(id).catch(() => ({ participants: [] }));
+        setParticipants(participants || []);
       }
     } catch (e) {
-      Alert.alert("Error", e.message);
+      tell(e.message);
     }
   }, [id]);
 
@@ -98,6 +124,30 @@ export default function ListingDetailScreen({ navigation, route }) {
         },
       },
     ]);
+
+  const sendMessage = async (text, toUserId) => {
+    const body = String(text || "").trim();
+    if (!body) {
+      tell("Write a message first.");
+      return;
+    }
+    setSending(true);
+    try {
+      await api.messageListingOwner(id, body, toUserId);
+      setSentNote(
+        toUserId
+          ? "Reply sent. They can read it on this listing and on their home."
+          : "Sent. The owner can read this on the listing and on their home."
+      );
+      if (toUserId) setReplyDrafts((current) => ({ ...current, [toUserId]: "" }));
+      else setDraft("");
+      await load();
+    } catch (e) {
+      tell(e.message || "Could not send the message.");
+    } finally {
+      setSending(false);
+    }
+  };
 
   const call = (phone) => Linking.openURL(`tel:${cleanPhone(phone)}`).catch(() => {});
   const whatsapp = (phone, title) =>
@@ -206,7 +256,6 @@ export default function ListingDetailScreen({ navigation, route }) {
           <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.desc}>{listing.description}</Text>
 
-          {/* Owner view: manage + enquiries */}
           {listing.isOwner ? (
             <>
               <View style={styles.ownerActions}>
@@ -247,118 +296,124 @@ export default function ListingDetailScreen({ navigation, route }) {
                   ))}
                 </>
               )}
-
-              <Text style={styles.sectionTitle}>Enquiries {messages?.length ? `(${messages.length})` : ""}</Text>
-              {messages === null && <ActivityIndicator color="#0B6E8F" />}
-              {messages?.length === 0 && <Text style={styles.muted}>No enquiries yet.</Text>}
-              {messages?.map((m) => (
-                <View key={m.id} style={styles.enquiry}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.enquiryFrom}>{m.fromName}{m.fromPhone ? ` · ${m.fromPhone}` : ""}</Text>
-                    <Text style={styles.enquiryBody}>{m.body}</Text>
-                    <Text style={styles.enquiryTime}>{fmt(m.createdAt)}</Text>
-                  </View>
-                  {m.fromPhone ? (
-                    <TouchableOpacity style={styles.callBtn} onPress={() => call(m.fromPhone)}>
-                      <Ionicons name="call" size={16} color="#0B6E8F" />
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-              ))}
             </>
-          ) : (
-            listing.status === "active" && (
-              <>
-                {(listing.kind === "group_buy" || listing.kind === "borrow") && (
-                  <TouchableOpacity
-                    style={[styles.joinBtn, listing.joinedByMe && styles.joinBtnLeave, joining && { opacity: 0.6 }]}
-                    onPress={toggleJoin}
-                    disabled={joining}
-                  >
-                    <Ionicons name={listing.joinedByMe ? "checkmark-circle" : "add-circle-outline"} size={18} color="#fff" />
-                    <Text style={styles.joinBtnText}>
-                      {joining ? "…" : listing.joinedByMe ? "You're in — tap to leave" : listing.kind === "group_buy" ? "Join this group buy" : "I'm interested"}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                <View style={styles.buyerActions}>
-                  <TouchableOpacity style={styles.msgBtn} onPress={() => setMsgModal(true)}>
-                    <Ionicons name="chatbubble-ellipses" size={18} color="#1B2B33" />
-                    <Text style={styles.msgBtnText}>Message {listing.kind === "group_buy" ? "organiser" : "owner"}</Text>
-                  </TouchableOpacity>
-                  {listing.authorPhone && (
-                    <TouchableOpacity style={styles.waBtn} onPress={() => whatsapp(listing.authorPhone, listing.title)}>
-                      <Ionicons name="logo-whatsapp" size={20} color="#fff" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </>
-            )
-          )}
+          ) : null}
+
+          {!listing.isOwner && (listing.kind === "group_buy" || listing.kind === "borrow") && listing.status === "active" ? (
+            <TouchableOpacity
+              style={[styles.joinBtn, listing.joinedByMe && styles.joinBtnLeave, joining && { opacity: 0.6 }]}
+              onPress={toggleJoin}
+              disabled={joining}
+            >
+              <Ionicons name={listing.joinedByMe ? "checkmark-circle" : "add-circle-outline"} size={18} color="#fff" />
+              <Text style={styles.joinBtnText}>
+                {joining ? "…" : listing.joinedByMe ? "You're in — tap to leave" : listing.kind === "group_buy" ? "Join this group buy" : "I'm interested"}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
+          <Conversation
+            seller={threadRole === "seller" || listing.isOwner}
+            active={listing.status === "active"}
+            messages={messages}
+            draft={draft}
+            onDraft={setDraft}
+            replyDrafts={replyDrafts}
+            onReplyDraft={(userId, text) => setReplyDrafts((current) => ({ ...current, [userId]: text }))}
+            sentNote={sentNote}
+            sending={sending}
+            onSend={sendMessage}
+            onCall={call}
+            onWhatsapp={listing.authorPhone ? () => whatsapp(listing.authorPhone, listing.title) : null}
+            contactLabel={listing.kind === "group_buy" ? "organiser" : "owner"}
+          />
         </View>
       </ScrollView>
-
-      <MessageModal
-        visible={msgModal}
-        onClose={() => setMsgModal(false)}
-        listingId={id}
-        title={listing.title}
-      />
     </View>
   );
 }
 
-function MessageModal({ visible, onClose, listingId, title }) {
-  const [body, setBody] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const send = async () => {
-    if (!body.trim()) return;
-    setBusy(true);
-    try {
-      await api.messageListingOwner(listingId, body.trim());
-      setBody("");
-      onClose();
-      Alert.alert("Sent", "The owner has been notified and will get back to you.");
-    } catch (e) {
-      Alert.alert("Error", e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
+function Bubble({ message }) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoider style={styles.overlay}>
-        <View style={styles.modalCard}>
-          <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
-            <View style={styles.modalHeaderIcon}>
-              <Ionicons name="chatbubble-ellipses-outline" size={20} color="#fff" />
-            </View>
-            <Text style={styles.modalTitle}>Message owner</Text>
-            <ModalClose onPress={onClose} />
-          </LinearGradient>
-          <View style={styles.modalBody}>
-            <Text style={styles.modalHint}>About: {title}</Text>
-            <TextInput
-              style={[styles.input, styles.multiline]}
-              value={body}
-              onChangeText={setBody}
-              placeholder="Hi, is this still available? Can I see it this weekend?"
-              multiline
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={[styles.mBtn, styles.mCancel]} onPress={onClose}>
-                <Text style={styles.mCancelText}>Cancel</Text>
+    <View style={[styles.bubble, message.mine ? styles.bubbleMine : styles.bubbleTheirs]} testID="listing-message">
+      <Text style={styles.enquiryFrom}>{message.mine ? "You" : message.fromName}{!message.mine && message.fromFlat ? ` · ${message.fromFlat}` : ""}</Text>
+      <Text style={styles.enquiryBody}>{message.body}</Text>
+      <Text style={styles.enquiryTime}>{fmt(message.createdAt)}</Text>
+    </View>
+  );
+}
+
+function Conversation({ seller, active, messages, draft, onDraft, replyDrafts, onReplyDraft, sentNote, sending, onSend, onCall, onWhatsapp, contactLabel }) {
+  const threads = seller ? groupThreads(messages) : [];
+  const canWrite = seller || active || (messages && messages.length > 0);
+  return (
+    <View testID="listing-conversation">
+      <Text style={styles.sectionTitle}>Conversation {messages?.length ? `(${messages.length})` : ""}</Text>
+      {messages === null && <ActivityIndicator color="#0B6E8F" />}
+      {messages?.length === 0 && (
+        <Text style={styles.muted}>
+          {seller
+            ? "No messages yet. When someone messages you about this listing, the conversation shows here and on your home."
+            : "No messages yet. Write below — the owner sees it here and on their home."}
+        </Text>
+      )}
+      {seller
+        ? threads.map((thread) => (
+            <View key={thread.id} style={styles.thread}>
+              <View style={styles.threadHead}>
+                <Text style={styles.enquiryFrom}>{thread.name}{thread.flat ? ` · ${thread.flat}` : ""}{thread.phone ? ` · ${thread.phone}` : ""}</Text>
+                {thread.phone ? (
+                  <TouchableOpacity style={styles.callBtn} onPress={() => onCall(thread.phone)}>
+                    <Ionicons name="call" size={16} color="#0B6E8F" />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+              {thread.items.map((message) => (
+                <Bubble key={message.id} message={message} />
+              ))}
+              <TextInput
+                style={[styles.input, styles.replyInput]}
+                value={replyDrafts[thread.id] || ""}
+                onChangeText={(text) => onReplyDraft(thread.id, text)}
+                placeholder="Reply to this resident"
+                testID="listing-reply"
+              />
+              <TouchableOpacity
+                style={[styles.replyBtn, sending && { opacity: 0.6 }]}
+                onPress={() => onSend(replyDrafts[thread.id], thread.id)}
+                disabled={sending}
+                testID="listing-send"
+              >
+                <Text style={styles.replyBtnText}>{sending ? "Sending…" : "Send reply"}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.mBtn, busy && { opacity: 0.6 }]} onPress={send} disabled={busy}>
-                <Text style={styles.mBtnText}>{busy ? "Sending…" : "Send"}</Text>
-              </TouchableOpacity>
             </View>
+          ))
+        : messages?.map((message) => <Bubble key={message.id} message={message} />)}
+      {sentNote ? <Text testID="listing-sent" style={styles.sentNote}>{sentNote}</Text> : null}
+      {!seller && canWrite ? (
+        <>
+          <TextInput
+            style={[styles.input, styles.multiline]}
+            value={draft}
+            onChangeText={onDraft}
+            placeholder="Hi, is this still available? Can I see it this weekend?"
+            multiline
+            testID="listing-reply"
+          />
+          <View style={styles.buyerActions}>
+            <TouchableOpacity style={[styles.msgBtn, sending && { opacity: 0.6 }]} onPress={() => onSend(draft)} disabled={sending} testID="listing-send">
+              <Ionicons name="chatbubble-ellipses" size={18} color="#1B2B33" />
+              <Text style={styles.msgBtnText}>{sending ? "Sending…" : `Message ${contactLabel}`}</Text>
+            </TouchableOpacity>
+            {onWhatsapp ? (
+              <TouchableOpacity style={styles.waBtn} onPress={onWhatsapp}>
+                <Ionicons name="logo-whatsapp" size={20} color="#fff" />
+              </TouchableOpacity>
+            ) : null}
           </View>
-        </View>
-      </KeyboardAvoider>
-    </Modal>
+        </>
+      ) : null}
+    </View>
   );
 }
 
@@ -385,6 +440,15 @@ const styles = StyleSheet.create({
   enquiryFrom: { fontWeight: "700", color: "#1B2B33", fontSize: 13.5 },
   enquiryBody: { color: "#48606B", marginTop: 3, fontSize: 13.5 },
   enquiryTime: { color: "#9AA7AF", fontSize: 11, marginTop: 4 },
+  thread: { backgroundColor: "#fff", borderRadius: 12, padding: 12, marginBottom: 10 },
+  threadHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 },
+  bubble: { borderRadius: 12, padding: 12, marginBottom: 8 },
+  bubbleMine: { backgroundColor: "#E7F6EC" },
+  bubbleTheirs: { backgroundColor: "#F4F7F8" },
+  sentNote: { color: "#1E7A3D", fontWeight: "700", fontSize: 13, marginTop: 8 },
+  replyInput: { marginTop: 4 },
+  replyBtn: { alignSelf: "flex-start", backgroundColor: "#0B6E8F", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginTop: 8 },
+  replyBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   callBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: "#EAF4F7", alignItems: "center", justifyContent: "center" },
   kindBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#F5F0FE", borderRadius: 10, padding: 10, marginTop: 12 },
   kindBannerText: { color: "#6D3BD1", fontWeight: "700", fontSize: 12.5, flex: 1 },

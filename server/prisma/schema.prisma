@@ -188,6 +188,7 @@ model User {
   // Buy & Sell listings authored + messages sent about others' listings.
   listings      Listing[]  @relation("ListingAuthor")
   listingMessages ListingMessage[] @relation("ListingMsgFrom")
+  listingMessagesTo ListingMessage[] @relation("ListingMsgTo")
   listingJoins  ListingJoin[] @relation("ListingJoinUser")
   serviceBookings ServiceBooking[] @relation("ResidentServiceBookings")
   serviceProvider ServiceProvider?
@@ -680,18 +681,24 @@ model BackupLog {
   @@index([kind, at])
 }
 
-// A message from an interested buyer to a listing's owner.
+// One turn in a Buy & Sell conversation. A buyer writes to the listing owner
+// (toUserId = author). The owner, or someone in the owner's flat, replies with
+// toUserId set to that buyer so other buyers never see the reply.
 model ListingMessage {
-  id        String   @id @default(uuid())
-  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  listingId String
-  from      User     @relation("ListingMsgFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId  String
+  from       User     @relation("ListingMsgFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
   fromUserId String
-  fromName  String?
-  body      String
-  createdAt DateTime @default(now())
+  to         User?    @relation("ListingMsgTo", fields: [toUserId], references: [id], onDelete: SetNull)
+  toUserId   String?
+  fromName   String?
+  body       String
+  createdAt  DateTime @default(now())
 
   @@index([listingId])
+  @@index([fromUserId])
+  @@index([toUserId])
 }
 
 // ---- Platinum: automated vehicle gate (RFID / ANPR / QR) ----

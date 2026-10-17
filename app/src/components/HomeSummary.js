@@ -12,6 +12,8 @@ import { withAnnouncementNotices } from "../lib/announcementNotices";
 import { withBookingNotices } from "../lib/bookingNotices";
 import { withVisitNotices } from "../lib/visitNotices";
 import { withoutPassedDates } from "../lib/attentionDates";
+import { withListingNotices } from "../lib/listingMessageNotices";
+import { attentionSignature, hideDismissed } from "../lib/attentionDismiss";
 
 const DISMISSED_NOTICES_KEY = "gatezo.dismissedAnnouncements";
 
@@ -25,13 +27,14 @@ async function readDismissedNotices() {
   }
 }
 
-async function rememberDismissedNotice(id) {
+async function rememberDismissedNotices(tokens) {
   const ids = await readDismissedNotices();
-  const next = [id, ...ids.filter((x) => x !== id)].slice(0, 200);
+  const add = (tokens || []).filter((token) => typeof token === "string" && token);
+  const next = [...add, ...ids.filter((id) => !add.includes(id))].slice(0, 400);
   try {
     await AsyncStorage.setItem(DISMISSED_NOTICES_KEY, JSON.stringify(next));
   } catch {
-    // Opening the notice still works if this phone cannot store the dismissal.
+    // The row still disappears for this visit if this phone cannot store it.
   }
   return next;
 }
@@ -146,13 +149,14 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
     let cancelled = false;
     (async () => {
       const resident = data.role === "resident";
-      const [dismissed, announcements, bookings, serviceBookings] = await Promise.all([
+      const [dismissed, announcements, bookings, serviceBookings, listingNotices] = await Promise.all([
         readDismissedNotices(),
         api.announcements().then((res) => res.announcements || []).catch(() => []),
         api.bookings().then((res) => res.bookings || []).catch(() => null),
         resident
           ? api.homeServiceBookings().then((res) => res.bookings || []).catch(() => [])
           : Promise.resolve(null),
+        api.listingInbox().then((res) => res.notices || []).catch(() => []),
       ]);
       if (cancelled) return;
       dismissedRef.current = dismissed;
@@ -165,7 +169,8 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
       const withNotices = withAnnouncementNotices(data, announcements, { dismissed });
       const withBookings = withBookingNotices(withNotices, bookings, { residentId });
       const withVisits = withVisitNotices(withBookings, serviceBookings);
-      setNoticeSummary(withoutPassedDates(withVisits));
+      const dated = withoutPassedDates(withVisits);
+      setNoticeSummary(hideDismissed(withListingNotices(dated, listingNotices), dismissed));
     })();
     return () => {
       cancelled = true;
@@ -210,18 +215,18 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
   }));
   const trendMonths = (trend || []).slice(-4);
 
+  const dropNotice = (tokens) => {
+    dismissedRef.current = [...tokens, ...dismissedRef.current.filter((token) => !tokens.includes(token))].slice(0, 400);
+    rememberDismissedNotices(tokens);
+    setNoticeSummary((current) => hideDismissed(current || data, dismissedRef.current));
+  };
+  const dismiss = (item) => {
+    const tokens = [attentionSignature(item)];
+    if (item.announcementId) tokens.push(item.announcementId);
+    dropNotice(tokens);
+  };
   const go = (item) => {
-    if (item.announcementId) {
-      dismissedRef.current = [...dismissedRef.current, item.announcementId];
-      rememberDismissedNotice(item.announcementId);
-      setNoticeSummary((current) => {
-        const base = current || data;
-        return {
-          ...base,
-          pending: (base.pending || []).filter((row) => row.announcementId !== item.announcementId),
-        };
-      });
-    }
+    if (item.announcementId) dropNotice([item.announcementId, attentionSignature(item)]);
     if (!item.route) return;
     openScreen(navigation, item.route, item.params || undefined);
   };
@@ -243,21 +248,30 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
           {pending.map((p) => {
             const color = LEVEL_COLORS[p.level] || LEVEL_COLORS.info;
             return (
-              <TouchableOpacity
-                key={p.key}
-                style={styles.alertRow}
-                onPress={() => go(p)}
-                activeOpacity={p.route ? 0.75 : 1}
-              >
-                <View style={[styles.alertIcon, { backgroundColor: `${color}1A` }]}>
-                  <Ionicons name={p.icon || "alert-circle-outline"} size={17} color={color} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.alertLabel}>{p.label}</Text>
-                  {p.detail ? <Text style={styles.alertDetail}>{p.detail}</Text> : null}
-                </View>
-                {p.route ? <Ionicons name="chevron-forward" size={18} color="#B7C2C9" /> : null}
-              </TouchableOpacity>
+              <View key={p.key} style={styles.alertRow}>
+                <TouchableOpacity
+                  style={styles.alertMain}
+                  onPress={() => go(p)}
+                  activeOpacity={p.route ? 0.75 : 1}
+                >
+                  <View style={[styles.alertIcon, { backgroundColor: `${color}1A` }]}>
+                    <Ionicons name={p.icon || "alert-circle-outline"} size={17} color={color} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.alertLabel}>{p.label}</Text>
+                    {p.detail ? <Text style={styles.alertDetail}>{p.detail}</Text> : null}
+                  </View>
+                  {p.route ? <Ionicons name="chevron-forward" size={18} color="#B7C2C9" /> : null}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  testID="attention-dismiss"
+                  accessibilityLabel={`Remove ${p.label}`}
+                  onPress={() => dismiss(p)}
+                  style={styles.alertRemove}
+                >
+                  <Text style={styles.alertRemoveText}>Remove</Text>
+                </TouchableOpacity>
+              </View>
             );
           })}
         </View>
@@ -443,8 +457,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 8,
   },
-  alertRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6 },
+  alertRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6 },
+  alertMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10, minWidth: 0 },
   alertIcon: { width: 30, height: 30, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  alertRemove: { paddingHorizontal: 8, paddingVertical: 6 },
+  alertRemoveText: { color: "#8A5A4A", fontSize: 12, ...body(700) },
   alertLabel: { fontSize: 13.5, ...head(700), color: "#1B2B33" },
   alertDetail: { fontSize: 12, color: "#6B7B85", marginTop: 1, ...body(400)},
   vizRow: { gap: 16 },

@@ -448,9 +448,10 @@ export const api = {
   createListing: (payload) => request("/api/listings", { method: "POST", body: payload }),
   updateListing: (id, payload) => request(`/api/listings/${id}`, { method: "PATCH", body: payload }),
   deleteListing: (id) => request(`/api/listings/${id}`, { method: "DELETE" }),
-  messageListingOwner: (id, body) =>
-    request(`/api/listings/${id}/messages`, { method: "POST", body: { body } }),
+  messageListingOwner: (id, body, toUserId) =>
+    request(`/api/listings/${id}/messages`, { method: "POST", body: { body, toUserId } }),
   listingMessages: (id) => request(`/api/listings/${id}/messages`),
+  listingInbox: () => request("/api/listing-inbox"),
   joinListing: (id, qty) => request(`/api/listings/${id}/join`, { method: "POST", body: { qty } }),
   leaveListing: (id) => request(`/api/listings/${id}/join`, { method: "DELETE" }),
   listingParticipants: (id) => request(`/api/listings/${id}/participants`),

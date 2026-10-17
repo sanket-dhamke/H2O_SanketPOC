@@ -4,6 +4,7 @@ import { authRequired, roleRequired } from "../auth.js";
 import { enqueuePush } from "../queue.js";
 import { uploadDocument } from "../storage.js";
 import { parsePaging } from "../paging.js";
+import { listingAttentionNotices, onSellerSide } from "../listingInbox.js";
 
 // Buy & Sell marketplace. Residents post items under a category. A listing is
 // visible either only within the poster's society, or across ALL societies
@@ -319,55 +320,166 @@ marketplaceRouter.delete("/moderation/listings/:id", authRequired, roleRequired(
   res.json({ ok: true });
 });
 
-// A buyer messages the owner. Stored + pushed to the owner.
+const MESSAGE_MAX = 2000;
+
+async function viewerContext(userId) {
+  const me = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, flatId: true, name: true },
+  });
+  return { userId, flatId: me?.flatId || null, name: me?.name || null };
+}
+
+function listingAuthorFlatId(listing) {
+  return listing?.author?.flatId || null;
+}
+
+async function loadListingForMessages(id) {
+  return prisma.listing.findUnique({
+    where: { id },
+    include: { author: { select: { id: true, flatId: true, name: true, expoPushToken: true, notifyEnabled: true } } },
+  });
+}
+
+function serializeThreadMessage(message, viewerId, seller) {
+  const mine = message.fromUserId === viewerId;
+  return {
+    id: message.id,
+    body: message.body,
+    fromUserId: message.fromUserId,
+    toUserId: message.toUserId || null,
+    fromName: message.fromName || message.from?.name || "Resident",
+    fromFlat: message.from?.flat?.flatNo || null,
+    fromPhone: seller && !mine ? message.from?.phone || null : null,
+    mine,
+    createdAt: message.createdAt,
+  };
+}
+
+function inboxRow(message) {
+  return {
+    id: message.id,
+    body: message.body,
+    createdAt: message.createdAt,
+    fromUserId: message.fromUserId,
+    fromName: message.fromName || message.from?.name || "Resident",
+    fromFlat: message.from?.flat?.flatNo || null,
+    fromFlatId: message.from?.flatId || null,
+    toUserId: message.toUserId || null,
+    listingId: message.listingId,
+    listingTitle: message.listing?.title || "",
+    listingAuthorId: message.listing?.authorId || null,
+    authorFlatId: message.listing?.author?.flatId || null,
+  };
+}
+
+async function notifyUser(userId, title, body, listingId) {
+  if (!userId) return;
+  const person = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { expoPushToken: true, notifyEnabled: true },
+  });
+  if (person?.expoPushToken && person.notifyEnabled) {
+    enqueuePush(person.expoPushToken, title, body, { type: "listing", listingId });
+  }
+}
+
+// Buyer writes to the owner. The owner (or someone in that flat) replies to
+// one buyer. Both sides can read the thread afterwards.
 marketplaceRouter.post("/listings/:id/messages", authRequired, async (req, res) => {
-  const { body } = req.body || {};
-  if (!body || !String(body).trim()) return res.status(400).json({ message: "Message cannot be empty" });
-  const listing = await prisma.listing.findUnique({ where: { id: req.params.id }, include: { author: true } });
+  const text = String(req.body?.body || "").trim().slice(0, MESSAGE_MAX);
+  if (!text) return res.status(400).json({ message: "Message cannot be empty" });
+  const listing = await loadListingForMessages(req.params.id);
   if (!listing) return res.status(404).json({ message: "Listing not found" });
-  if (listing.authorId === req.user.id) return res.status(400).json({ message: "This is your own listing" });
+  const viewer = await viewerContext(req.user.id);
+  const seller = onSellerSide(
+    { listingAuthorId: listing.authorId, authorFlatId: listingAuthorFlatId(listing) },
+    viewer
+  );
+
+  let toUserId;
+  if (!seller) {
+    toUserId = listing.authorId;
+  } else {
+    toUserId = String(req.body?.toUserId || "").trim();
+    if (!toUserId || toUserId === req.user.id) {
+      return res.status(400).json({ message: "Choose the resident you are replying to" });
+    }
+    const prior = await prisma.listingMessage.findFirst({
+      where: { listingId: listing.id, fromUserId: toUserId },
+      select: { id: true },
+    });
+    if (!prior) return res.status(400).json({ message: "That resident has not messaged this listing" });
+  }
 
   const msg = await prisma.listingMessage.create({
     data: {
       listingId: listing.id,
       fromUserId: req.user.id,
-      fromName: req.user.name || null,
-      body: String(body).trim(),
+      toUserId,
+      fromName: req.user.name || viewer.name || null,
+      body: text,
     },
+    include: { from: { include: { flat: true } } },
   });
 
-  const owner = await prisma.user.findUnique({
-    where: { id: listing.authorId },
-    select: { expoPushToken: true, notifyEnabled: true },
-  });
-  if (owner?.expoPushToken && owner.notifyEnabled) {
-    enqueuePush(owner.expoPushToken, `Enquiry: ${listing.title}`, `${req.user.name || "Someone"}: ${msg.body}`, {
-      type: "listing",
-      listingId: listing.id,
-    });
+  const who = req.user.name || "Someone";
+  if (seller) {
+    await notifyUser(toUserId, `Reply: ${listing.title}`, `${who}: ${text}`, listing.id);
+  } else {
+    await notifyUser(listing.authorId, `Message about ${listing.title}`, `${who}: ${text}`, listing.id);
   }
-  res.status(201).json({ ok: true });
+
+  res.status(201).json({
+    ok: true,
+    message: serializeThreadMessage(msg, req.user.id, seller),
+  });
 });
 
-// Owner reads enquiries on their listing (with each sender's name + phone so
-// they can reply/call).
+// The buyer sees only their own thread. The owner, and anyone in the owner's
+// flat, sees every enquiry so they can reply.
 marketplaceRouter.get("/listings/:id/messages", authRequired, async (req, res) => {
-  const listing = await prisma.listing.findUnique({ where: { id: req.params.id } });
+  const listing = await loadListingForMessages(req.params.id);
   if (!listing) return res.status(404).json({ message: "Listing not found" });
-  if (listing.authorId !== req.user.id) return res.status(403).json({ message: "Not your listing" });
+  const viewer = await viewerContext(req.user.id);
+  const seller = onSellerSide(
+    { listingAuthorId: listing.authorId, authorFlatId: listingAuthorFlatId(listing) },
+    viewer
+  );
   const messages = await prisma.listingMessage.findMany({
-    where: { listingId: listing.id },
-    include: { from: true },
-    orderBy: { createdAt: "desc" },
+    where: seller
+      ? { listingId: listing.id }
+      : {
+          listingId: listing.id,
+          OR: [{ fromUserId: req.user.id }, { toUserId: req.user.id }],
+        },
+    include: { from: { include: { flat: true } } },
+    orderBy: { createdAt: "asc" },
     take: 200,
   });
   res.json({
-    messages: messages.map((m) => ({
-      id: m.id,
-      body: m.body,
-      fromName: m.fromName || m.from?.name || "Resident",
-      fromPhone: m.from?.phone || null,
-      createdAt: m.createdAt,
-    })),
+    role: seller ? "seller" : "buyer",
+    messages: messages.map((message) => serializeThreadMessage(message, req.user.id, seller)),
   });
+});
+
+// Unanswered Buy & Sell messages for the home "Needs your attention" list.
+marketplaceRouter.get("/listing-inbox", authRequired, async (req, res) => {
+  const viewer = await viewerContext(req.user.id);
+  const or = [
+    { fromUserId: viewer.userId },
+    { toUserId: viewer.userId },
+    { listing: { authorId: viewer.userId } },
+  ];
+  if (viewer.flatId) or.push({ listing: { author: { flatId: viewer.flatId } } });
+  const rows = await prisma.listingMessage.findMany({
+    where: { OR: or },
+    orderBy: { createdAt: "desc" },
+    take: 300,
+    include: {
+      from: { select: { name: true, flatId: true, flat: { select: { flatNo: true } } } },
+      listing: { select: { id: true, title: true, authorId: true, author: { select: { flatId: true } } } },
+    },
+  });
+  res.json({ notices: listingAttentionNotices(rows.map(inboxRow), viewer) });
 });
