@@ -4,7 +4,7 @@ import { authRequired, roleRequired } from "../auth.js";
 import { enqueuePush } from "../queue.js";
 import { uploadDocument } from "../storage.js";
 import { parsePaging } from "../paging.js";
-import { listingAttentionNotices, onSellerSide } from "../listingInbox.js";
+import { isStaffRole, listingAttentionNotices, locationMatchesFlat, onSellerSide } from "../listingInbox.js";
 
 // Buy & Sell marketplace. Residents post items under a category. A listing is
 // visible either only within the poster's society, or across ALL societies
@@ -325,19 +325,40 @@ const MESSAGE_MAX = 2000;
 async function viewerContext(userId) {
   const me = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, flatId: true, name: true },
+    select: {
+      id: true,
+      role: true,
+      flatId: true,
+      societyId: true,
+      name: true,
+      flat: { select: { flatNo: true, block: true, societyId: true } },
+    },
   });
-  return { userId, flatId: me?.flatId || null, name: me?.name || null };
+  return {
+    userId,
+    role: me?.role || null,
+    flatId: me?.flatId || null,
+    flatNo: me?.flat?.flatNo || null,
+    block: me?.flat?.block || null,
+    societyId: me?.societyId || me?.flat?.societyId || null,
+    name: me?.name || null,
+  };
 }
 
-function listingAuthorFlatId(listing) {
-  return listing?.author?.flatId || null;
+function listingForSellerCheck(listing) {
+  return {
+    listingAuthorId: listing?.authorId || null,
+    authorFlatId: listing?.author?.flatId || null,
+    location: listing?.location || null,
+  };
 }
 
 async function loadListingForMessages(id) {
   return prisma.listing.findUnique({
     where: { id },
-    include: { author: { select: { id: true, flatId: true, name: true, expoPushToken: true, notifyEnabled: true } } },
+    include: {
+      author: { select: { id: true, role: true, flatId: true, name: true, expoPushToken: true, notifyEnabled: true } },
+    },
   });
 }
 
@@ -365,12 +386,45 @@ function inboxRow(message) {
     fromName: message.fromName || message.from?.name || "Resident",
     fromFlat: message.from?.flat?.flatNo || null,
     fromFlatId: message.from?.flatId || null,
+    fromFlatNo: message.from?.flat?.flatNo || null,
+    fromBlock: message.from?.flat?.block || null,
     toUserId: message.toUserId || null,
     listingId: message.listingId,
     listingTitle: message.listing?.title || "",
     listingAuthorId: message.listing?.authorId || null,
     authorFlatId: message.listing?.author?.flatId || null,
+    location: message.listing?.location || null,
   };
+}
+
+// The flat named on the listing gets the enquiry. A society admin account that
+// posted the item does not, so office alerts stay separate from a private sale.
+async function notifySellerHousehold(listing, title, body, exceptUserId) {
+  const people = new Map();
+  if (listing.author?.role === "resident" && listing.authorId && listing.authorId !== exceptUserId) {
+    people.set(listing.authorId, listing.author);
+  }
+  if (listing.societyId && listing.location) {
+    const flats = await prisma.flat.findMany({
+      where: { societyId: listing.societyId },
+      select: { id: true, flatNo: true, block: true },
+    });
+    const flatIds = flats.filter((flat) => locationMatchesFlat(listing.location, flat)).map((flat) => flat.id);
+    if (flatIds.length) {
+      const residents = await prisma.user.findMany({
+        where: { flatId: { in: flatIds }, role: "resident", active: true },
+        select: { id: true, expoPushToken: true, notifyEnabled: true },
+      });
+      for (const resident of residents) {
+        if (resident.id !== exceptUserId) people.set(resident.id, resident);
+      }
+    }
+  }
+  for (const person of people.values()) {
+    if (person.expoPushToken && person.notifyEnabled) {
+      enqueuePush(person.expoPushToken, title, body, { type: "listing", listingId: listing.id });
+    }
+  }
 }
 
 async function notifyUser(userId, title, body, listingId) {
@@ -392,10 +446,7 @@ marketplaceRouter.post("/listings/:id/messages", authRequired, async (req, res) 
   const listing = await loadListingForMessages(req.params.id);
   if (!listing) return res.status(404).json({ message: "Listing not found" });
   const viewer = await viewerContext(req.user.id);
-  const seller = onSellerSide(
-    { listingAuthorId: listing.authorId, authorFlatId: listingAuthorFlatId(listing) },
-    viewer
-  );
+  const seller = listing.authorId === viewer.userId || onSellerSide(listingForSellerCheck(listing), viewer);
 
   let toUserId;
   if (!seller) {
@@ -427,7 +478,7 @@ marketplaceRouter.post("/listings/:id/messages", authRequired, async (req, res) 
   if (seller) {
     await notifyUser(toUserId, `Reply: ${listing.title}`, `${who}: ${text}`, listing.id);
   } else {
-    await notifyUser(listing.authorId, `Message about ${listing.title}`, `${who}: ${text}`, listing.id);
+    await notifySellerHousehold(listing, `Message about ${listing.title}`, `${who}: ${text}`, req.user.id);
   }
 
   res.status(201).json({
@@ -442,10 +493,7 @@ marketplaceRouter.get("/listings/:id/messages", authRequired, async (req, res) =
   const listing = await loadListingForMessages(req.params.id);
   if (!listing) return res.status(404).json({ message: "Listing not found" });
   const viewer = await viewerContext(req.user.id);
-  const seller = onSellerSide(
-    { listingAuthorId: listing.authorId, authorFlatId: listingAuthorFlatId(listing) },
-    viewer
-  );
+  const seller = listing.authorId === viewer.userId || onSellerSide(listingForSellerCheck(listing), viewer);
   const messages = await prisma.listingMessage.findMany({
     where: seller
       ? { listingId: listing.id }
@@ -466,19 +514,31 @@ marketplaceRouter.get("/listings/:id/messages", authRequired, async (req, res) =
 // Unanswered Buy & Sell messages for the home "Needs your attention" list.
 marketplaceRouter.get("/listing-inbox", authRequired, async (req, res) => {
   const viewer = await viewerContext(req.user.id);
+  // Society office, security and the platform owner do not collect private
+  // Buy & Sell chats on their home. Those belong to the flat on the listing.
+  if (isStaffRole(viewer.role)) return res.json({ notices: [] });
   const or = [
     { fromUserId: viewer.userId },
     { toUserId: viewer.userId },
     { listing: { authorId: viewer.userId } },
   ];
   if (viewer.flatId) or.push({ listing: { author: { flatId: viewer.flatId } } });
+  if (viewer.flatNo && viewer.societyId) {
+    const listings = await prisma.listing.findMany({
+      where: { societyId: viewer.societyId, location: { not: null } },
+      select: { id: true, location: true },
+      take: 400,
+    });
+    const ids = listings.filter((listing) => locationMatchesFlat(listing.location, viewer)).map((listing) => listing.id);
+    if (ids.length) or.push({ listingId: { in: ids } });
+  }
   const rows = await prisma.listingMessage.findMany({
     where: { OR: or },
     orderBy: { createdAt: "desc" },
     take: 300,
     include: {
-      from: { select: { name: true, flatId: true, flat: { select: { flatNo: true } } } },
-      listing: { select: { id: true, title: true, authorId: true, author: { select: { flatId: true } } } },
+      from: { select: { name: true, flatId: true, flat: { select: { flatNo: true, block: true } } } },
+      listing: { select: { id: true, title: true, location: true, authorId: true, author: { select: { flatId: true } } } },
     },
   });
   res.json({ notices: listingAttentionNotices(rows.map(inboxRow), viewer) });

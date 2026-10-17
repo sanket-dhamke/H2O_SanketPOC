@@ -3,6 +3,36 @@
 // A newer message uses a new id, so dismissing an older row does not hide it.
 
 const MAX_NOTICES = 5;
+const STAFF_ROLES = new Set(["admin", "superadmin", "guard"]);
+
+export function isStaffRole(role) {
+  return STAFF_ROLES.has(role);
+}
+
+function norm(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+// "Paritosh Tower A 903" matches flat A-903, and does not match A-90 or A-1002.
+export function locationMatchesFlat(location, flat) {
+  const loc = ` ${norm(location)} `;
+  const flatNo = norm(flat?.flatNo);
+  const block = norm(flat?.block);
+  if (!flatNo || flatNo.length < 2) return false;
+  const locTight = loc.replace(/ /g, "");
+  const hasLetter = /[a-z]/.test(flatNo);
+  if (hasLetter) {
+    if (loc.includes(` ${flatNo} `)) return true;
+    const parts = flatNo.match(/^([a-z]+)\s*(\d+)$/);
+    if (!parts) return false;
+    return new RegExp(`${parts[1]}0*${parts[2]}(?!\\d)`).test(locTight);
+  }
+  if (block) {
+    if (loc.includes(` ${block} ${flatNo} `)) return true;
+    return new RegExp(`${block}0*${flatNo}(?!\\d)`).test(locTight);
+  }
+  return loc.includes(` ${flatNo} `);
+}
 
 function clip(text, max) {
   const clean = String(text || "").replace(/\s+/g, " ").trim();
@@ -16,15 +46,17 @@ function atMs(value) {
 }
 
 export function onSellerSide(message, viewer) {
-  if (!message || !viewer) return false;
+  if (!message || !viewer || isStaffRole(viewer.role)) return false;
   if (message.listingAuthorId && message.listingAuthorId === viewer.userId) return true;
-  return Boolean(viewer.flatId && message.authorFlatId && viewer.flatId === message.authorFlatId);
+  if (viewer.flatId && message.authorFlatId && viewer.flatId === message.authorFlatId) return true;
+  return locationMatchesFlat(message.location, viewer);
 }
 
 function senderOnSellerSide(message) {
   if (!message) return false;
   if (message.fromUserId && message.fromUserId === message.listingAuthorId) return true;
-  return Boolean(message.authorFlatId && message.fromFlatId && message.authorFlatId === message.fromFlatId);
+  if (message.authorFlatId && message.fromFlatId && message.authorFlatId === message.fromFlatId) return true;
+  return locationMatchesFlat(message.location, { flatNo: message.fromFlatNo, block: message.fromBlock });
 }
 
 function involves(message, viewer) {

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { listingAttentionNotices } from "../src/listingInbox.js";
+import { listingAttentionNotices, locationMatchesFlat } from "../src/listingInbox.js";
 import { attentionSignature, hideDismissed } from "../../app/src/lib/attentionDismiss.js";
 
 const owner = { userId: "owner", flatId: "flat-903" };
@@ -113,6 +113,45 @@ test("one buyer never sees another buyer's enquiry", () => {
   assert.deepEqual(
     seller.map((row) => row.key).sort(),
     ["listing-message:a", "listing-message:b"]
+  );
+});
+
+test("a society admin who posted the sofa does not get the enquiry; the flat named on it does", () => {
+  assert.equal(locationMatchesFlat("Paritosh Tower A 903", { flatNo: "A-903", block: "A" }), true);
+  assert.equal(locationMatchesFlat("Paritosh Tower A 903", { flatNo: "903", block: "A" }), true);
+  assert.equal(locationMatchesFlat("Paritosh Tower A 903", { flatNo: "A-90", block: "A" }), false);
+  assert.equal(locationMatchesFlat("Paritosh Tower A 903", { flatNo: "A-1002" }), false);
+  assert.equal(locationMatchesFlat("Paritosh Tower A 903", { flatNo: "903", block: "B" }), false);
+
+  const messages = [
+    msg({
+      id: "m1",
+      listingAuthorId: "admin",
+      authorFlatId: null,
+      location: "Paritosh Tower A 903",
+      fromUserId: "buyer",
+      fromName: "Leena Chaudhari",
+      fromFlat: "A-1002",
+      fromFlatNo: "A-1002",
+      fromFlatId: "flat-1002",
+      toUserId: "admin",
+      body: "Hi, is this available ??",
+      createdAt: "2026-10-17T04:00:00.000Z",
+    }),
+  ];
+  assert.equal(listingAttentionNotices(messages, { userId: "admin", role: "admin" }).length, 0);
+  const resident = listingAttentionNotices(messages, {
+    userId: "a903",
+    role: "resident",
+    flatId: "flat-903",
+    flatNo: "A-903",
+    block: "A",
+  });
+  assert.equal(resident.length, 1);
+  assert.match(resident[0].detail, /Leena Chaudhari · A-1002/);
+  assert.equal(
+    listingAttentionNotices(messages, { userId: "b204", role: "resident", flatId: "flat-204", flatNo: "B-204", block: "B" }).length,
+    0
   );
 });
 
