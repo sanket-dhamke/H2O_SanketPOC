@@ -7,6 +7,7 @@ import { api } from "../../lib/api";
 import ScreenHeader from "../../components/ScreenHeader";
 import ModalClose from "../../components/ModalClose";
 import KeyboardAvoider from "../../components/KeyboardAvoider";
+import PhotoLightbox from "../../components/PhotoLightbox";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 const CATS = ["security", "housekeeping", "maintenance", "utilities", "other"];
@@ -24,6 +25,7 @@ export default function VendorsScreen() {
   const [dueDate, setDueDate] = useState("");
   const [images, setImages] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [photos, setPhotos] = useState(null);
 
   const tell = (title, message) => {
     const text = message ? `${title}\n\n${message}` : title;
@@ -144,7 +146,9 @@ export default function VendorsScreen() {
             {v.images?.length ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoRow}>
                 {v.images.map((uri, i) => (
-                  <Image key={`${v.id}-${i}`} source={{ uri }} style={styles.photo} />
+                  <TouchableOpacity key={`${v.id}-${i}`} onPress={() => setPhotos({ uris: v.images, index: i })} testID="vendor-bill-photo">
+                    <Image source={{ uri }} resizeMode="cover" style={styles.photo} />
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             ) : null}
@@ -179,7 +183,9 @@ export default function VendorsScreen() {
             <View style={styles.imgRow}>
               {images.map((uri, i) => (
                 <View key={i} style={styles.thumbWrap}>
-                  <Image source={{ uri }} style={styles.thumb} />
+                  <TouchableOpacity onPress={() => setPhotos({ uris: images, index: i })} testID="vendor-draft-photo">
+                    <Image source={{ uri }} resizeMode="cover" style={styles.thumb} />
+                  </TouchableOpacity>
                   <TouchableOpacity style={styles.thumbX} onPress={() => setImages((current) => current.filter((_, idx) => idx !== i))}>
                     <Ionicons name="close" size={12} color="#fff" />
                   </TouchableOpacity>
@@ -202,6 +208,12 @@ export default function VendorsScreen() {
           </View>
         </KeyboardAvoider>
       </Modal>
+      <PhotoLightbox
+        visible={!!photos}
+        uris={photos?.uris || []}
+        startIndex={photos?.index || 0}
+        onClose={() => setPhotos(null)}
+      />
     </View>
   );
 }

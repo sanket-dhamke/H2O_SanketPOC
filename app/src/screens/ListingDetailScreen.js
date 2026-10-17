@@ -9,7 +9,7 @@ import {
   Modal,
   Image,
   Linking,
-  Dimensions,
+  useWindowDimensions,
   ActivityIndicator,
 } from "react-native";
 import TextInput from "../components/AppTextInput";
@@ -20,16 +20,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import ScreenHeader from "../components/ScreenHeader";
 import ModalClose from "../components/ModalClose";
+import PhotoLightbox from "../components/PhotoLightbox";
 import { catMeta, kindMeta } from "./MarketplaceScreen";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
-const { width } = Dimensions.get("window");
 const cleanPhone = (p) => String(p || "").replace(/[^\d+]/g, "");
 const fmt = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
 
 export default function ListingDetailScreen({ navigation, route }) {
   const id = route?.params?.id;
+  const { width } = useWindowDimensions();
   const [listing, setListing] = useState(null);
+  const [photoAt, setPhotoAt] = useState(null);
   const [messages, setMessages] = useState(null);
   const [participants, setParticipants] = useState(null);
   const [msgModal, setMsgModal] = useState(false);
@@ -119,11 +121,24 @@ export default function ListingDetailScreen({ navigation, route }) {
       <ScreenHeader icon="pricetags" title="Product details" subtitle={meta.label} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
         {listing.images?.length > 0 ? (
-          <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
-            {listing.images.map((uri, i) => (
-              <Image key={i} source={{ uri }} style={[styles.hero, { width }]} />
-            ))}
-          </ScrollView>
+          <>
+            <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
+              {listing.images.map((uri, i) => (
+                <TouchableOpacity key={i} activeOpacity={0.92} onPress={() => setPhotoAt(i)} testID="listing-photo">
+                  <Image source={{ uri }} resizeMode="contain" style={[styles.hero, { width, objectFit: "contain" }]} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <Text style={styles.photoHint}>
+              Tap a photo to see it full size{listing.images.length > 1 ? ` · ${listing.images.length} photos` : ""}
+            </Text>
+            <PhotoLightbox
+              visible={photoAt != null}
+              uris={listing.images}
+              startIndex={photoAt || 0}
+              onClose={() => setPhotoAt(null)}
+            />
+          </>
         ) : (
           <View style={[styles.hero, styles.heroPlaceholder, { width }]}>
             <Ionicons name={meta.icon} size={54} color="#B7C2C9" />
@@ -349,7 +364,8 @@ function MessageModal({ visible, onClose, listingId, title }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
-  hero: { height: 260, backgroundColor: "#EEF2F4" },
+  hero: { height: 340, backgroundColor: "#E7EEF1" },
+  photoHint: { color: "#6B7B85", fontSize: 12, fontWeight: "700", paddingHorizontal: 16, paddingTop: 8 },
   heroPlaceholder: { alignItems: "center", justifyContent: "center" },
   body: { padding: 16 },
   titleRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },

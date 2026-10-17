@@ -5,6 +5,9 @@ import Razorpay from "razorpay";
 export const RZP_KEY_ID = process.env.RAZORPAY_KEY_ID || "";
 export const RZP_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
 export const razorpayEnabled = Boolean(RZP_KEY_ID && RZP_KEY_SECRET);
+// rzp_test_ keys always show Razorpay's red Test Mode ribbon and do not open
+// the live UPI apps. rzp_live_ keys are the real checkout.
+export const razorpayMode = !razorpayEnabled ? "off" : RZP_KEY_ID.startsWith("rzp_test_") ? "test" : "live";
 
 export const razorpay = razorpayEnabled
   ? new Razorpay({ key_id: RZP_KEY_ID, key_secret: RZP_KEY_SECRET })

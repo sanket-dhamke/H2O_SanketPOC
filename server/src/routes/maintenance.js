@@ -107,6 +107,12 @@ maintenanceRouter.post("/maintenance/:id/create-order", authRequired, async (req
   const payer = await prisma.user.findFirst({
     where: { flatId: bill.flatId, role: "resident" },
   });
+  const me = req.user?.id
+    ? await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { name: true, email: true, phone: true },
+      })
+    : null;
 
   const chargeAmount = amountToCharge(bill, req.body);
   const amountPaise = Math.round(chargeAmount * 100);
@@ -147,9 +153,9 @@ maintenanceRouter.post("/maintenance/:id/create-order", authRequired, async (req
       name: brand.name,
       description: `Maintenance ${bill.period} (Flat ${bill.flat?.flatNo})`,
       prefill: {
-        name: payer?.name || req.user?.name || "",
-        email: payer?.email || req.user?.email || "",
-        contact: String(payer?.phone || req.user?.phone || "").replace(/\D/g, "").slice(-10),
+        name: me?.name || payer?.name || req.user?.name || "",
+        email: me?.email || payer?.email || req.user?.email || "",
+        contact: String(me?.phone || payer?.phone || "").replace(/\D/g, "").slice(-10),
       },
     });
   } catch (err) {

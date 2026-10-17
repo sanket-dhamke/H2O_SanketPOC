@@ -24,6 +24,7 @@ import ScreenHeader from "../components/ScreenHeader";
 import ModalClose from "../components/ModalClose";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 import OffersRail from "../components/OffersRail";
+import PhotoLightbox from "../components/PhotoLightbox";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
@@ -84,6 +85,7 @@ export default function MarketplaceScreen() {
   const [query, setQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [modal, setModal] = useState(false);
+  const [photos, setPhotos] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -226,49 +228,66 @@ export default function MarketplaceScreen() {
         }
         ListFooterComponentStyle={{ width: "100%" }}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={() => navigation.navigate("ListingDetail", { id: item.id })}>
+          <View style={styles.card}>
             <View style={styles.thumbWrap}>
               {item.images?.[0] ? (
-                <Image source={{ uri: item.images[0] }} style={styles.thumb} />
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  testID="listing-card-photo"
+                  onPress={(event) => {
+                    event?.stopPropagation?.();
+                    setPhotos({ uris: item.images, index: 0 });
+                  }}
+                >
+                  <Image source={{ uri: item.images[0] }} resizeMode="contain" style={[styles.thumb, { objectFit: "contain" }]} />
+                </TouchableOpacity>
               ) : (
                 <View style={[styles.thumb, styles.thumbPlaceholder]}>
                   <Ionicons name={catMeta(item.category).icon} size={30} color="#B7C2C9" />
                 </View>
               )}
               {item.kind === "group_buy" ? (
-                <View style={styles.priceTag}>
+                <View style={styles.priceTag} pointerEvents="none">
                   <Text style={styles.priceTagText}>
                     {item.joinCount || 0}{item.targetCount ? `/${item.targetCount}` : ""} joined
                   </Text>
                 </View>
               ) : item.price != null ? (
-                <View style={styles.priceTag}>
+                <View style={styles.priceTag} pointerEvents="none">
                   <Text style={styles.priceTagText}>{money(item.price)}</Text>
                 </View>
               ) : item.kind === "borrow" && item.lendMode === "free" ? (
-                <View style={styles.priceTag}>
+                <View style={styles.priceTag} pointerEvents="none">
                   <Text style={styles.priceTagText}>FREE</Text>
                 </View>
               ) : null}
               {item.kind && item.kind !== "sale" && (
-                <View style={styles.kindTag}>
+                <View style={styles.kindTag} pointerEvents="none">
                   <Ionicons name={kindMeta(item.kind).icon} size={11} color="#fff" />
                   <Text style={styles.kindTagText}>{kindMeta(item.kind).label}</Text>
                 </View>
               )}
               {item.status !== "active" && (
-                <View style={styles.soldTag}>
+                <View style={styles.soldTag} pointerEvents="none">
                   <Text style={styles.soldTagText}>{item.status === "sold" ? "SOLD" : item.status === "fulfilled" ? "DONE" : "REMOVED"}</Text>
                 </View>
               )}
             </View>
-            <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-            <Text style={styles.cardLoc} numberOfLines={1}>{item.location || item.societyName || "—"}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate("ListingDetail", { id: item.id })}>
+              <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+              <Text style={styles.cardLoc} numberOfLines={1}>{item.location || item.societyName || "—"}</Text>
+            </TouchableOpacity>
+          </View>
         )}
       />
 
       <CreateListingModal visible={modal} onClose={() => setModal(false)} onDone={load} />
+      <PhotoLightbox
+        visible={!!photos}
+        uris={photos?.uris || []}
+        startIndex={photos?.index || 0}
+        onClose={() => setPhotos(null)}
+      />
     </View>
   );
 }
@@ -558,7 +577,7 @@ const styles = StyleSheet.create({
   emptyText: { color: "#8895A0", fontSize: 14, fontWeight: "600", textAlign: "center", paddingHorizontal: 24 },
   card: { flex: 1, backgroundColor: "#fff", borderRadius: 14, overflow: "hidden", marginBottom: 0 },
   thumbWrap: { position: "relative" },
-  thumb: { width: "100%", height: 130, backgroundColor: "#EEF2F4" },
+  thumb: { width: "100%", height: 180, backgroundColor: "#EEF2F4" },
   thumbPlaceholder: { alignItems: "center", justifyContent: "center" },
   priceTag: { position: "absolute", left: 8, bottom: 8, backgroundColor: "rgba(11,110,143,0.92)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   priceTagText: { color: "#fff", fontWeight: "800", fontSize: 13 },

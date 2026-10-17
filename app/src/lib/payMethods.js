@@ -42,6 +42,9 @@ function listWords(words) {
 export function payMethodsHint(methods) {
   const m = methods || UNKNOWN;
   if (!m.enabled) return "Payments are in test mode — Pay marks the bill as settled without charging you.";
+  if (m.mode === "test") {
+    return "Razorpay is in test mode. Checkout shows a Test Mode label, and Google Pay, PhonePe and Paytm are not the live UPI flow. Live payments start after the live Razorpay keys are saved on the server and UPI is switched on in the Razorpay dashboard.";
+  }
   if (!m.known) return "Pay opens Razorpay — UPI, card or net banking, depending on what your society has enabled.";
 
   const rest = listWords([m.card && "card", m.netbanking && "net banking", m.wallet && "wallets"].filter(Boolean));
