@@ -51,6 +51,26 @@ communityRouter.post("/announcements", authRequired, roleRequired("admin"), asyn
   res.status(201).json({ announcement: serializeAnnouncement(item), reminders });
 });
 
+communityRouter.patch("/announcements/:id", authRequired, roleRequired("admin"), async (req, res) => {
+  const item = await prisma.announcement.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
+  if (!item) return res.status(404).json({ message: "Announcement not found" });
+  const data = {};
+  if (req.body?.pinned !== undefined) data.pinned = Boolean(req.body.pinned);
+  if (req.body?.title !== undefined) {
+    const title = String(req.body.title || "").trim();
+    if (!title) return res.status(400).json({ message: "Title is required" });
+    data.title = title;
+  }
+  if (req.body?.body !== undefined) {
+    const body = String(req.body.body || "").trim();
+    if (!body) return res.status(400).json({ message: "Body is required" });
+    data.body = body;
+  }
+  if (!Object.keys(data).length) return res.status(400).json({ message: "Nothing to update" });
+  const updated = await prisma.announcement.update({ where: { id: item.id }, data });
+  res.json({ announcement: serializeAnnouncement(updated) });
+});
+
 communityRouter.delete("/announcements/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const item = await prisma.announcement.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
   if (!item) return res.status(404).json({ message: "Announcement not found" });

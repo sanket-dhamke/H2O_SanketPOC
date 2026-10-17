@@ -2,7 +2,8 @@ import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
 import { billBalance, refreshLateFees } from "../billing.js";
-import { moneySplits, collectionMonths, serializeMove, serializeVendorBill } from "../office.js";
+import { moneySplits, collectionMonths, serializeMove, serializeVendorBill, vendorImageList } from "../office.js";
+import { uploadDocument } from "../storage.js";
 
 export const officeRouter = Router();
 officeRouter.use(authRequired, roleRequired("admin"));
@@ -14,6 +15,23 @@ const VENDOR_CATS = ["security", "housekeeping", "maintenance", "utilities", "ot
 
 function clip(v, max) {
   return String(v || "").trim().slice(0, max);
+}
+
+const MAX_VENDOR_PHOTOS = 30;
+const MAX_IMG_CHARS = 4_000_000;
+
+async function storeVendorImages(images) {
+  const incoming = vendorImageList(images).slice(0, MAX_VENDOR_PHOTOS);
+  const stamp = Date.now();
+  const uploaded = await Promise.all(
+    incoming.map(async (img, i) => {
+      if (img.startsWith("http")) return img;
+      if (img.length > MAX_IMG_CHARS) return null;
+      const url = await uploadDocument(img, `vendor-${stamp}-${i}`, "vendor-bills");
+      return url || (img.startsWith("data:") ? img : null);
+    })
+  );
+  return uploaded.filter(Boolean);
 }
 
 officeRouter.get("/office", async (req, res) => {
@@ -191,12 +209,14 @@ officeRouter.post("/vendors", async (req, res) => {
   }
   const dueDate = clip(req.body?.dueDate, 10);
   if (dueDate && !YMD.test(dueDate)) return res.status(400).json({ message: "dueDate must be YYYY-MM-DD" });
+  const images = await storeVendorImages(req.body?.images);
   const row = await prisma.vendorBill.create({
     data: {
       societyId: sid(req),
       vendorName,
       category: VENDOR_CATS.includes(req.body?.category) ? req.body.category : "other",
       description: clip(req.body?.description, 240) || null,
+      images: images.length ? images : undefined,
       amount,
       dueDate: dueDate || null,
       createdById: req.user.id,

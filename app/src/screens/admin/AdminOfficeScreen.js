@@ -15,6 +15,7 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { labelsFor } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
+import { reminderResult } from "../../lib/reminderCopy";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
@@ -26,6 +27,7 @@ export default function AdminOfficeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [days, setDays] = useState("");
   const [saving, setSaving] = useState(false);
+  const [remindNote, setRemindNote] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -63,11 +65,17 @@ export default function AdminOfficeScreen() {
   };
 
   const remind = async () => {
+    setRemindNote("");
     try {
       const res = await api.adminRemindUnpaid();
-      Alert.alert("Reminders", res.notified ? `Notified ${res.notified} ${L.payer.toLowerCase()}(s).` : "No one to remind right now.");
+      const message = reminderResult(res, L);
+      setRemindNote(message);
+      if (typeof window !== "undefined" && window.alert) window.alert(`Reminders\n\n${message}`);
     } catch (e) {
-      Alert.alert("Error", e.message);
+      const message = e.message || "Could not send reminders.";
+      setRemindNote(message);
+      if (typeof window !== "undefined" && window.alert) window.alert(message);
+      else Alert.alert("Error", message);
     }
   };
 
@@ -116,6 +124,7 @@ export default function AdminOfficeScreen() {
             <TouchableOpacity style={styles.remindBtn} onPress={remind}>
               <Text style={styles.remindText}>Send reminder</Text>
             </TouchableOpacity>
+            {remindNote ? <Text style={styles.remindNote}>{remindNote}</Text> : null}
           </View>
         ) : null}
 
@@ -192,6 +201,7 @@ const styles = StyleSheet.create({
   monthLine: { color: "#334", fontWeight: "600", marginTop: 2 },
   remindBtn: { marginTop: 14, backgroundColor: "#0B6E8F", borderRadius: 10, paddingVertical: 12, alignItems: "center" },
   remindText: { color: "#fff", fontWeight: "800" },
+  remindNote: { marginTop: 10, color: "#1B2B33", lineHeight: 20, fontSize: 13 },
   empty: { color: "#6B7B85" },
   row: { flexDirection: "row", justifyContent: "space-between", backgroundColor: "#fff", borderRadius: 12, padding: 14, marginBottom: 8 },
   rowTitle: { fontWeight: "700", color: "#1B2B33" },

@@ -20,7 +20,7 @@ import { isPremium } from "../plan.js";
 import { razorpay, razorpayEnabled, RZP_KEY_ID, RZP_KEY_SECRET } from "../razorpay.js";
 import { brand } from "../brand.js";
 import { recordPayment, effectivePaid, billBalance, buildFlatLedger, refreshLateFees } from "../billing.js";
-import { sendFeeReminder, whatsappEnabled, WHATSAPP_BUSINESS_NUMBER } from "../whatsapp.js";
+import { sendFeeReminder, sendSocietyNotice, whatsappEnabled, WHATSAPP_BUSINESS_NUMBER } from "../whatsapp.js";
 import { runFeeReminders } from "../feeReminders.js";
 import { ensureJoinCode, generateUniqueJoinCode } from "../joinCode.js";
 import { cacheWrap } from "../cache.js";
@@ -690,68 +690,105 @@ adminRouter.get("/fees", async (req, res) => {
 });
 
 // Remind every resident of a flat that still owes maintenance. Covers bills that
-// are "pending" OR "partial" (any outstanding balance), sends a push when the
-// resident has the app, and falls back to email when they don't. Reports a
-// breakdown plus the flats that couldn't be reached (no app/email on file).
+// are "pending" OR "partial" (any outstanding balance). Each resident with a
+// login sees it on the GATEZO home. WhatsApp goes out when a mobile is on file.
+// Push and email are extra channels. Flats with dues and no resident login are
+// reported as unreachable.
 adminRouter.post("/reminders", async (req, res) => {
+  const society = await prisma.society.findUnique({
+    where: { id: sid(req) },
+    select: { name: true },
+  });
+  const societyName = society?.name || "your society";
   const openBills = await prisma.bill.findMany({
     where: { flat: { societyId: sid(req) }, status: { in: ["pending", "partial"] } },
     include: { flat: { include: { residents: true } } },
   });
 
   // A flat may have several open bills — sum the outstanding balance per flat.
-  const dueByFlat = new Map(); // flatId -> { flat, balance }
+  const dueByFlat = new Map(); // flatId -> { flat, balance, billIds }
   for (const bill of openBills) {
     const bal = billBalance(bill);
     if (bal <= 0) continue;
-    const entry = dueByFlat.get(bill.flatId) || { flat: bill.flat, balance: 0 };
+    const entry = dueByFlat.get(bill.flatId) || { flat: bill.flat, balance: 0, billIds: [] };
     entry.balance += bal;
+    entry.billIds.push(bill.id);
     dueByFlat.set(bill.flatId, entry);
   }
 
   let pushed = 0;
   let emailed = 0;
-  const unreachable = []; // flats with dues but no reachable resident
+  let whatsapp = 0;
+  let whatsappPending = 0;
+  let phonesMissing = 0;
+  let dashboard = 0;
+  const unreachable = [];
   const handled = new Set();
+  const remindedBillIds = [];
 
-  for (const { flat, balance } of dueByFlat.values()) {
-    const rupee = `\u20B9${Number(balance).toLocaleString("en-IN")}`;
-    let deliveredForFlat = 0;
-    for (const resident of flat.residents) {
-      if (resident.role !== "resident") continue;
+  for (const { flat, balance, billIds } of dueByFlat.values()) {
+    const rupee = `\u20B9${Math.round(balance).toLocaleString("en-IN")}`;
+    const residents = (flat.residents || []).filter((resident) => resident.role === "resident" && resident.active !== false);
+    if (!residents.length) {
+      unreachable.push(flat.flatNo);
+      continue;
+    }
+    remindedBillIds.push(...billIds);
+    for (const resident of residents) {
       if (handled.has(resident.id)) continue;
       handled.add(resident.id);
+      dashboard++;
 
-      let delivered = false;
+      const text = `Flat ${flat.flatNo} has ${rupee} pending society maintenance. Please pay from GATEZO.`;
       if (resident.expoPushToken) {
-        await sendPush(
-          resident.expoPushToken,
-          "Maintenance payment reminder",
-          `Flat ${flat.flatNo} has ${rupee} pending society maintenance. Please pay at the earliest.`,
-          { type: "reminder" }
-        );
+        await sendPush(resident.expoPushToken, "Maintenance payment reminder", text, { type: "reminder" });
         pushed++;
-        delivered = true;
-      } else if (resident.email) {
-        const r = await sendEmail({
+      }
+      if (resident.email) {
+        const sent = await sendEmail({
           to: resident.email,
           subject: "Maintenance payment reminder",
           text:
             `Dear ${resident.name || "Resident"},\n\n` +
-            `Flat ${flat.flatNo} has ${rupee} pending society maintenance. ` +
-            `Please pay at your earliest convenience.\n\nThank you.`,
+            `${text}\n\nIt is also under Needs your attention on your GATEZO home.\n\nThank you.`,
         });
-        if (r.delivered) {
-          emailed++;
-          delivered = true;
-        }
+        if (sent?.delivered) emailed++;
       }
-      if (delivered) deliveredForFlat++;
+      if (resident.phone) {
+        const wa = await sendSocietyNotice({
+          toPhone: resident.phone,
+          name: resident.name,
+          societyName,
+          title: "Maintenance payment reminder",
+          body: text,
+        });
+        if (wa.sent) whatsapp++;
+        else if (wa.dev) whatsappPending++;
+      } else {
+        phonesMissing++;
+      }
     }
-    if (deliveredForFlat === 0) unreachable.push(flat.flatNo);
   }
 
-  res.json({ ok: true, notified: pushed + emailed, pushed, emailed, unreachable });
+  if (remindedBillIds.length) {
+    await prisma.bill.updateMany({
+      where: { id: { in: remindedBillIds } },
+      data: { lastRemindedAt: new Date() },
+    });
+  }
+
+  res.json({
+    ok: true,
+    notified: dashboard,
+    pushed,
+    emailed,
+    whatsapp,
+    whatsappPending,
+    phonesMissing,
+    dashboard,
+    whatsappEnabled,
+    unreachable,
+  });
 });
 
 /* ------------------------------ Expenses --------------------------------- */

@@ -159,6 +159,9 @@ function SocietyReports() {
         {gate ? (
           <>
             <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Entry–exit (last 30 days)</Text>
+            <Text style={styles.explain}>
+              This is the gate log, not a money report. Each row is a visitor: when they came in, and whether they have left. Still inside means the guard has not marked an exit.
+            </Text>
             <View style={styles.kpiRow}>
               <Kpi label="Entries" value={gate.total ?? 0} />
               <Kpi label="Still inside" value={gate.stillInside ?? 0} color="#C2571A" />
@@ -355,6 +358,7 @@ const styles = StyleSheet.create({
   due: { color: "#C2571A", fontWeight: "800" },
   cleared: { color: "#2E9E52", fontWeight: "700", fontSize: 13 },
   muted: { color: "#8895A0", textAlign: "center", marginTop: 12 },
+  explain: { color: "#48606B", fontSize: 13, lineHeight: 19, marginTop: -4, marginBottom: 10 },
   backupCard: { flexDirection: "row", gap: 12, alignItems: "flex-start", backgroundColor: "#EAF4F7", borderRadius: 12, padding: 14 },
   backupText: { flex: 1, color: "#3C5560", fontSize: 13, lineHeight: 19 },
   emailBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#fff", borderWidth: 1, borderColor: "#0B6E8F", borderRadius: 12, paddingVertical: 13, marginTop: 12 },

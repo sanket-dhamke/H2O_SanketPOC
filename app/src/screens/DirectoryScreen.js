@@ -115,7 +115,13 @@ export default function DirectoryScreen() {
               <Text style={styles.sub}>
                 {item.flatNo || "—"}
                 {item.block ? ` · Block ${item.block}` : ""}
-                {item.phone ? ` · ${item.phone}` : " · number hidden"}
+                {item.phone
+                  ? ` · ${item.phone}`
+                  : item.phoneHidden
+                    ? " · chose to hide their number"
+                    : item.isSelf
+                      ? " · add your number in account"
+                      : " · no number added"}
               </Text>
             </View>
             {item.phone && !item.isSelf ? (

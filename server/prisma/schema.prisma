@@ -1208,6 +1208,8 @@ model VendorBill {
   vendorName  String
   category    String    @default("other") // security | housekeeping | maintenance | utilities | other
   description String?
+  // Photos of the paper bill. Public URLs, or data URLs when storage is off.
+  images      Json?
   amount      Float
   dueDate     String?
   status      String    @default("unpaid") // unpaid | paid

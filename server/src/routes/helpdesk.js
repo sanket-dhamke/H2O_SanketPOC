@@ -66,7 +66,8 @@ helpdeskRouter.get("/directory/residents", authRequired, async (req, res) => {
       name: u.name,
       flatNo: u.flat?.flatNo || null,
       block: u.flat?.block || null,
-      phone: u.sharePhone === false ? null : u.phone || null,
+      phone: u.id === req.user.id || u.sharePhone !== false ? u.phone || null : null,
+      phoneHidden: u.id !== req.user.id && u.sharePhone === false,
       isSelf: u.id === req.user.id,
     })),
   });

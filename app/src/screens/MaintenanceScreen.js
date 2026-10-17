@@ -72,11 +72,16 @@ export default function MaintenanceScreen() {
     return { collected, pending, count: visibleBills.length };
   }, [visibleBills, monthFilter]);
 
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const prettyMonth = (period) => {
     if (!period) return "";
     const [y, m] = period.split("-").map(Number);
-    const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return `${names[m - 1]} ${y}`;
+    return `${monthNames[m - 1] || period} ${y}`;
+  };
+  const prettyDue = (dueDate) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dueDate || ""));
+    if (!match) return dueDate || "—";
+    return `${Number(match[3])} ${monthNames[Number(match[2]) - 1] || match[2]} ${match[1]}`;
   };
 
   const load = useCallback(async () => {
@@ -221,6 +226,11 @@ export default function MaintenanceScreen() {
                 Showing {visibleBills.length} bill{visibleBills.length === 1 ? "" : "s"} for the selected month.
               </Text>
             ) : null}
+            {isAdmin ? (
+              <Text style={styles.filterHint}>
+                Each row is one flat. The month is the billing period. The date is when that bill is due. They match across rows when every flat was billed together.
+              </Text>
+            ) : null}
             {isAdmin && monthSummary ? (
               <View style={styles.monthCard}>
                 <Text style={styles.monthCardTitle}>Collection · {prettyMonth(monthFilter)}</Text>
@@ -259,13 +269,16 @@ export default function MaintenanceScreen() {
         renderItem={({ item }) => (
           <View style={styles.bill}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.period}>{item.period}</Text>
+              <Text style={styles.period}>
+                {item.flatNo ? `Flat ${item.flatNo}` : "Bill"}
+                {item.period ? ` · ${prettyMonth(item.period)}` : ""}
+              </Text>
               {item.status === "paid" ? (
                 <Text style={styles.due}>Paid {formatDateTime(item.paidAt)}</Text>
               ) : item.status === "partial" ? (
-                <Text style={styles.duePartial}>Paid ₹{item.paidAmount} · balance ₹{item.balance}</Text>
+                <Text style={styles.duePartial}>Due {prettyDue(item.dueDate)} · paid ₹{item.paidAmount} · balance ₹{item.balance}</Text>
               ) : (
-                <Text style={styles.due}>Due {item.dueDate}</Text>
+                <Text style={styles.due}>Due {prettyDue(item.dueDate)}</Text>
               )}
               {item.status !== "paid" && item.nextDueAmount ? (
                 <Text style={styles.installment}>Installment ₹{item.nextDueAmount}{item.remindOn ? ` · reminder ${item.remindOn}` : ""}</Text>

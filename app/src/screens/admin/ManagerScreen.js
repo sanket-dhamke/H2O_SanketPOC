@@ -196,9 +196,9 @@ export default function ManagerScreen() {
             <Text style={styles.statSub}>vs {inr(f.collectedPrevMonth)} last month</Text>
           </View>
           <View style={styles.stat}>
-            <Text style={styles.statLabel}>Pending this month</Text>
-            <Text style={[styles.statValue, { color: "#B26B00" }]}>{inr(f.pendingThisMonth)}</Text>
-            <Text style={styles.statSub}>{inr(f.pendingTotal)} outstanding all-time</Text>
+            <Text style={styles.statLabel}>Unpaid dues</Text>
+            <Text style={[styles.statValue, { color: f.pendingTotal > 0 ? "#B26B00" : "#1E7A3D" }]}>{inr(f.pendingTotal)}</Text>
+            <Text style={styles.statSub}>{inr(f.pendingThisMonth)} of that was billed this month</Text>
           </View>
           <View style={styles.stat}>
             <View style={styles.statTop}>

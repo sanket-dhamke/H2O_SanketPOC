@@ -62,4 +62,7 @@ test("serializers keep tenant fields", () => {
   });
   assert.equal(v.amount, 18000);
   assert.equal(v.status, "unpaid");
+  assert.deepEqual(v.images, []);
+  const withPhotos = serializeVendorBill({ ...v, images: ["https://example.com/a.jpg", "", 4, " https://example.com/b.jpg "] });
+  assert.deepEqual(withPhotos.images, ["https://example.com/a.jpg", " https://example.com/b.jpg "]);
 });

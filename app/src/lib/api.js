@@ -360,6 +360,8 @@ export const api = {
   announcements: () => request("/api/announcements"),
   createAnnouncement: (payload) =>
     request("/api/announcements", { method: "POST", body: payload }),
+  updateAnnouncement: (id, payload) =>
+    request(`/api/announcements/${id}`, { method: "PATCH", body: payload }),
   deleteAnnouncement: (id) =>
     request(`/api/announcements/${id}`, { method: "DELETE" }),
   posts: () => request("/api/posts"),

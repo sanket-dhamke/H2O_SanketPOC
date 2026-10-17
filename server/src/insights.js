@@ -22,6 +22,21 @@ function pct(cur, base) {
 
 const inr = (n) => `₹${Math.round(n || 0).toLocaleString("en-IN")}`;
 
+// Outstanding money that has not yet stacked into a 2-month defaulter alert.
+export function unpaidDuesAlert({ totalPending, dueFlatCount, unit = "flat", units = "flats" }) {
+  const n = Math.max(0, Number(dueFlatCount) || 0);
+  const noun = n === 1 ? unit : units;
+  return {
+    level: "warn",
+    icon: "cash-outline",
+    title: `${inr(totalPending)} still unpaid`,
+    detail: n
+      ? `${n} ${noun} ${n === 1 ? "has" : "have"} outstanding dues, including older months.`
+      : `${inr(totalPending)} is still outstanding.`,
+    action: "finance",
+  };
+}
+
 // Localised nouns so preschool tenants never see "flat/society/maintenance".
 function vocab(orgType) {
   return orgType === "preschool"
@@ -147,6 +162,11 @@ export async function computeSocietyInsights(societyId) {
   }
   if (overnight >= 5) {
     alerts.push({ level: "info", icon: "moon-outline", title: `${overnight} late-night gate entries this week`, detail: `Logged between 12–5 AM. Worth a quick review of the gate log.`, action: "gate" });
+  }
+  // One billing period never meets the 2-month defaulter rule, but the money
+  // is still unpaid. Surface it before the empty-state "All clear" line.
+  if (totalPending > 0.5 && !chronic.length && !defaulters.length) {
+    alerts.push(unpaidDuesAlert({ totalPending, dueFlatCount: dueByFlat.size, unit: v.unit, units: v.units }));
   }
   if (!alerts.length) {
     alerts.push({ level: "ok", icon: "checkmark-circle", title: "All clear", detail: `No dues spikes, security or ops issues detected for ${society?.name || "your " + v.org}.` });

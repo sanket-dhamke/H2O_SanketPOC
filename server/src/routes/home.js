@@ -131,7 +131,7 @@ async function residentSummary(user) {
     visitorDonut({ flatId }),
     prisma.bill.findMany({
       where: { flatId },
-      select: { amount: true, status: true, paidAmount: true, lateFee: true, dueDate: true, period: true },
+      select: { amount: true, status: true, paidAmount: true, lateFee: true, dueDate: true, period: true, lastRemindedAt: true },
     }),
     prisma.visitor.count({ where: { flatId, status: "pending" } }),
     prisma.booking.count({ where: { residentId: user.id, status: "approved", date: { gte: indiaToday() } } }),
@@ -168,12 +168,24 @@ async function residentSummary(user) {
     });
   }
   if (pendingAmount > 0.5) {
+    const remindedAt = bills
+      .filter((b) => billBalance(b) > 0.5 && b.lastRemindedAt)
+      .map((b) => new Date(b.lastRemindedAt))
+      .sort((a, b) => b - a)[0];
+    const remindedRecently = remindedAt && Date.now() - remindedAt.getTime() < 30 * 864e5;
+    const remindedOn = remindedAt
+      ? remindedAt.toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" })
+      : "";
     pending.push({
       key: "bills",
       level: overdueBills > 0 ? "critical" : "warn",
       icon: "cash-outline",
       label: `₹${inr(pendingAmount).toLocaleString("en-IN")} outstanding`,
-      detail: overdueBills > 0 ? `${overdueBills} bill${overdueBills === 1 ? "" : "s"} past the due date.` : "Pay from the bills tab.",
+      detail: remindedRecently
+        ? `The office reminded you on ${remindedOn}. Open bills to pay.`
+        : overdueBills > 0
+          ? `${overdueBills} bill${overdueBills === 1 ? "" : "s"} past the due date.`
+          : "Pay from the bills tab.",
       route: "Maintenance",
       params: { screen: "MaintenanceHome" },
     });
@@ -272,24 +284,28 @@ async function societySummary(user, { includeInsights }) {
 
   const { finance, alerts, defaulters, ops } = insights;
   const collected = finance.collectedThisMonth;
-  const outstanding = finance.pendingThisMonth;
+  // The donut is the money still owed, including older months. A quiet
+  // calendar month used to draw ₹0 and a dash even when nobody had paid.
+  const unpaid = finance.pendingTotal;
+  const shown = collected + unpaid;
 
   return {
     unit: null,
     visitors,
     finance: {
-      billed: finance.billedThisMonth,
+      billed: shown,
       paid: collected,
-      pending: outstanding,
-      paidPct: finance.billedThisMonth > 0 ? Math.round((collected / finance.billedThisMonth) * 100) : 100,
+      pending: unpaid,
+      pendingThisMonth: finance.pendingThisMonth,
+      paidPct: shown > 0 ? Math.round((collected / shown) * 100) : 100,
       balance: finance.balance,
       collectedAllTime: finance.collectedAllTime,
-      pendingTotal: finance.pendingTotal,
+      pendingTotal: unpaid,
       totalExpenses: finance.totalExpenses,
       collectionDeltaPct: finance.collectionDeltaPct,
       segments: [
         { key: "paid", label: "Collected", value: collected },
-        { key: "pending", label: "Pending", value: outstanding },
+        { key: "pending", label: "Unpaid", value: unpaid },
       ],
     },
     trend,

@@ -23,17 +23,9 @@ import ModalClose from "../../components/ModalClose";
 import MonthField from "../../components/MonthField";
 import WingedFlats from "../../components/WingedFlats";
 import KeyboardAvoider from "../../components/KeyboardAvoider";
+import { reminderResult } from "../../lib/reminderCopy";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
-
-// Flats that still owe but have no app login or email on file to reach.
-function unreachableNote(res, L) {
-  if (!res.unreachable?.length) return "";
-  return (
-    `\n\n${res.unreachable.length} ${L.unit.toLowerCase()}(s) have dues but no app/email on file: ` +
-    `${res.unreachable.join(", ")}. Add a ${L.payer.toLowerCase()} email or ask them to log into the app.`
-  );
-}
 
 export default function AdminDashboardScreen() {
   const navigation = useNavigation();
@@ -43,6 +35,7 @@ export default function AdminDashboardScreen() {
   const [data, setData] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [remindNote, setRemindNote] = useState("");
   const [billModal, setBillModal] = useState(false);
   const [expenseModal, setExpenseModal] = useState(false);
   const [lateFeeModal, setLateFeeModal] = useState(false);
@@ -71,27 +64,17 @@ export default function AdminDashboardScreen() {
 
   const remind = async () => {
     setBusy(true);
+    setRemindNote("");
     try {
       const res = await api.adminRemindUnpaid();
-      const payer = L.payer.toLowerCase();
-      if (!res.notified) {
-        const base = res.unreachable?.length
-          ? `No ${payer} could be reached.`
-          : `No ${payer}s to remind — everyone is up to date.`;
-        Alert.alert("Reminders", base + unreachableNote(res, L));
-      } else {
-        const parts = [];
-        if (res.pushed) parts.push(`${res.pushed} via app`);
-        if (res.emailed) parts.push(`${res.emailed} via email`);
-        Alert.alert(
-          "Reminders sent",
-          `Notified ${res.notified} ${payer}(s) with dues` +
-            (parts.length ? ` (${parts.join(", ")}).` : ".") +
-            unreachableNote(res, L)
-        );
-      }
+      const message = reminderResult(res, L);
+      setRemindNote(message);
+      if (typeof window !== "undefined" && window.alert) window.alert(`Reminders\n\n${message}`);
     } catch (e) {
-      Alert.alert("Error", e.message);
+      const message = e.message || "Could not send reminders.";
+      setRemindNote(message);
+      if (typeof window !== "undefined" && window.alert) window.alert(message);
+      else Alert.alert("Error", message);
     } finally {
       setBusy(false);
     }
@@ -137,6 +120,7 @@ export default function AdminDashboardScreen() {
       >
         <Text style={styles.remindText}>{busy ? "Sending..." : L.remindLabel}</Text>
       </TouchableOpacity>
+      {remindNote ? <Text style={styles.remindNote}>{remindNote}</Text> : null}
       {preschool && (
         <TouchableOpacity style={[styles.collectBtn, styles.feesBtn]} onPress={() => navigation.navigate("StudentFees")}>
           <Ionicons name="cash-outline" size={18} color="#fff" />
@@ -587,6 +571,7 @@ const styles = StyleSheet.create({
   actionText: { color: "#0B6E8F", fontWeight: "700" },
   remindBtn: { backgroundColor: "#C2571A", borderRadius: 10, paddingVertical: 14, alignItems: "center", marginTop: 12 },
   remindText: { color: "#fff", fontWeight: "700" },
+  remindNote: { marginTop: 10, backgroundColor: "#fff", borderRadius: 10, padding: 12, color: "#1B2B33", lineHeight: 20, fontSize: 13 },
   collectBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#fff", borderRadius: 10, paddingVertical: 14, marginTop: 12, borderWidth: 1, borderColor: "#CFE0E6" },
   feesBtn: { backgroundColor: "#1E7A3D", borderColor: "#1E7A3D" },
   collectText: { color: "#0B6E8F", fontWeight: "700" },

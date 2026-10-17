@@ -47,7 +47,7 @@ export const FIELD_KIND = {
 
 // Prisma JSON columns. Never walk into these — a nested "email" key inside a
 // receipt breakdown is not a column we seal.
-const JSON_COLUMNS = new Set(["breakdown", "moveInChecks", "moveOutChecks", "meta"]);
+const JSON_COLUMNS = new Set(["breakdown", "moveInChecks", "moveOutChecks", "meta", "images"]);
 
 export function fieldEncryptionEnabled() {
   return !!(process.env.DATA_ENCRYPTION_KEY || "").trim();

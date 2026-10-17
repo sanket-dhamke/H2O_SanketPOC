@@ -103,22 +103,37 @@ export default function CommunityScreen() {
     setRefreshing(false);
   };
 
-  const removeAnnouncement = (id) =>
-    Alert.alert("Delete announcement", "Remove this announcement?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await api.deleteAnnouncement(id);
-            load();
-          } catch (e) {
-            Alert.alert("Error", e.message);
-          }
-        },
-      },
-    ]);
+  const tell = (message) => {
+    if (typeof window !== "undefined" && window.alert) window.alert(message);
+    else Alert.alert("Community", message);
+  };
+
+  const removeAnnouncement = async (id) => {
+    const ok = typeof window !== "undefined" && window.confirm
+      ? window.confirm("Delete this announcement?")
+      : await new Promise((resolve) => {
+          Alert.alert("Delete announcement", "Remove this announcement?", [
+            { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+            { text: "Delete", style: "destructive", onPress: () => resolve(true) },
+          ]);
+        });
+    if (!ok) return;
+    try {
+      await api.deleteAnnouncement(id);
+      load();
+    } catch (e) {
+      tell(e.message);
+    }
+  };
+
+  const togglePin = async (item) => {
+    try {
+      await api.updateAnnouncement(item.id, { pinned: !item.pinned });
+      load();
+    } catch (e) {
+      tell(e.message);
+    }
+  };
 
   const removePost = (id) =>
     Alert.alert("Delete post", "Remove this post?", [
@@ -198,9 +213,15 @@ export default function CommunityScreen() {
                   )}
                   <Text style={styles.time}>{timeAgo(a.createdAt)}</Text>
                   {isAdmin && (
-                    <TouchableOpacity onPress={() => removeAnnouncement(a.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                      <Ionicons name="trash-outline" size={18} color="#B44" />
-                    </TouchableOpacity>
+                    <View style={styles.adminActs}>
+                      <TouchableOpacity testID="announcement-pin" style={styles.pinBtn} onPress={() => togglePin(a)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name={a.pinned ? "pin" : "pin-outline"} size={16} color="#C2571A" />
+                        <Text style={styles.pinBtnText}>{a.pinned ? "Unpin" : "Pin"}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity testID="announcement-delete" onPress={() => removeAnnouncement(a.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="trash-outline" size={18} color="#B44" />
+                      </TouchableOpacity>
+                    </View>
                   )}
                 </View>
                 <Text style={styles.title}>{a.title}</Text>
@@ -634,6 +655,9 @@ const styles = StyleSheet.create({
   emptyBtnGhostText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
   card: { backgroundColor: "#fff", borderRadius: 14, padding: 16, marginBottom: 12 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
+  adminActs: { marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 12 },
+  pinBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
+  pinBtnText: { color: "#C2571A", fontWeight: "700", fontSize: 12 },
   pin: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#FBEadd", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
   pinText: { color: "#C2571A", fontSize: 11, fontWeight: "700" },
   catChip: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#EAF4F7", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },

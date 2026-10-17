@@ -71,12 +71,18 @@ export function serializeMove(m, flatNo) {
   };
 }
 
+export function vendorImageList(images) {
+  if (!Array.isArray(images)) return [];
+  return images.filter((item) => typeof item === "string" && item.trim());
+}
+
 export function serializeVendorBill(v) {
   return {
     id: v.id,
     vendorName: v.vendorName,
     category: v.category,
     description: v.description || null,
+    images: vendorImageList(v.images),
     amount: v.amount,
     dueDate: v.dueDate || null,
     status: v.status,

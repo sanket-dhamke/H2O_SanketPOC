@@ -69,7 +69,7 @@ function Legend({ segments, total, format }) {
   return (
     <View style={styles.legend}>
       {segments.map((s) => {
-        const pct = sum ? `${Math.round(((s.value || 0) / sum) * 100)}%` : "—";
+        const pct = sum ? `${Math.round(((s.value || 0) / sum) * 100)}%` : "0%";
         const value = format ? format(s.value) : String(s.value ?? 0);
         return (
           <View key={s.key} style={styles.legendRow}>
@@ -294,8 +294,18 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
         <Card
           fill={fillCards}
           icon="wallet-outline"
-          title={isAdmin ? `${labels.fees || "Collections"} this month` : labels.fees || "Maintenance"}
-          hint={`${finance.paidPct}% settled`}
+          title={
+            isAdmin && finance.pending > 0 && !(finance.pendingThisMonth > 0)
+              ? "Unpaid maintenance"
+              : isAdmin
+                ? `${labels.fees || "Collections"} this month`
+                : labels.fees || "Maintenance"
+          }
+          hint={
+            isAdmin && finance.pending > 0 && !(finance.pendingThisMonth > 0)
+              ? "includes older bills"
+              : `${finance.paidPct}% settled`
+          }
           onPress={openBills}
         >
           <View style={styles.chartRow}>
