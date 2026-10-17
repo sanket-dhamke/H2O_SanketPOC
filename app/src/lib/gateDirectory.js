@@ -1,5 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "./api";
+import { readSecret, writeSecret } from "./deviceVault";
 import { indiaDate } from "./helperGate";
 
 const memory = new Map();
@@ -37,7 +37,7 @@ export async function readCachedDirectory(userId) {
   if (!userId) return null;
   if (memory.has(userId)) return memory.get(userId);
   try {
-    const raw = await AsyncStorage.getItem(keyFor(userId));
+    const raw = await readSecret(keyFor(userId));
     const parsed = raw ? JSON.parse(raw) : null;
     if (!Array.isArray(parsed)) return null;
     const rows = parsed.map(slimWorker).filter(Boolean);
@@ -53,7 +53,7 @@ export async function rememberDirectory(userId, workers) {
   if (userId) {
     memory.set(userId, rows);
     try {
-      await AsyncStorage.setItem(keyFor(userId), JSON.stringify(rows));
+      await writeSecret(keyFor(userId), JSON.stringify(rows));
     } catch {
       /* the in-memory copy is still enough for this session */
     }

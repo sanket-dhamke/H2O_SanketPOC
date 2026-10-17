@@ -12,6 +12,7 @@ import { ensureUniqueSlug } from "../slug.js";
 import { runPlatformBackup, buildPlatformBackup } from "../platformBackup.js";
 import { signBackup, storageEnabled } from "../storage.js";
 import { buildSocietyBackup, emailSocietyBackup } from "../backup.js";
+import { fieldEncryptionEnabled } from "../fieldCrypto.js";
 
 // Platform-owner ("superadmin") routes. The superadmin belongs to no society and
 // can see a cross-society summary and manage (create / activate) societies and
@@ -287,6 +288,7 @@ superadminRouter.get("/backup/status", async (_req, res) => {
     readiness: {
       offsiteStorage: storageEnabled,
       encryption: !!process.env.BACKUP_ENCRYPTION_KEY,
+      fieldEncryption: fieldEncryptionEnabled(),
       email: emailConfigured,
       externalCron: !!process.env.CRON_SECRET,
     },
@@ -526,21 +528,49 @@ superadminRouter.post("/test-email", async (req, res) => {
 // password resets when someone — even a society admin — forgets their password).
 superadminRouter.get("/users", async (req, res) => {
   const q = String(req.query.query || "").trim();
-  const where = q
-    ? {
-        OR: [
-          { email: { contains: q.toLowerCase() } },
-          { name: { contains: q, mode: "insensitive" } },
-        ],
-      }
-    : {};
-  const users = await prisma.user.findMany({
-    where,
-    include: { society: true, flat: true },
-    orderBy: { email: "asc" },
-    take: 30,
-  });
-  res.json({ users: users.map(publicUser) });
+  const include = { society: true, flat: true };
+  const lowered = q.toLowerCase();
+  // Emails are encrypted at rest, so SQL cannot do a partial email match.
+  // Name search stays in the database. A partial email is matched after the
+  // row is opened. Exact addresses still use the unique index.
+  const [byName, exact, scanned] = await Promise.all([
+    q
+      ? prisma.user.findMany({
+          where: { name: { contains: q, mode: "insensitive" } },
+          include,
+          take: 30,
+        })
+      : Promise.resolve([]),
+    lowered.includes("@")
+      ? prisma.user.findMany({ where: { email: lowered }, include, take: 5 })
+      : Promise.resolve([]),
+    lowered.length >= 3
+      ? prisma.user.findMany({ select: { id: true, email: true } })
+      : Promise.resolve([]),
+  ]);
+  const emailIds = new Set(
+    scanned.filter((row) => row.email && row.email.toLowerCase().includes(lowered)).map((row) => row.id)
+  );
+  const seen = new Set();
+  const merged = [];
+  const push = (user) => {
+    if (!user || seen.has(user.id)) return;
+    seen.add(user.id);
+    merged.push(user);
+  };
+  exact.forEach(push);
+  byName.forEach(push);
+  const missing = [...emailIds].filter((id) => !seen.has(id)).slice(0, 30);
+  if (missing.length) {
+    const extra = await prisma.user.findMany({ where: { id: { in: missing } }, include });
+    extra.forEach(push);
+  }
+  if (!q) {
+    const recent = await prisma.user.findMany({ include, orderBy: { createdAt: "desc" }, take: 30 });
+    recent.forEach(push);
+  }
+  merged.sort((a, b) => String(a.email || "").localeCompare(String(b.email || "")));
+  res.json({ users: merged.slice(0, 30).map(publicUser) });
 });
 
 // POST /api/superadmin/users/:id/reset-password — set a new password for any user.

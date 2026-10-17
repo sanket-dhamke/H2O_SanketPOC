@@ -1,5 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "./api";
+import { readSecret, writeSecret } from "./deviceVault";
 import { listVisitor } from "./visitorWait";
 
 const memory = new Map();
@@ -15,7 +15,7 @@ export async function readCachedVisitors(userId) {
   if (!userId) return null;
   if (memory.has(userId)) return memory.get(userId);
   try {
-    const raw = await AsyncStorage.getItem(keyFor(userId));
+    const raw = await readSecret(keyFor(userId));
     const parsed = raw ? JSON.parse(raw) : null;
     if (!Array.isArray(parsed)) return null;
     const rows = parsed.map(listVisitor);
@@ -31,7 +31,7 @@ export async function rememberVisitors(userId, visitors) {
   if (userId) {
     memory.set(userId, rows);
     try {
-      await AsyncStorage.setItem(keyFor(userId), JSON.stringify(rows));
+      await writeSecret(keyFor(userId), JSON.stringify(rows));
     } catch {
       /* the in-memory copy is still enough for this session */
     }

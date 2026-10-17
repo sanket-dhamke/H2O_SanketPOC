@@ -18,6 +18,13 @@ services:
     envVars:
       - key: JWT_SECRET
         generateValue: true
+      # Encrypts emails, phone numbers and payment details in Postgres.
+      # Passwords stay a bcrypt hash. Set a long random value in the dashboard
+      # and keep a copy — the server cannot read sealed rows without it.
+      - key: DATA_ENCRYPTION_KEY
+        sync: false
+      - key: BACKUP_ENCRYPTION_KEY
+        sync: false
       # Supabase Postgres connection string (Session pooler / direct, port 5432).
       - key: DATABASE_URL
         sync: false

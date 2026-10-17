@@ -18,6 +18,7 @@ import zlib from "zlib";
 import crypto from "crypto";
 import readline from "readline";
 import { PrismaClient } from "@prisma/client";
+import { encryptStoredSecrets } from "../src/encryptSecrets.js";
 
 const MAGIC = "GMB1";
 const prisma = new PrismaClient();
@@ -114,6 +115,12 @@ async function main() {
   }
 
   console.log("\nRestore summary:\n  " + summary.join("\n  "));
+  const sealed = await encryptStoredSecrets(prisma);
+  console.log(
+    sealed
+      ? `Sealed ${sealed} personal-data value(s) with DATA_ENCRYPTION_KEY.`
+      : "Personal data left readable. Set DATA_ENCRYPTION_KEY and boot the server to seal it."
+  );
   console.log("\nDone. Verify a few logins and the superadmin overview before going live.");
 }
 

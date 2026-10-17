@@ -6,10 +6,11 @@ import { uploadBackup, storageEnabled } from "./storage.js";
 
 // Full-platform disaster-recovery backup. Unlike the per-society monthly email
 // backup (a business snapshot), this is a COMPLETE logical dump of every table
-// (including bcrypt password hashes, so logins survive a restore). It is gzipped
-// and optionally AES-256-GCM encrypted, uploaded to private off-site storage,
-// and emailed to the GATEZO owner with a checksum + link. Restore with
-// scripts/restore-platform-backup.js.
+// (including bcrypt password hashes, so logins survive a restore). Field
+// encryption is opened before the dump, so the file itself must be encrypted
+// with BACKUP_ENCRYPTION_KEY. The dump is gzipped, uploaded to private off-site
+// storage, and emailed to the GATEZO owner with a checksum + link. Restore with
+// scripts/restore-platform-backup.js (it seals personal data again on the way in).
 
 // Prisma client accessors for every model we back up (BackupLog itself excluded).
 const MODELS = [

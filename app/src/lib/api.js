@@ -2,6 +2,7 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { brand } from "./brand";
+import { readSecret, writeSecret } from "./deviceVault";
 
 const API_PORT = 4000;
 
@@ -54,10 +55,10 @@ export async function clearOrgMode() {
 }
 
 export async function getToken() {
-  return AsyncStorage.getItem(TOKEN_KEY);
+  return readSecret(TOKEN_KEY);
 }
 export async function setToken(token) {
-  if (token) await AsyncStorage.setItem(TOKEN_KEY, token);
+  if (token) await writeSecret(TOKEN_KEY, token);
   else await AsyncStorage.removeItem(TOKEN_KEY);
 }
 

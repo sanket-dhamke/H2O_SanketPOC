@@ -1,5 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "./api";
+import { readSecret, writeSecret } from "./deviceVault";
 
 const keyFor = (userId) => `gatezo.mobile.${userId}`;
 
@@ -20,8 +20,7 @@ export function displayMobile(value) {
 
 async function remember(userId, phone) {
   if (!userId) return;
-  if (phone) await AsyncStorage.setItem(keyFor(userId), phone);
-  else await AsyncStorage.removeItem(keyFor(userId));
+  await writeSecret(keyFor(userId), phone || "");
 }
 
 // The live API still ignores a phone on preferences. Keep the number on this
@@ -29,7 +28,7 @@ async function remember(userId, phone) {
 export async function applyRememberedMobile(user) {
   if (!user?.id || normalizeIndianMobile(user.phone)) return user;
   try {
-    const saved = normalizeIndianMobile(await AsyncStorage.getItem(keyFor(user.id)));
+    const saved = normalizeIndianMobile(await readSecret(keyFor(user.id)));
     if (!saved) return user;
     return { ...user, phone: saved };
   } catch {

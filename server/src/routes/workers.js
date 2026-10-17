@@ -102,12 +102,32 @@ async function buildPassport(worker, userId) {
 workersRouter.get("/workers", authRequired, async (req, res) => {
   const { query, category } = req.query;
   const q = String(query || "").trim();
-  const where = {
+  const digits = q.replace(/\D/g, "");
+  const base = {
     active: true,
     ...(category ? { category: String(category) } : {}),
-    ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { subtype: { contains: q, mode: "insensitive" } }, { phone: { contains: q } }] } : {}),
   };
-  const workers = await prisma.worker.findMany({ where, orderBy: { createdAt: "desc" }, take: 60 });
+  let workers;
+  if (q && digits) {
+    // Phone numbers are encrypted, so a partial number is matched after opening the row.
+    const pool = await prisma.worker.findMany({ where: base, orderBy: { createdAt: "desc" }, take: 1000 });
+    const lowered = q.toLowerCase();
+    workers = pool
+      .filter((w) => {
+        const name = String(w.name || "").toLowerCase();
+        const subtype = String(w.subtype || "").toLowerCase();
+        return name.includes(lowered) || subtype.includes(lowered) || String(w.phone || "").includes(digits);
+      })
+      .slice(0, 60);
+  } else {
+    const where = {
+      ...base,
+      ...(q
+        ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { subtype: { contains: q, mode: "insensitive" } }] }
+        : {}),
+    };
+    workers = await prisma.worker.findMany({ where, orderBy: { createdAt: "desc" }, take: 60 });
+  }
   const ratings = await ratingMap(workers.map((w) => w.id));
   let openByWorker = new Map();
   if (req.user.role === "guard" || req.user.role === "admin") {

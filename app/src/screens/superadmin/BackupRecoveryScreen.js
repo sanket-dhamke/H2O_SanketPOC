@@ -27,7 +27,8 @@ const humanSize = (n) => {
 
 const READINESS = [
   { key: "offsiteStorage", label: "Off-site storage", hint: "Encrypted copy uploaded to private cloud bucket" },
-  { key: "encryption", label: "Encryption (AES-256)", hint: "Set BACKUP_ENCRYPTION_KEY on the server" },
+  { key: "encryption", label: "Backup file (AES-256)", hint: "Set BACKUP_ENCRYPTION_KEY on the server" },
+  { key: "fieldEncryption", label: "Personal data in the database", hint: "Set DATA_ENCRYPTION_KEY. Passwords stay a one-way hash." },
   { key: "email", label: "Email delivery", hint: "Backups + checksum emailed to the owner" },
   { key: "externalCron", label: "External scheduler", hint: "CRON_SECRET set for wake-from-sleep backups" },
 ];

@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { readSecret, writeSecret } from "./deviceVault";
 import { api } from "./api";
 import { withLocalThumbs } from "./serviceImages";
 import { brand } from "./brand";
@@ -259,7 +259,7 @@ const storeKey = (userId) => `h2o.hsBookings.${userId || "anon"}`;
 
 async function readLocal(userId) {
   try {
-    const raw = await AsyncStorage.getItem(storeKey(userId));
+    const raw = await readSecret(storeKey(userId));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -267,7 +267,7 @@ async function readLocal(userId) {
 }
 
 async function writeLocal(userId, rows) {
-  await AsyncStorage.setItem(storeKey(userId), JSON.stringify(rows.slice(0, 200)));
+  await writeSecret(storeKey(userId), JSON.stringify(rows.slice(0, 200)));
 }
 
 function isOfflineErr(e) {

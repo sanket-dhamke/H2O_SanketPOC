@@ -55,6 +55,8 @@ import { runFeeReminders } from "./feeReminders.js";
 import { runRentExpiryChecks } from "./rentReminders.js";
 import { ensureVisitorWaitColumns, sweepVisitorWaits } from "./visitorWait.js";
 import { runVisitorRetention } from "./visitorRetention.js";
+import { fieldEncryptionEnabled } from "./fieldCrypto.js";
+import { encryptStoredSecrets } from "./encryptSecrets.js";
 
 const app = express();
 // Behind Render/other proxies: trust the first proxy hop so req.ip (used by the
@@ -321,30 +323,49 @@ setInterval(() => {
   tickOffers().catch((e) => console.error("[providers] offer sweep failed:", e.message));
 }, 15000);
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`GATEZO server running on http://0.0.0.0:${PORT}`);
-  console.log(`[infra] cache=${cacheBackend} queue=${queueBackend}`);
-  // Start the notification queue worker (only active in redis mode; the
-  // in-process queue drains on its own when no REDIS_URL is set).
-  startQueueWorkers().catch((e) => console.error("Queue worker init failed:", e.message));
-  // Ensure every existing tenant has a branded-login slug (idempotent).
-  backfillSlugs()
-    .then((n) => n > 0 && console.log(`Backfilled slugs for ${n} societ(y/ies).`))
-    .catch((e) => console.error("Slug backfill failed:", e.message));
-  ensurePlatformSetting()
-    .then((created) => created && console.log("Created default platform settings."))
-    .catch((e) => console.error("Platform settings init failed:", e.message));
-  ensureProviderJoinCode().catch((e) => console.error("Provider join code init failed:", e.message));
-  ensureDemoAccounts().catch((e) => console.error("Demo account init failed:", e.message));
-  prisma.society
-    .findMany({ select: { id: true } })
-    .then((rows) => Promise.all(rows.map((s) => ensureJoinCode(s.id))))
-    .catch((e) => console.error("Join code init failed:", e.message));
-  // Seed national helplines into the platform-curated services layer (idempotent).
-  ensureDefaultHelplines().catch((e) => console.error("Helpline seed failed:", e.message));
-  // Close unanswered gate visits after 3 minutes, and place the one follow-up call.
-  const sweep = () => sweepVisitorWaits().catch((e) => console.error("Visitor wait sweep failed:", e.message));
-  ensureVisitorWaitColumns().then(sweep).catch((e) => console.error("Visitor wait columns failed:", e.message));
-  ensureAttendancePhotoColumns().catch((e) => console.error("Attendance photo columns failed:", e.message));
-  setInterval(sweep, 30 * 1000);
+async function prepareFieldEncryption() {
+  if (!fieldEncryptionEnabled()) {
+    console.warn(
+      "[security] DATA_ENCRYPTION_KEY is not set. Emails, phone numbers and payment details stay readable in the database. Passwords are still stored only as a bcrypt hash."
+    );
+    return;
+  }
+  try {
+    const n = await encryptStoredSecrets(prisma);
+    console.log(
+      `[security] database field encryption is on (AES-256-GCM)${n ? `; sealed ${n} existing value(s)` : ""}`
+    );
+  } catch (e) {
+    console.error("[security] field encryption of existing rows failed:", e.message);
+  }
+}
+
+prepareFieldEncryption().finally(() => {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`GATEZO server running on http://0.0.0.0:${PORT}`);
+    console.log(`[infra] cache=${cacheBackend} queue=${queueBackend}`);
+    // Start the notification queue worker (only active in redis mode; the
+    // in-process queue drains on its own when no REDIS_URL is set).
+    startQueueWorkers().catch((e) => console.error("Queue worker init failed:", e.message));
+    // Ensure every existing tenant has a branded-login slug (idempotent).
+    backfillSlugs()
+      .then((n) => n > 0 && console.log(`Backfilled slugs for ${n} societ(y/ies).`))
+      .catch((e) => console.error("Slug backfill failed:", e.message));
+    ensurePlatformSetting()
+      .then((created) => created && console.log("Created default platform settings."))
+      .catch((e) => console.error("Platform settings init failed:", e.message));
+    ensureProviderJoinCode().catch((e) => console.error("Provider join code init failed:", e.message));
+    ensureDemoAccounts().catch((e) => console.error("Demo account init failed:", e.message));
+    prisma.society
+      .findMany({ select: { id: true } })
+      .then((rows) => Promise.all(rows.map((s) => ensureJoinCode(s.id))))
+      .catch((e) => console.error("Join code init failed:", e.message));
+    // Seed national helplines into the platform-curated services layer (idempotent).
+    ensureDefaultHelplines().catch((e) => console.error("Helpline seed failed:", e.message));
+    // Close unanswered gate visits after 3 minutes, and place the one follow-up call.
+    const sweep = () => sweepVisitorWaits().catch((e) => console.error("Visitor wait sweep failed:", e.message));
+    ensureVisitorWaitColumns().then(sweep).catch((e) => console.error("Visitor wait columns failed:", e.message));
+    ensureAttendancePhotoColumns().catch((e) => console.error("Attendance photo columns failed:", e.message));
+    setInterval(sweep, 30 * 1000);
+  });
 });
