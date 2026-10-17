@@ -185,7 +185,7 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
             <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
               <Ionicons name="log-out-outline" size={16} color="#fff" />
-              {compact ? null : <Text style={styles.logoutText}>Logout</Text>}
+              <Text style={styles.logoutText}>Logout</Text>
             </TouchableOpacity>
           </View>
         </View>

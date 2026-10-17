@@ -123,17 +123,9 @@ export default function ProfileModal({ visible, onClose }) {
   };
 
   const confirmLogout = () => {
-    // react-native-web's Alert.alert is a no-op, so the profile row must
-    // sign out directly — same as the header Logout button.
-    if (Platform.OS === "web") {
-      onClose();
-      logout();
-      return;
-    }
-    Alert.alert("Log out", "Are you sure you want to log out?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Log out", style: "destructive", onPress: () => { onClose(); logout(); } },
-    ]);
+    // Sign out immediately. A confirm dialog never appears on web, and the
+    // header Logout button does not ask either.
+    logout();
   };
 
   if (!user) return null;
@@ -151,6 +143,10 @@ export default function ProfileModal({ visible, onClose }) {
         >
           <TouchableOpacity style={styles.closeBtn} onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="chevron-down" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerLogout} onPress={confirmLogout} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="log-out-outline" size={16} color="#fff" />
+            <Text style={styles.headerLogoutText}>Log out</Text>
           </TouchableOpacity>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials(user.name)}</Text>
@@ -310,6 +306,19 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
   header: { alignItems: "center", paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   closeBtn: { position: "absolute", left: 12, top: 0, padding: 10 },
+  headerLogout: {
+    position: "absolute",
+    right: 12,
+    top: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(0,0,0,0.28)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  headerLogoutText: { color: "#fff", fontSize: 13, fontWeight: "700" },
   avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center", marginTop: 8 },
   avatarText: { color: "#fff", fontSize: 28, fontWeight: "800" },
   name: { color: "#fff", fontSize: 20, fontWeight: "800", marginTop: 12 },

@@ -82,11 +82,11 @@ export default function SuperAdminDashboardScreen() {
 
   const headerBtns = (
     <View style={{ flexDirection: "row", alignItems: "center" }}>
-      <TouchableOpacity onPress={() => setModerationOpen(true)} style={styles.logoutBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-        <Ionicons name="pricetags-outline" size={22} color="#fff" />
+      <TouchableOpacity onPress={() => setModerationOpen(true)} style={styles.iconBtn} hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}>
+        <Ionicons name="pricetags-outline" size={20} color="#fff" />
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => setProfileOpen(true)} style={styles.logoutBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-        <Ionicons name="person-circle-outline" size={24} color="#fff" />
+      <TouchableOpacity onPress={() => setProfileOpen(true)} style={styles.iconBtn} hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}>
+        <Ionicons name="person-circle-outline" size={22} color="#fff" />
       </TouchableOpacity>
     </View>
   );
@@ -393,7 +393,7 @@ function BreakdownModal({ config, rows, onClose }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
-  logoutBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  iconBtn: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
   heroCard: { backgroundColor: "#0B6E8F", borderRadius: 16, padding: 22 },
   heroLabel: { color: "#CDE9F2", fontSize: 13 },
   heroValue: { color: "#fff", fontSize: 40, fontWeight: "800", marginTop: 2 },

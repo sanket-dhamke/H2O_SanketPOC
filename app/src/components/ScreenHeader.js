@@ -23,9 +23,9 @@ export default function ScreenHeader({ icon, title, subtitle, right, onBack, log
       style={[styles.header, { paddingTop: insets.top + 18 }]}
     >
       {logo ? (
-        <Image source={logo} style={styles.watermarkLogo} resizeMode="contain" />
+        <Image source={logo} pointerEvents="none" style={styles.watermarkLogo} resizeMode="contain" />
       ) : (
-        <Ionicons name={icon} size={130} color="rgba(255,255,255,0.10)" style={styles.watermark} />
+        <Ionicons name={icon} pointerEvents="none" size={130} color="rgba(255,255,255,0.10)" style={styles.watermark} />
       )}
       {!!onBack && (
         <TouchableOpacity style={styles.backBtn} onPress={onBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -53,7 +53,8 @@ export default function ScreenHeader({ icon, title, subtitle, right, onBack, log
         </View>
         <View style={styles.rightSlot}>
           {right || null}
-          <TouchableOpacity onPress={logout} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TouchableOpacity onPress={logout} style={styles.logoutBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+            <Ionicons name="log-out-outline" size={15} color="#fff" />
             <Text style={styles.logout}>Logout</Text>
           </TouchableOpacity>
         </View>
@@ -76,7 +77,16 @@ const styles = StyleSheet.create({
   backText: { color: "#fff", fontSize: 14, ...body(700), marginLeft: 2 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   titleWrap: { flex: 1, minWidth: 0 },
-  rightSlot: { flexShrink: 1, minWidth: 0, marginLeft: 8, alignItems: "flex-end", gap: 6 },
+  rightSlot: { flexDirection: "row", alignItems: "center", flexShrink: 1, marginLeft: 8, gap: 8 },
+  logoutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(0,0,0,0.28)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
   logout: { color: "#fff", fontSize: 13, ...body(700) },
   iconChip: {
     width: 46,
