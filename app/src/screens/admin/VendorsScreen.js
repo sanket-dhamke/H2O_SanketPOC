@@ -4,6 +4,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import ScreenHeader from "../../components/ScreenHeader";
+import ModalClose from "../../components/ModalClose";
 import KeyboardAvoider from "../../components/KeyboardAvoider";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
@@ -104,7 +105,10 @@ export default function VendorsScreen() {
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <KeyboardAvoider style={styles.overlay}>
           <View style={styles.modal}>
-            <Text style={styles.modalTitle}>New vendor bill</Text>
+            <View style={styles.modalHead}>
+              <Text style={styles.modalTitle}>New vendor bill</Text>
+              <ModalClose light={false} onPress={() => setOpen(false)} />
+            </View>
             <TextInput style={styles.input} placeholder="Vendor name" value={vendorName} onChangeText={setVendorName} />
             <TextInput style={styles.input} placeholder="Amount" value={amount} onChangeText={setAmount} keyboardType="numeric" />
             <View style={styles.cats}>
@@ -144,7 +148,8 @@ const styles = StyleSheet.create({
   payText: { color: "#0B6E8F", fontWeight: "800" },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 20 },
   modal: { backgroundColor: "#fff", borderRadius: 16, padding: 16 },
-  modalTitle: { fontWeight: "800", fontSize: 18, marginBottom: 8 },
+  modalHead: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  modalTitle: { flex: 1, fontWeight: "800", fontSize: 18 },
   input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, padding: 12, marginTop: 8, backgroundColor: "#F8FAFB" },
   cats: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
   cat: { borderWidth: 1, borderColor: "#CFE0E6", borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6 },

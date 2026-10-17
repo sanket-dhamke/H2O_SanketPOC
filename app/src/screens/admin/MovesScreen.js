@@ -6,6 +6,7 @@ import { api } from "../../lib/api";
 import { labelsFor } from "../../lib/org";
 import { useAuth } from "../../lib/auth";
 import ScreenHeader from "../../components/ScreenHeader";
+import ModalClose from "../../components/ModalClose";
 import KeyboardAvoider from "../../components/KeyboardAvoider";
 import FlatPicker from "../../components/FlatPicker";
 
@@ -93,7 +94,10 @@ export default function MovesScreen() {
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <KeyboardAvoider style={styles.overlay}>
           <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Log a move</Text>
+            <View style={styles.modalHead}>
+              <Text style={styles.modalTitle}>Log a move</Text>
+              <ModalClose light={false} onPress={() => setOpen(false)} />
+            </View>
             <View style={styles.kinds}>
               {["move_in", "move_out"].map((k) => (
                 <TouchableOpacity key={k} style={[styles.kindBtn, kind === k && styles.kindOn]} onPress={() => setKind(k)}>
@@ -129,7 +133,8 @@ const styles = StyleSheet.create({
   notes: { color: "#48606B", marginTop: 6 },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 20 },
   modal: { backgroundColor: "#fff", borderRadius: 16, padding: 16 },
-  modalTitle: { fontWeight: "800", fontSize: 18, marginBottom: 12 },
+  modalHead: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  modalTitle: { flex: 1, fontWeight: "800", fontSize: 18 },
   kinds: { flexDirection: "row", gap: 8, marginBottom: 10 },
   kindBtn: { flex: 1, borderWidth: 1, borderColor: "#CFE0E6", borderRadius: 10, paddingVertical: 10, alignItems: "center" },
   kindOn: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },

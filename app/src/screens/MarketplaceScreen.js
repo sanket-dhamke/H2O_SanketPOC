@@ -21,6 +21,7 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { labelsFor } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 import OffersRail from "../components/OffersRail";
 
@@ -374,6 +375,7 @@ function CreateListingModal({ visible, onClose, onDone }) {
               <Ionicons name="pricetag-outline" size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>List an item</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 540 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             <Label>Photos {images.length ? `(${images.length}/${MAX_PHOTOS})` : ""}</Label>

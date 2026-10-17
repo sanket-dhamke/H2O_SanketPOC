@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 import DateField from "../components/DateField";
 
@@ -168,7 +169,10 @@ function MeetingModal({ visible, onClose, onDone }) {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
-          <View style={styles.modalHeader}><Text style={styles.modalTitle}>New meeting</Text></View>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>New meeting</Text>
+            <ModalClose onPress={onClose} />
+          </View>
           <ScrollView style={{ maxHeight: 540 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             <Label>Title</Label>
             <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="e.g. Annual General Meeting 2026" />
@@ -232,8 +236,8 @@ const styles = StyleSheet.create({
   adminBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 20 },
   modalCard: { backgroundColor: "#fff", borderRadius: 18, overflow: "hidden" },
-  modalHeader: { backgroundColor: "#0B6E8F", paddingHorizontal: 18, paddingVertical: 16 },
-  modalTitle: { fontSize: 17, fontWeight: "800", color: "#fff" },
+  modalHeader: { flexDirection: "row", alignItems: "center", backgroundColor: "#0B6E8F", paddingHorizontal: 18, paddingVertical: 16 },
+  modalTitle: { flex: 1, fontSize: 17, fontWeight: "800", color: "#fff" },
   modalBody: { padding: 20, paddingTop: 12 },
   label: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 6, marginTop: 12 },
   input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, backgroundColor: "#F8FAFB" },

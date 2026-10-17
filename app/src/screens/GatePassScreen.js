@@ -18,6 +18,7 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { labelsFor } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 
 const TYPES = [
@@ -238,6 +239,7 @@ function CreatePassModal({ visible, onClose, onDone }) {
               <Ionicons name="qr-code-outline" size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>New gate pass</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             <Label>Type</Label>

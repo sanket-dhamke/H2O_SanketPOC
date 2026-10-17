@@ -22,6 +22,7 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { labelsFor, isPreschool } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
 import { body, head } from "../lib/type";
 
 const PURPOSES = ["Guest", "Delivery", "Cab", "Service", "Other"];
@@ -367,6 +368,7 @@ function GatePassVerifyModal({ visible, onClose }) {
               <Ionicons name="qr-code-outline" size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>Pre-approved pass</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <View style={styles.modalBody}>
             <Text style={styles.modalLabel}>Enter the gate code the visitor shows</Text>

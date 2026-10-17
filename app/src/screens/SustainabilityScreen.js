@@ -7,6 +7,7 @@ import { api } from "../lib/api";
 import { brand } from "../lib/brand";
 import { useAuth } from "../lib/auth";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 import FlatPicker from "../components/FlatPicker";
 
@@ -141,7 +142,10 @@ function ReadingModal({ visible, onClose, onDone, period }) {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
-          <View style={styles.modalHeader}><Text style={styles.modalTitle}>Record water reading</Text></View>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Record water reading</Text>
+            <ModalClose onPress={onClose} />
+          </View>
           <View style={styles.modalBody}>
             <Label>Flat</Label>
             <FlatPicker flats={flats} value={flatId} onChange={setFlatId} />
@@ -183,8 +187,8 @@ const styles = StyleSheet.create({
   lbScoreText: { color: "#fff", fontWeight: "800", fontSize: 12 },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 20 },
   modalCard: { backgroundColor: "#fff", borderRadius: 18, overflow: "hidden" },
-  modalHeader: { backgroundColor: "#1E7A3D", paddingHorizontal: 18, paddingVertical: 16 },
-  modalTitle: { fontSize: 17, fontWeight: "800", color: "#fff" },
+  modalHeader: { flexDirection: "row", alignItems: "center", backgroundColor: "#1E7A3D", paddingHorizontal: 18, paddingVertical: 16 },
+  modalTitle: { flex: 1, fontSize: 17, fontWeight: "800", color: "#fff" },
   modalBody: { padding: 20, paddingTop: 12 },
   label: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 6, marginTop: 12 },
   input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, backgroundColor: "#F8FAFB" },

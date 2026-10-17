@@ -5,6 +5,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 
 const DEPOSIT = [
@@ -111,7 +112,10 @@ function ComplianceModal({ flat, onClose, onDone }) {
     <Modal visible={!!flat} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
-          <View style={styles.modalHeader}><Text style={styles.modalTitle}>Compliance · {flat?.flatNo}</Text></View>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Compliance · {flat?.flatNo}</Text>
+            <ModalClose onPress={onClose} />
+          </View>
           {c && (
             <ScrollView style={{ maxHeight: 560 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
               <TouchableOpacity style={styles.verifyRow} onPress={() => set("policeVerified", !c.policeVerified)}>
@@ -178,8 +182,8 @@ const styles = StyleSheet.create({
   setup: { color: "#0B6E8F", fontSize: 12.5, fontWeight: "700", marginTop: 8 },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 20 },
   modalCard: { backgroundColor: "#fff", borderRadius: 18, overflow: "hidden" },
-  modalHeader: { backgroundColor: "#0B6E8F", paddingHorizontal: 18, paddingVertical: 16 },
-  modalTitle: { fontSize: 17, fontWeight: "800", color: "#fff" },
+  modalHeader: { flexDirection: "row", alignItems: "center", backgroundColor: "#0B6E8F", paddingHorizontal: 18, paddingVertical: 16 },
+  modalTitle: { flex: 1, fontSize: 17, fontWeight: "800", color: "#fff" },
   modalBody: { padding: 20, paddingTop: 8 },
   label: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 6, marginTop: 14 },
   input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, backgroundColor: "#F8FAFB" },

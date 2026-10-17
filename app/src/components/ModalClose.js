@@ -9,10 +9,11 @@ export default function ModalClose({ onPress, light = true }) {
     <TouchableOpacity
       onPress={onPress}
       accessibilityLabel="Close"
+      testID="modal-close"
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       style={[styles.btn, light ? styles.light : styles.dark]}
     >
-      <Ionicons name="close" size={20} color={light ? "#fff" : "#1B2B33"} />
+      <Ionicons name="close" size={20} color="#1B2B33" />
     </TouchableOpacity>
   );
 }
@@ -26,6 +27,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  light: { backgroundColor: "rgba(255,255,255,0.22)" },
+  light: { backgroundColor: "#fff" },
   dark: { backgroundColor: "#E7EEF1" },
 });

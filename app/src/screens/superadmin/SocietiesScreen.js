@@ -22,6 +22,7 @@ import { brand, brandIcon } from "../../lib/brand";
 import { TIERS, TIER_LABEL, TIER_COLOR } from "../../lib/plan";
 import ScreenHeader from "../../components/ScreenHeader";
 import KeyboardAvoider from "../../components/KeyboardAvoider";
+import ModalClose from "../../components/ModalClose";
 
 // Cross-platform alert: RN's Alert.alert is a no-op on web, so fall back to the
 // browser's native dialog there (otherwise clicks appear to "do nothing").
@@ -327,6 +328,7 @@ function ShareLinkModal({ society, onClose }) {
               <Ionicons name="qr-code-outline" size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>{isPre ? "Preschool" : "Society"} login link</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             <Text style={styles.shareIntro}>
@@ -489,6 +491,7 @@ function ResetPasswordModal({ visible, onClose }) {
               <Ionicons name="key-outline" size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>Reset a user's password</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 480 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             <Label>Find user by email or name</Label>
@@ -874,6 +877,7 @@ function FormModal({ visible, onClose, title, icon, children, busy, onSubmit }) 
               <Ionicons name={icon || "create-outline"} size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>{title}</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             {children}

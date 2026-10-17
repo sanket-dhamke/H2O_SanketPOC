@@ -12,6 +12,7 @@ import TextInput from "./AppTextInput";
 import KeyboardAvoider from "./KeyboardAvoider";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import ModalClose from "./ModalClose";
 import { api } from "../lib/api";
 
 // Self-service "change my password" modal used by every role. Verifies the
@@ -66,6 +67,7 @@ export default function ChangePasswordModal({ visible, onClose }) {
               <Ionicons name="key-outline" size={20} color="#fff" />
             </View>
             <Text style={styles.headerTitle}>Change password</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
 
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">

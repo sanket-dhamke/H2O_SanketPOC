@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 import FlatPicker from "../components/FlatPicker";
 
@@ -248,6 +249,7 @@ function PickupModal({ visible, onClose, flatId, onDone }) {
         <View style={styles.modalCard}>
           <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Add pickup person</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <View style={styles.modalBody}>
             <Text style={styles.label}>Name *</Text>
@@ -298,6 +300,7 @@ function PostUpdateModal({ visible, onClose, flatId, onDone }) {
         <View style={styles.modalCard}>
           <LinearGradient colors={["#0E85AC", "#0B6E8F", "#075064"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Post update</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <View style={styles.modalBody}>
             <Text style={styles.label}>Type</Text>
@@ -354,7 +357,7 @@ const styles = StyleSheet.create({
   qrImg: { width: 220, height: 220 },
   qrHint: { color: "#6B7B85", fontSize: 12.5, textAlign: "center", marginTop: 14, lineHeight: 18 },
   modalCard: { backgroundColor: "#fff", borderRadius: 18, overflow: "hidden" },
-  modalHeader: { paddingHorizontal: 18, paddingVertical: 16 },
+  modalHeader: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingVertical: 16 },
   modalTitle: { color: "#fff", fontSize: 17, fontWeight: "800" },
   modalBody: { padding: 18 },
   label: { fontSize: 13, fontWeight: "700", color: "#334", marginBottom: 6, marginTop: 12 },

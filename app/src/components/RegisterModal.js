@@ -12,6 +12,7 @@ import PasswordInput from "./PasswordInput";
 import KeyboardAvoider from "./KeyboardAvoider";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import ModalClose from "./ModalClose";
 import { api } from "../lib/api";
 
 // Two public registrations share this screen:
@@ -121,6 +122,7 @@ export default function RegisterModal({ visible, onClose }) {
             <Text style={styles.headerTitle}>
               {mode === "provider" ? "Register as a professional" : "Register as a resident"}
             </Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
 
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">

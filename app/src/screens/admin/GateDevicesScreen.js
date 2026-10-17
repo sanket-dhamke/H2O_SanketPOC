@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import { brand } from "../../lib/brand";
 import ScreenHeader from "../../components/ScreenHeader";
+import ModalClose from "../../components/ModalClose";
 import KeyboardAvoider from "../../components/KeyboardAvoider";
 
 const fmt = (iso) =>
@@ -268,6 +269,7 @@ function AddDeviceModal({ visible, onClose, onDone }) {
               <Ionicons name="hardware-chip-outline" size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>Add scanner</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             <Label>Name</Label>

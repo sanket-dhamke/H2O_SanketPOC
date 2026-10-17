@@ -95,7 +95,16 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, zIndex: 1, paddingRight: 116 },
   rowCompact: { gap: 8, paddingRight: 108 },
   titleWrap: { flex: 1, minWidth: 0 },
-  tools: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14, zIndex: 1 },
+  // Page tools sit on the right, on the row under the Logout pill.
+  tools: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    alignSelf: "flex-end",
+    gap: 8,
+    marginTop: 12,
+    zIndex: 1,
+  },
   logoutPin: { position: "absolute", right: 16, zIndex: 5 },
   logoutBtn: {
     flexDirection: "row",

@@ -22,6 +22,7 @@ import { useAuth } from "../lib/auth";
 import { labelsFor } from "../lib/org";
 import { calendarDay } from "../lib/attentionDates";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
 import DateField from "../components/DateField";
 import OffersRail from "../components/OffersRail";
 
@@ -699,6 +700,7 @@ function FormModal({ visible, onClose, title, icon, children, busy, onSubmit, su
               <Ionicons name={icon || "create-outline"} size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>{title}</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             {children}

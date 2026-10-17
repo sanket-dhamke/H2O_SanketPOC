@@ -18,6 +18,7 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { labelsFor } from "../lib/org";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 
 const timeAgo = (iso) => {
@@ -246,6 +247,7 @@ function TicketModal({ visible, onClose, onDone }) {
               <Ionicons name="help-buoy-outline" size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>Raise a ticket</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 500 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             <Label>Category</Label>

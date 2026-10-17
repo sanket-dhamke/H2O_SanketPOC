@@ -18,6 +18,7 @@ import ScreenHeader from "../../components/ScreenHeader";
 import ProfileModal from "../../components/ProfileModal";
 import MonthField from "../../components/MonthField";
 import MarketplaceModerationModal from "./MarketplaceModerationModal";
+import ModalClose from "../../components/ModalClose";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
 
@@ -298,6 +299,7 @@ function MonthBreakdownModal({ field, monthLabel, rows, onClose }) {
               <Text style={styles.modalTitle}>{title} · {monthLabel}</Text>
               <Text style={styles.modalSub}>Total: {money(total)} across {list.length} tenant{list.length === 1 ? "" : "s"}</Text>
             </View>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={styles.modalBody}>
             {list.length === 0 && (
@@ -367,6 +369,7 @@ function BreakdownModal({ config, rows, onClose }) {
               <Text style={styles.modalTitle}>{config.title} by society</Text>
               <Text style={styles.modalSub}>Total: {fmt(total)} across {rows.length} tenant{rows.length === 1 ? "" : "s"}</Text>
             </View>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={styles.modalBody}>
             {list.length === 0 && <Text style={styles.bdEmpty}>No societies onboarded yet.</Text>}

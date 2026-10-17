@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import { brand } from "../../lib/brand";
 import ScreenHeader from "../../components/ScreenHeader";
+import ModalClose from "../../components/ModalClose";
 import KeyboardAvoider from "../../components/KeyboardAvoider";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
@@ -318,6 +319,7 @@ function AddBookingModal({ visible, onClose, onDone }) {
               <Ionicons name="storefront-outline" size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>New vendor booking</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 500 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             <Label>Venue / premise *</Label>

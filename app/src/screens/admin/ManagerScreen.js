@@ -19,6 +19,7 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { labelsFor } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
+import ModalClose from "../../components/ModalClose";
 import KeyboardAvoider from "../../components/KeyboardAvoider";
 
 const inr = (n) => `₹${Math.round(Number(n) || 0).toLocaleString("en-IN")}`;
@@ -277,6 +278,7 @@ export default function ManagerScreen() {
                 <Ionicons name="sparkles" size={20} color="#fff" />
               </View>
               <Text style={styles.modalTitle}>AI draft — review & edit</Text>
+              <ModalClose onPress={() => setDraft(null)} />
             </LinearGradient>
             {draft?.busy ? (
               <View style={styles.draftBusy}>

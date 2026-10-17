@@ -17,6 +17,7 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { labelsFor, isPreschool } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
+import ModalClose from "../../components/ModalClose";
 import KeyboardAvoider from "../../components/KeyboardAvoider";
 
 export default function ManageFlatsScreen({ navigation }) {
@@ -292,7 +293,10 @@ function FlatEditorModal({ flat, preschool, L, classOptions, navigation, onClose
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoider style={styles.overlay}>
         <View style={styles.modalCard}>
-          <Text style={styles.modalTitle}>Edit {preschool ? "student" : L.unit.toLowerCase()}</Text>
+          <View style={styles.modalHead}>
+            <Text style={styles.modalTitle}>Edit {preschool ? "student" : L.unit.toLowerCase()}</Text>
+            <ModalClose light={false} onPress={onClose} />
+          </View>
           <ScrollView style={{ maxHeight: 460 }} keyboardShouldPersistTaps="handled">
             {preschool ? (
               <>
@@ -398,7 +402,8 @@ const styles = StyleSheet.create({
   empty: { textAlign: "center", color: "#6B7B85", marginTop: 40 },
   overlay: { flex: 1, backgroundColor: "rgba(6,20,26,0.5)", justifyContent: "flex-end" },
   modalCard: { backgroundColor: "#fff", borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20 },
-  modalTitle: { fontSize: 18, fontWeight: "800", color: "#1B2B33", marginBottom: 14 },
+  modalHead: { flexDirection: "row", alignItems: "center", marginBottom: 14 },
+  modalTitle: { flex: 1, fontSize: 18, fontWeight: "800", color: "#1B2B33" },
   modalLabel: { fontSize: 13, fontWeight: "700", color: "#42525B", marginTop: 6, marginBottom: 6 },
   modalHint: { color: "#8895A0", fontSize: 12, marginTop: 8 },
   segRow: { flexDirection: "row", gap: 10 },

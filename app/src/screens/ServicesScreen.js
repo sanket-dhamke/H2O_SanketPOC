@@ -19,6 +19,7 @@ import { api } from "../lib/api";
 import { brand } from "../lib/brand";
 import { useAuth } from "../lib/auth";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 
 const cleanPhone = (p) => String(p || "").replace(/[^\d+]/g, "");
@@ -423,6 +424,7 @@ function ServiceEditor({ visible, contact, role, onClose, onDone }) {
               <Ionicons name="construct-outline" size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>{editing ? "Edit contact" : "Add a contact"}</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             <Label>Category</Label>

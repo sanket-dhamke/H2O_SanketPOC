@@ -19,6 +19,7 @@ import { brand } from "../lib/brand";
 import { useAuth } from "../lib/auth";
 import { downloadReceipt } from "../lib/receipt";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
 import FlatPicker from "../components/FlatPicker";
 import KeyboardAvoider from "../components/KeyboardAvoider";
 
@@ -334,6 +335,7 @@ function VehicleEditorModal({ state, flats, isAdmin, onClose, onDone }) {
               <Ionicons name="car-sport-outline" size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>{editing ? "Edit vehicle" : "Add vehicle"}</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <ScrollView style={{ maxHeight: 480 }} contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             <Label>Type</Label>

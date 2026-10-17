@@ -19,6 +19,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../lib/api";
 import ScreenHeader from "../components/ScreenHeader";
+import ModalClose from "../components/ModalClose";
 import { catMeta, kindMeta } from "./MarketplaceScreen";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
@@ -320,6 +321,7 @@ function MessageModal({ visible, onClose, listingId, title }) {
               <Ionicons name="chatbubble-ellipses-outline" size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>Message owner</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <View style={styles.modalBody}>
             <Text style={styles.modalHint}>About: {title}</Text>

@@ -12,6 +12,7 @@ import TextInput from "./AppTextInput";
 import KeyboardAvoider from "./KeyboardAvoider";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import ModalClose from "./ModalClose";
 import { api } from "../lib/api";
 
 // Self-service password reset. Step 1: request an emailed OTP. Step 2: enter the
@@ -93,6 +94,7 @@ export default function ForgotPasswordModal({ visible, onClose, initialEmail = "
               <Ionicons name="lock-closed-outline" size={20} color="#fff" />
             </View>
             <Text style={styles.headerTitle}>Reset password</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
 
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">

@@ -19,6 +19,7 @@ import { useAuth } from "../../lib/auth";
 import { labelsFor, isPreschool } from "../../lib/org";
 import { brand } from "../../lib/brand";
 import ScreenHeader from "../../components/ScreenHeader";
+import ModalClose from "../../components/ModalClose";
 import MonthField from "../../components/MonthField";
 import WingedFlats from "../../components/WingedFlats";
 import KeyboardAvoider from "../../components/KeyboardAvoider";
@@ -549,6 +550,7 @@ function FormModal({ visible, onClose, title, icon, children, busy, onSubmit }) 
               <Ionicons name={icon || "create-outline"} size={20} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>{title}</Text>
+            <ModalClose onPress={onClose} />
           </LinearGradient>
           <View style={styles.modalBody}>
             {children}
