@@ -24,6 +24,7 @@ import ProfileModal from "../components/ProfileModal";
 import AskGateMate from "../components/AskGateMate";
 import HomeSummary from "../components/HomeSummary";
 import { body, head } from "../lib/type";
+import { LogoutButton } from "../components/ScreenHeader";
 import { composeHomeSummary } from "../lib/homeSummaryFallback";
 import { openScreen } from "../lib/nav";
 import { brand, brandIcon } from "../lib/brand";
@@ -71,7 +72,7 @@ function HeroBleed({ source, height, onError, children }) {
 }
 
 export default function HomeScreen({ navigation }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const compact = width < 420;
@@ -183,10 +184,7 @@ export default function HomeScreen({ navigation }) {
             <TouchableOpacity style={styles.iconBtn} onPress={() => setProfileOpen(true)}>
               <Ionicons name="person-circle-outline" size={22} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-              <Ionicons name="log-out-outline" size={16} color="#fff" />
-              <Text style={styles.logoutText}>Logout</Text>
-            </TouchableOpacity>
+            <LogoutButton />
           </View>
         </View>
       </HeroBleed>
@@ -548,7 +546,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   badgeText: { color: "#fff", fontSize: 12, ...body(700) },
-  heroActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  heroActions: { flexDirection: "row", alignItems: "center", gap: 10 },
   iconBtn: {
     width: 34,
     height: 34,
@@ -557,16 +555,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  logoutBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(0,0,0,0.28)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  logoutText: { color: "#fff", ...body(700), fontSize: 13 },
   body: { paddingHorizontal: 20, paddingTop: 12, overflow: "hidden" },
   askWrap: { marginBottom: 12 },
   sectionLabel: {

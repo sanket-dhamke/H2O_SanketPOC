@@ -115,16 +115,16 @@ export default function SocietiesScreen() {
 
   const headerBtns = (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-      <TouchableOpacity onPress={() => setSettingsOpen(true)} style={styles.addBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+      <TouchableOpacity onPress={() => setSettingsOpen(true)} style={styles.addBtn}>
         <Ionicons name="settings-outline" size={19} color="#fff" />
       </TouchableOpacity>
-      <TouchableOpacity onPress={sendTestEmail} style={styles.addBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+      <TouchableOpacity onPress={sendTestEmail} style={styles.addBtn}>
         <Ionicons name="mail-outline" size={20} color="#fff" />
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => setResetModal(true)} style={styles.addBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+      <TouchableOpacity onPress={() => setResetModal(true)} style={styles.addBtn}>
         <Ionicons name="key-outline" size={20} color="#fff" />
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => setCreateModal(true)} style={styles.addBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+      <TouchableOpacity onPress={() => setCreateModal(true)} style={styles.addBtn}>
         <Ionicons name="add" size={24} color="#fff" />
       </TouchableOpacity>
     </View>

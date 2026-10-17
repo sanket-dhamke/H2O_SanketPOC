@@ -23,6 +23,7 @@ import { labelsFor } from "../lib/org";
 import { SUPPORT, memberId } from "../lib/support";
 import ChangePasswordModal from "./ChangePasswordModal";
 import MobileNumberEditor from "./MobileNumberEditor";
+import { LogoutButton } from "./ScreenHeader";
 import { openScreen } from "../lib/nav";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
@@ -144,10 +145,7 @@ export default function ProfileModal({ visible, onClose }) {
           <TouchableOpacity style={styles.closeBtn} onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="chevron-down" size={24} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerLogout} onPress={confirmLogout} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="log-out-outline" size={16} color="#fff" />
-            <Text style={styles.headerLogoutText}>Log out</Text>
-          </TouchableOpacity>
+          <LogoutButton onPress={confirmLogout} style={[styles.headerLogout, { top: insets.top + 12 }]} />
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials(user.name)}</Text>
           </View>
@@ -238,8 +236,11 @@ export default function ProfileModal({ visible, onClose }) {
           {/* Account actions */}
           <Section title="Account & security">
             <ActionRow icon="key-outline" label="Change password" onPress={() => setPwModal(true)} />
-            <ActionRow icon="log-out-outline" label="Log out" danger onPress={confirmLogout} />
           </Section>
+          <TouchableOpacity style={styles.signOut} onPress={confirmLogout} accessibilityRole="button" accessibilityLabel="Logout">
+            <Ionicons name="log-out-outline" size={18} color="#9F1239" />
+            <Text style={styles.signOutText}>Logout</Text>
+          </TouchableOpacity>
 
           {/* Support & feedback */}
           <Section title="Support & feedback">
@@ -306,19 +307,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F7" },
   header: { alignItems: "center", paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   closeBtn: { position: "absolute", left: 12, top: 0, padding: 10 },
-  headerLogout: {
-    position: "absolute",
-    right: 12,
-    top: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(0,0,0,0.28)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  headerLogoutText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  headerLogout: { position: "absolute", right: 16, zIndex: 5 },
   avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center", marginTop: 8 },
   avatarText: { color: "#fff", fontSize: 28, fontWeight: "800" },
   name: { color: "#fff", fontSize: 20, fontWeight: "800", marginTop: 12 },
@@ -346,5 +335,18 @@ const styles = StyleSheet.create({
   orderDate: { color: "#8895A0", fontSize: 12, marginTop: 2 },
   orderAmt: { color: "#2E9E52", fontWeight: "800" },
 
+  signOut: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginBottom: 18,
+  },
+  signOutText: { color: "#9F1239", fontSize: 15, fontWeight: "800" },
   version: { textAlign: "center", color: "#A4B0B8", fontSize: 12, marginTop: 4 },
 });
