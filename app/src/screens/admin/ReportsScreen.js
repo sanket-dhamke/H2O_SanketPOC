@@ -16,9 +16,15 @@ import { isPreschool } from "../../lib/org";
 import ScreenHeader from "../../components/ScreenHeader";
 import { downloadReceipt } from "../../lib/receipt";
 import { buildWingReportHtml, buildSchoolReportHtml } from "../../lib/reportHtml";
+import { buildMoveLetter } from "../../lib/moveLetter";
 
 const money = (n) => `\u20B9${Number(n || 0).toLocaleString("en-IN")}`;
-const timeAt = (iso) => (iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) : "-");
+const prettyDay = (ymd) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd || ""));
+  if (!match) return ymd || "";
+  const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${Number(match[3])} ${names[Number(match[2]) - 1] || match[2]} ${match[1]}`;
+};
 
 export default function ReportsScreen() {
   const { user } = useAuth();
@@ -34,19 +40,20 @@ function SocietyReports() {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [emailing, setEmailing] = useState(false);
-  const [gate, setGate] = useState(null);
+  const [occupancy, setOccupancy] = useState(null);
 
   const loadReport = useCallback(async (block) => {
     setLoading(true);
     try {
-      const [{ blocks: bl }, { report: r }, g] = await Promise.all([
+      const wing = block === "__all__" ? undefined : block;
+      const [{ blocks: bl }, { report: r }, moves] = await Promise.all([
         api.adminBlocks(),
-        api.adminReport(block === "__all__" ? undefined : block),
-        api.adminEntryExit(),
+        api.adminReport(wing),
+        api.adminEntryExit(wing),
       ]);
       setBlocks(bl || []);
       setReport(r);
-      setGate(g);
+      setOccupancy(moves);
     } catch (e) {
       Alert.alert("Error", e.message);
     } finally {
@@ -75,6 +82,48 @@ function SocietyReports() {
       Alert.alert("Export failed", e.message);
     } finally {
       setExporting(false);
+    }
+  };
+
+  const tell = (message) => {
+    if (typeof window !== "undefined" && window.alert) window.alert(message);
+    else Alert.alert("Entry–exit", message);
+  };
+
+  const openLetter = async (move) => {
+    const exit = move.kind === "move_out";
+    if (exit && !move.nocIssued && move.dues > 0) {
+      const ok =
+        typeof window !== "undefined" && window.confirm
+          ? window.confirm(
+              `Flat ${move.flatNo} still has ₹${move.dues} unpaid maintenance. The NOC will say that. Issue it?`
+            )
+          : true;
+      if (!ok) return;
+    }
+    try {
+      let current = move;
+      if (exit && !move.nocIssued) {
+        const res = await api.adminUpdateMove(move.id, { nocIssued: true });
+        current = { ...move, ...res.move, dues: move.dues };
+      }
+      const { html, filename } = buildMoveLetter({
+        societyName: occupancy?.societyName,
+        move: current,
+      });
+      await downloadReceipt(html, filename);
+      loadReport(selected);
+    } catch (e) {
+      tell(e.message || "Could not prepare the letter.");
+    }
+  };
+
+  const markLiftPaid = async (move) => {
+    try {
+      await api.adminUpdateMove(move.id, { chargePaid: true });
+      loadReport(selected);
+    } catch (e) {
+      tell(e.message || "Could not mark the lift charge paid.");
     }
   };
 
@@ -156,28 +205,58 @@ function SocietyReports() {
           </>
         ) : null}
 
-        {gate ? (
+        {occupancy ? (
           <>
-            <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Entry–exit (last 30 days)</Text>
+            <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Entry–exit · owners and tenants</Text>
             <Text style={styles.explain}>
-              This is the gate log, not a money report. Each row is a visitor: when they came in, and whether they have left. Still inside means the guard has not marked an exit.
+              This is when an owner or a tenant came to live in the society, and when they left. It is the move-in and move-out register. The service-lift charge is the fee for moving household goods. An exit NOC is the society letter for someone leaving.
             </Text>
             <View style={styles.kpiRow}>
-              <Kpi label="Entries" value={gate.total ?? 0} />
-              <Kpi label="Still inside" value={gate.stillInside ?? 0} color="#C2571A" />
+              <Kpi label="Came to live" value={occupancy.moveIns ?? 0} color="#1E7A3D" />
+              <Kpi label="Left" value={occupancy.moveOuts ?? 0} color="#B42318" />
             </View>
-            {(gate.visitors || []).slice(0, 25).map((v) => (
-              <View key={v.id} style={styles.flatRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.flatNo}>{v.name}{v.flatNo ? ` · ${v.flatNo}` : ""}</Text>
-                  <Text style={styles.flatSub}>
-                    In {timeAt(v.inAt)}
-                    {v.outAt ? ` · Out ${timeAt(v.outAt)}` : " · still inside"}
-                    {v.minutes != null ? ` · ${v.minutes} min` : ""}
-                  </Text>
+            <View style={styles.kpiRow}>
+              <Kpi label="Exit NOC pending" value={occupancy.nocPending ?? 0} color="#C2571A" />
+              <Kpi label="Lift fee due" value={money(occupancy.liftDue)} color="#C2571A" />
+            </View>
+            {(occupancy.moves || []).map((move) => {
+              const exit = move.kind === "move_out";
+              const who = move.occupantType === "owner" ? "Owner" : "Tenant";
+              return (
+                <View key={move.id} style={styles.flatRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.flatNo}>
+                      {move.residentName} · Flat {move.flatNo || "—"}
+                    </Text>
+                    <Text style={styles.flatSub}>
+                      {who} · {exit ? `Left ${prettyDay(move.date)}` : `Came to live ${prettyDay(move.date)}`}
+                    </Text>
+                    <Text style={styles.flatSub}>
+                      {move.liftCharge > 0
+                        ? `Service lift ${money(move.liftCharge)} · ${move.chargePaid ? "paid" : "due"}`
+                        : "No service-lift charge"}
+                      {exit ? ` · ${move.nocIssued ? "NOC issued" : "NOC not issued"}` : ""}
+                      {move.dues > 0 ? ` · ${money(move.dues)} maintenance due` : ""}
+                    </Text>
+                    <View style={styles.rowActs}>
+                      {move.liftCharge > 0 && !move.chargePaid ? (
+                        <TouchableOpacity onPress={() => markLiftPaid(move)}>
+                          <Text style={styles.link}>Mark lift paid</Text>
+                        </TouchableOpacity>
+                      ) : null}
+                      <TouchableOpacity onPress={() => openLetter(move)}>
+                        <Text style={styles.link}>
+                          {exit ? (move.nocIssued ? "Download NOC" : "Issue NOC") : "Shifting permission"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
+            {(occupancy.moves || []).length === 0 && (
+              <Text style={styles.muted}>No owner or tenant move has been recorded yet. Add one from Society office → Move in / out.</Text>
+            )}
           </>
         ) : null}
 
@@ -355,6 +434,8 @@ const styles = StyleSheet.create({
   flatRow: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 10, padding: 14, marginBottom: 8 },
   flatNo: { fontWeight: "800", color: "#1B2B33" },
   flatSub: { color: "#6B7B85", fontSize: 12, marginTop: 2 },
+  rowActs: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 8 },
+  link: { color: "#0B6E8F", fontWeight: "800", fontSize: 13 },
   due: { color: "#C2571A", fontWeight: "800" },
   cleared: { color: "#2E9E52", fontWeight: "700", fontSize: 13 },
   muted: { color: "#8895A0", textAlign: "center", marginTop: 12 },

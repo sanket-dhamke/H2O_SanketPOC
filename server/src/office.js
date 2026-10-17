@@ -55,18 +55,27 @@ export function collectionMonths(bills, now = new Date(), count = 6) {
   return months;
 }
 
-export function serializeMove(m, flatNo) {
+export function serializeMove(m, flat) {
+  const flatNo = typeof flat === "string" ? flat : flat?.flatNo || null;
+  const block = typeof flat === "string" ? m.block || null : flat?.block || m.block || null;
+  const lift = m.liftCharge == null || m.liftCharge === "" ? null : Number(m.liftCharge);
   return {
     id: m.id,
     flatId: m.flatId,
     flatNo: flatNo || null,
+    block: block || null,
     kind: m.kind,
+    occupantType: m.occupantType === "owner" ? "owner" : "tenant",
     residentName: m.residentName,
     phone: m.phone || null,
     email: m.email || null,
     date: m.date,
     notes: m.notes || null,
     depositAmount: m.depositAmount ?? null,
+    liftCharge: Number.isFinite(lift) ? lift : null,
+    chargePaid: !!m.chargePaid,
+    nocIssued: !!m.nocIssued,
+    nocIssuedAt: m.nocIssuedAt || null,
     createdAt: m.createdAt,
   };
 }

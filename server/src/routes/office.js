@@ -149,17 +149,26 @@ officeRouter.post("/moves", async (req, res) => {
   if (depositAmount != null && (!Number.isFinite(depositAmount) || depositAmount < 0)) {
     return res.status(400).json({ message: "depositAmount must be a positive number" });
   }
+  const liftCharge =
+    req.body?.liftCharge != null && req.body.liftCharge !== "" ? Number(req.body.liftCharge) : null;
+  if (liftCharge != null && (!Number.isFinite(liftCharge) || liftCharge < 0)) {
+    return res.status(400).json({ message: "liftCharge must be a positive number" });
+  }
+  const occupantType = req.body?.occupantType === "owner" ? "owner" : "tenant";
   const move = await prisma.occupancyMove.create({
     data: {
       societyId: sid(req),
       flatId: flat.id,
       kind,
+      occupantType,
       residentName,
       phone: clip(req.body?.phone, 20) || null,
       email: clip(req.body?.email, 120) || null,
       date,
       notes: clip(req.body?.notes, 500) || null,
       depositAmount,
+      liftCharge,
+      chargePaid: liftCharge > 0 ? Boolean(req.body?.chargePaid) : false,
       createdById: req.user.id,
     },
   });
@@ -189,7 +198,22 @@ officeRouter.post("/moves", async (req, res) => {
       data: { moveOutAt: new Date(`${date}T00:00:00`) },
     });
   }
-  res.status(201).json({ move: serializeMove(move, flat.flatNo) });
+  res.status(201).json({ move: serializeMove(move, flat) });
+});
+
+officeRouter.patch("/moves/:id", async (req, res) => {
+  const move = await prisma.occupancyMove.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
+  if (!move) return res.status(404).json({ message: "Move not found" });
+  const data = {};
+  if (req.body?.chargePaid !== undefined) data.chargePaid = Boolean(req.body.chargePaid);
+  if (req.body?.nocIssued !== undefined) {
+    data.nocIssued = Boolean(req.body.nocIssued);
+    data.nocIssuedAt = data.nocIssued ? new Date() : null;
+  }
+  if (!Object.keys(data).length) return res.status(400).json({ message: "Nothing to update" });
+  const updated = await prisma.occupancyMove.update({ where: { id: move.id }, data });
+  const flat = await prisma.flat.findUnique({ where: { id: move.flatId }, select: { flatNo: true, block: true } });
+  res.json({ move: serializeMove(updated, flat) });
 });
 
 officeRouter.get("/vendors", async (req, res) => {
@@ -248,44 +272,46 @@ officeRouter.post("/vendors/:id/pay", async (req, res) => {
   res.json({ vendor: serializeVendorBill(updated) });
 });
 
+// Owner and tenant entry–exit: the day someone came to live in the society,
+// and the day they left. Includes the service-lift shifting fee and whether
+// the society has issued the exit NOC. This is not the visitor gate log.
 officeRouter.get("/entry-exit", async (req, res) => {
-  const from = YMD.test(req.query.from) ? req.query.from : ymdDaysAgo(30);
-  const to = YMD.test(req.query.to) ? req.query.to : ymdDaysAgo(0);
-  const start = new Date(`${from}T00:00:00`);
-  const end = new Date(`${to}T23:59:59`);
-  const visitors = await prisma.visitor.findMany({
-    where: {
-      flat: { societyId: sid(req) },
-      createdAt: { gte: start, lte: end },
-    },
-    include: { flat: true },
-    orderBy: { createdAt: "desc" },
-    take: 500,
+  const block = clip(req.query.block, 40);
+  const society = await prisma.society.findUnique({ where: { id: sid(req) }, select: { name: true } });
+  const moves = await prisma.occupancyMove.findMany({
+    where: { societyId: sid(req) },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    take: 400,
   });
-  const rows = visitors.map((v) => {
-    const mins = v.exitAt && v.createdAt ? Math.max(0, Math.round((new Date(v.exitAt) - new Date(v.createdAt)) / 60000)) : null;
-    return {
-      id: v.id,
-      name: v.name,
-      flatNo: v.flat?.flatNo || null,
-      purpose: v.purpose || null,
-      status: v.status,
-      inAt: v.createdAt,
-      outAt: v.exitAt || null,
-      minutes: mins,
-    };
-  });
+  const flatIds = [...new Set(moves.map((m) => m.flatId))];
+  const flats = flatIds.length
+    ? await prisma.flat.findMany({
+        where: { id: { in: flatIds }, societyId: sid(req) },
+        select: { id: true, flatNo: true, block: true },
+      })
+    : [];
+  const flatById = new Map(flats.map((f) => [f.id, f]));
+  const bills = flatIds.length
+    ? await prisma.bill.findMany({
+        where: { flatId: { in: flatIds }, status: { in: ["pending", "partial"] } },
+        select: { flatId: true, amount: true, paidAmount: true, lateFee: true, status: true },
+      })
+    : [];
+  const dues = new Map();
+  for (const bill of bills) dues.set(bill.flatId, (dues.get(bill.flatId) || 0) + billBalance(bill));
+
+  let rows = moves.map((m) => ({
+    ...serializeMove(m, flatById.get(m.flatId)),
+    dues: Math.round(dues.get(m.flatId) || 0),
+  }));
+  if (block) rows = rows.filter((row) => row.block === block);
+  const liftDue = rows.reduce((sum, row) => sum + (row.liftCharge > 0 && !row.chargePaid ? row.liftCharge : 0), 0);
   res.json({
-    from,
-    to,
-    total: rows.length,
-    stillInside: rows.filter((r) => !r.outAt && r.status === "approved").length,
-    visitors: rows,
+    societyName: society?.name || null,
+    moveIns: rows.filter((row) => row.kind === "move_in").length,
+    moveOuts: rows.filter((row) => row.kind === "move_out").length,
+    nocPending: rows.filter((row) => row.kind === "move_out" && !row.nocIssued).length,
+    liftDue: Math.round(liftDue),
+    moves: rows,
   });
 });
-
-function ymdDaysAgo(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
-}

@@ -1187,12 +1187,20 @@ model OccupancyMove {
   societyId    String
   flatId       String
   kind         String   // move_in | move_out
+  // Owner living in their flat, or a tenant. Both appear on the entry–exit report.
+  occupantType String   @default("tenant") // owner | tenant
   residentName String
   phone        String?
   email        String?
-  date         String   // YYYY-MM-DD
+  date         String   // YYYY-MM-DD — the day they came to live here, or left
   notes        String?
   depositAmount Float?
+  // Fee for the service lift while household goods are moved in or out.
+  liftCharge   Float?
+  chargePaid   Boolean  @default(false)
+  // Society no-objection letter for someone leaving. Move-in uses a shifting permission.
+  nocIssued    Boolean  @default(false)
+  nocIssuedAt  DateTime?
   createdById  String?
   createdAt    DateTime @default(now())
 

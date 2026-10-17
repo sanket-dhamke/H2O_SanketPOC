@@ -48,6 +48,29 @@ test("serializers keep tenant fields", () => {
   );
   assert.equal(move.flatNo, "A-101");
   assert.equal(move.kind, "move_in");
+  assert.equal(move.occupantType, "tenant");
+  assert.equal(move.liftCharge, null);
+  assert.equal(move.nocIssued, false);
+  const ownerOut = serializeMove(
+    {
+      id: "m2",
+      flatId: "f1",
+      kind: "move_out",
+      occupantType: "owner",
+      residentName: "Meera",
+      date: "2026-09-12",
+      liftCharge: 1500,
+      chargePaid: false,
+      nocIssued: true,
+      createdAt: new Date("2026-09-12"),
+    },
+    { flatNo: "B-202", block: "B" }
+  );
+  assert.equal(ownerOut.occupantType, "owner");
+  assert.equal(ownerOut.block, "B");
+  assert.equal(ownerOut.liftCharge, 1500);
+  assert.equal(ownerOut.chargePaid, false);
+  assert.equal(ownerOut.nocIssued, true);
   const v = serializeVendorBill({
     id: "v1",
     vendorName: "SecureCo",

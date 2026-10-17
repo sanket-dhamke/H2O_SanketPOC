@@ -11,6 +11,18 @@ import KeyboardAvoider from "../../components/KeyboardAvoider";
 import FlatPicker from "../../components/FlatPicker";
 
 const today = () => new Date().toISOString().slice(0, 10);
+const prettyDay = (ymd) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd || ""));
+  if (!match) return ymd || "";
+  const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${Number(match[3])} ${names[Number(match[2]) - 1] || match[2]} ${match[1]}`;
+};
+
+const tell = (title, message) => {
+  const text = message || title;
+  if (typeof window !== "undefined" && window.alert) window.alert(text);
+  else Alert.alert(title, message);
+};
 
 export default function MovesScreen() {
   const navigation = useNavigation();
@@ -26,6 +38,9 @@ export default function MovesScreen() {
   const [phone, setPhone] = useState("");
   const [date, setDate] = useState(today());
   const [deposit, setDeposit] = useState("");
+  const [occupantType, setOccupantType] = useState("tenant");
+  const [liftCharge, setLiftCharge] = useState("");
+  const [chargePaid, setChargePaid] = useState(false);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -35,33 +50,42 @@ export default function MovesScreen() {
       setMoves(r.moves || []);
       setFlats(f.flats || []);
     } catch (e) {
-      Alert.alert("Error", e.message);
+      tell("Error", e.message);
     }
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const submit = async () => {
-    if (!flatId || !name.trim()) return Alert.alert("Required", `Pick a ${L.unit.toLowerCase()} and enter the resident name.`);
+    if (!flatId || !name.trim()) return tell("Required", `Pick a ${L.unit.toLowerCase()} and enter the resident name.`);
+    const lift = liftCharge.trim() ? Number(liftCharge) : undefined;
+    if (lift != null && (!Number.isFinite(lift) || lift < 0)) return tell("Lift charge", "Enter the service-lift fee as a number, or leave it blank.");
     setBusy(true);
     try {
       await api.adminCreateMove({
         kind,
+        occupantType,
         flatId,
         residentName: name.trim(),
         phone: phone.trim() || undefined,
         date,
         notes: notes.trim() || undefined,
-        depositAmount: deposit ? Number(deposit) : undefined,
+        depositAmount: kind === "move_in" && deposit ? Number(deposit) : undefined,
+        liftCharge: lift,
+        chargePaid: lift > 0 ? chargePaid : false,
       });
       setOpen(false);
+      setFlatId(null);
+      setOccupantType("tenant");
       setName("");
       setPhone("");
       setDeposit("");
+      setLiftCharge("");
+      setChargePaid(false);
       setNotes("");
       load();
     } catch (e) {
-      Alert.alert("Error", e.message);
+      tell("Error", e.message);
     } finally {
       setBusy(false);
     }
@@ -86,7 +110,17 @@ export default function MovesScreen() {
           <View key={m.id} style={styles.card}>
             <Text style={[styles.kind, m.kind === "move_out" && { color: "#B42318" }]}>{m.kind === "move_in" ? "MOVE IN" : "MOVE OUT"}</Text>
             <Text style={styles.title}>{m.residentName} · {m.flatNo}</Text>
-            <Text style={styles.meta}>{m.date}{m.phone ? ` · ${m.phone}` : ""}{m.depositAmount ? ` · deposit ₹${m.depositAmount}` : ""}</Text>
+            <Text style={styles.meta}>
+              {m.occupantType === "owner" ? "Owner" : "Tenant"} · {m.kind === "move_in" ? "came to live" : "left"} {prettyDay(m.date)}
+              {m.phone ? ` · ${m.phone}` : ""}
+              {m.depositAmount ? ` · deposit ₹${m.depositAmount}` : ""}
+            </Text>
+            <Text style={styles.meta}>
+              {m.liftCharge > 0
+                ? `Service lift ₹${m.liftCharge} · ${m.chargePaid ? "paid" : "due"}`
+                : "No service-lift charge"}
+              {m.kind === "move_out" ? ` · ${m.nocIssued ? "NOC issued" : "NOC not issued"}` : ""}
+            </Text>
             {m.notes ? <Text style={styles.notes}>{m.notes}</Text> : null}
           </View>
         ))}
@@ -98,19 +132,36 @@ export default function MovesScreen() {
               <Text style={styles.modalTitle}>Log a move</Text>
               <ModalClose light={false} onPress={() => setOpen(false)} />
             </View>
-            <View style={styles.kinds}>
-              {["move_in", "move_out"].map((k) => (
-                <TouchableOpacity key={k} style={[styles.kindBtn, kind === k && styles.kindOn]} onPress={() => setKind(k)}>
-                  <Text style={[styles.kindBtnText, kind === k && { color: "#fff" }]}>{k === "move_in" ? "Move in" : "Move out"}</Text>
+            <ScrollView style={{ maxHeight: 460 }} keyboardShouldPersistTaps="handled">
+              <Text style={styles.hint}>Owner or tenant coming to live here, or leaving. The service-lift fee covers moving household goods.</Text>
+              <View style={styles.kinds}>
+                {["move_in", "move_out"].map((k) => (
+                  <TouchableOpacity key={k} style={[styles.kindBtn, kind === k && styles.kindOn]} onPress={() => setKind(k)}>
+                    <Text style={[styles.kindBtnText, kind === k && { color: "#fff" }]}>{k === "move_in" ? "Came to live" : "Left"}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.kinds}>
+                {["owner", "tenant"].map((t) => (
+                  <TouchableOpacity key={t} style={[styles.kindBtn, occupantType === t && styles.kindOn]} onPress={() => setOccupantType(t)}>
+                    <Text style={[styles.kindBtnText, occupantType === t && { color: "#fff" }]}>{t === "owner" ? "Owner" : "Tenant"}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <FlatPicker flats={flats} value={flatId} onChange={setFlatId} placeholder={`Select ${L.unit.toLowerCase()}`} />
+              <TextInput style={styles.input} placeholder="Name" value={name} onChangeText={setName} />
+              <TextInput style={styles.input} placeholder="Phone (optional)" value={phone} onChangeText={setPhone} />
+              <TextInput style={styles.input} placeholder="Date YYYY-MM-DD" value={date} onChangeText={setDate} />
+              {kind === "move_in" ? <TextInput style={styles.input} placeholder="Security deposit (optional)" value={deposit} onChangeText={setDeposit} keyboardType="numeric" /> : null}
+              <TextInput style={styles.input} placeholder="Service-lift fee (optional)" value={liftCharge} onChangeText={setLiftCharge} keyboardType="numeric" />
+              {Number(liftCharge) > 0 ? (
+                <TouchableOpacity style={styles.paidRow} onPress={() => setChargePaid((v) => !v)}>
+                  <Ionicons name={chargePaid ? "checkbox" : "square-outline"} size={20} color="#0B6E8F" />
+                  <Text style={styles.paidText}>{chargePaid ? "Lift fee already paid" : "Lift fee still due"}</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-            <FlatPicker flats={flats} value={flatId} onChange={setFlatId} placeholder={`Select ${L.unit.toLowerCase()}`} />
-            <TextInput style={styles.input} placeholder="Resident name" value={name} onChangeText={setName} />
-            <TextInput style={styles.input} placeholder="Phone (optional)" value={phone} onChangeText={setPhone} />
-            <TextInput style={styles.input} placeholder="Date YYYY-MM-DD" value={date} onChangeText={setDate} />
-            {kind === "move_in" ? <TextInput style={styles.input} placeholder="Security deposit (optional)" value={deposit} onChangeText={setDeposit} keyboardType="numeric" /> : null}
-            <TextInput style={styles.input} placeholder="Notes (optional)" value={notes} onChangeText={setNotes} />
+              ) : null}
+              <TextInput style={styles.input} placeholder="Notes (optional)" value={notes} onChangeText={setNotes} />
+            </ScrollView>
             <View style={styles.actions}>
               <TouchableOpacity onPress={() => setOpen(false)} style={styles.cancel}><Text>Cancel</Text></TouchableOpacity>
               <TouchableOpacity onPress={submit} disabled={busy} style={styles.save}><Text style={{ color: "#fff", fontWeight: "800" }}>{busy ? "Saving…" : "Save"}</Text></TouchableOpacity>
@@ -139,6 +190,9 @@ const styles = StyleSheet.create({
   kindBtn: { flex: 1, borderWidth: 1, borderColor: "#CFE0E6", borderRadius: 10, paddingVertical: 10, alignItems: "center" },
   kindOn: { backgroundColor: "#0B6E8F", borderColor: "#0B6E8F" },
   kindBtnText: { fontWeight: "700", color: "#0B6E8F" },
+  hint: { color: "#48606B", fontSize: 13, lineHeight: 18, marginBottom: 10 },
+  paidRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 },
+  paidText: { color: "#1B2B33", fontWeight: "700" },
   input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, padding: 12, marginTop: 8, backgroundColor: "#F8FAFB" },
   actions: { flexDirection: "row", justifyContent: "flex-end", gap: 12, marginTop: 14 },
   cancel: { padding: 10 },
