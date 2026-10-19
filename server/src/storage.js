@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { compactDataUrl } from "./shrink.js";
 
 // Supabase Storage for visitor photos. Optional: if env vars are not set the
 // server falls back to a deterministic placeholder avatar so the demo still runs.
@@ -18,10 +19,14 @@ const supabase = storageEnabled
 export async function uploadVisitorPhoto(base64, id) {
   if (!storageEnabled || !base64) return null;
   try {
-    const match = /^data:(image\/\w+);base64,(.+)$/.exec(base64);
+    const prepared = await compactDataUrl(
+      String(base64).startsWith("data:") ? base64 : `data:image/jpeg;base64,${base64}`,
+      "visitor"
+    );
+    const match = /^data:(image\/\w+);base64,(.+)$/.exec(prepared);
     const contentType = match ? match[1] : "image/jpeg";
-    const raw = match ? match[2] : base64;
-    const ext = contentType.split("/")[1] || "jpg";
+    const raw = match ? match[2] : prepared;
+    const ext = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
     const buffer = Buffer.from(raw, "base64");
     const path = `${id}.${ext}`;
 
@@ -88,9 +93,10 @@ export async function signBackup(path, { expiresIn = 3600 } = {}) {
 export async function uploadDocument(base64, id, folder = "documents") {
   if (!storageEnabled || !base64) return null;
   try {
-    const match = /^data:([\w/+.-]+);base64,(.+)$/.exec(base64);
+    const payload = /^data:image\//.test(base64) ? await compactDataUrl(base64, "document") : base64;
+    const match = /^data:([\w/+.-]+);base64,(.+)$/.exec(payload);
     const contentType = match ? match[1] : "application/pdf";
-    const raw = match ? match[2] : base64;
+    const raw = match ? match[2] : payload;
     const extMap = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
     const ext = extMap[contentType] || (contentType.split("/")[1] || "bin");
     const buffer = Buffer.from(raw, "base64");

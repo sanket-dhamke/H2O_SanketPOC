@@ -112,7 +112,7 @@ export async function buildSocietyBackup(societyId, { period = currentPeriod() }
     json,
     summaryText,
     attachments: [
-      { filename: `GATEZO-${slug}-${period}-backup.json`, content: JSON.stringify(json, null, 2), contentType: "application/json" },
+      { filename: `GATEZO-${slug}-${period}-backup.json`, content: JSON.stringify(json), contentType: "application/json" },
       { filename: `GATEZO-${slug}-${period}-payments.csv`, content: billsCsv, contentType: "text/csv" },
       { filename: `GATEZO-${slug}-${period}-expenses.csv`, content: expensesCsv, contentType: "text/csv" },
     ],

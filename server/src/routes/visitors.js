@@ -6,6 +6,7 @@ import { serializeVisitor } from "../serializers.js";
 import { enqueuePush } from "../queue.js";
 import { parsePaging } from "../paging.js";
 import { uploadVisitorPhoto, placeholderPhoto } from "../storage.js";
+import { compactDataUrl } from "../shrink.js";
 import { placeApprovalCall } from "../ivr.js";
 import { sweepVisitorWaits, validateGuardAction } from "../visitorWait.js";
 
@@ -45,11 +46,12 @@ visitorsRouter.post("/visitors", authRequired, roleRequired("guard", "admin"), a
   // Prefer cloud storage. If it isn't configured, keep the guard's real photo by
   // storing the base64 data URL inline (so residents see the actual visitor, not
   // a random placeholder avatar). Fall back to a placeholder only when no photo.
-  let photoUrl = await uploadVisitorPhoto(photoBase64, visitorId);
+  const slimPhoto = photoBase64 ? await compactDataUrl(photoBase64, "visitor") : null;
+  let photoUrl = await uploadVisitorPhoto(slimPhoto, visitorId);
   if (!photoUrl) {
     photoUrl =
-      photoBase64 && /^data:image\//.test(photoBase64)
-        ? photoBase64
+      slimPhoto && /^data:image\//.test(slimPhoto)
+        ? slimPhoto
         : placeholderPhoto(visitorId);
   }
 

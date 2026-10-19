@@ -3,6 +3,7 @@ import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
 import { enqueuePush } from "../queue.js";
 import { uploadDocument } from "../storage.js";
+import { compactDataUrl } from "../shrink.js";
 import { parsePaging } from "../paging.js";
 import { isStaffRole, listingAttentionNotices, locationMatchesFlat, onSellerSide } from "../listingInbox.js";
 
@@ -150,9 +151,10 @@ marketplaceRouter.post("/listings", authRequired, roleRequired("resident", "admi
     incoming.map(async (img, i) => {
       if (typeof img !== "string" || !img) return null;
       if (img.startsWith("http")) return img;
-      if (img.length > MAX_IMG_CHARS) return null;
-      const url = await uploadDocument(img, `listing-${stamp}-${i}`, "listings");
-      return url || (img.startsWith("data:") ? img : null);
+      const slim = /^data:image\//.test(img) ? await compactDataUrl(img, "listing") : img;
+      if (!slim || slim.length > MAX_IMG_CHARS) return null;
+      const url = await uploadDocument(slim, `listing-${stamp}-${i}`, "listings");
+      return url || (slim.startsWith("data:") ? slim : null);
     })
   );
   const finalUrls = uploaded.filter(Boolean);

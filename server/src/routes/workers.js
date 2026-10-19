@@ -3,6 +3,7 @@ import { randomBytes } from "crypto";
 import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
 import { uploadVisitorPhoto } from "../storage.js";
+import { compactDataUrl } from "../shrink.js";
 
 // Portable Helper & Vendor "Trust Passport". Workers are network-wide (not
 // scoped to a society) so their rating & attendance travel across every
@@ -26,9 +27,10 @@ export async function ensureAttendancePhotoColumns() {
 // Storage keeps a normal web address. A missing photo never blocks check-in.
 async function saveGatePhoto(base64, id) {
   if (!base64 || typeof base64 !== "string" || !base64.startsWith("data:image/")) return null;
-  const uploaded = await uploadVisitorPhoto(base64, id);
+  const slim = await compactDataUrl(base64, "visitor");
+  const uploaded = await uploadVisitorPhoto(slim, id);
   if (uploaded) return uploaded;
-  if (base64.length <= 350000) return base64;
+  if (slim && slim.length <= 180000) return slim;
   return null;
 }
 

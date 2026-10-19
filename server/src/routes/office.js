@@ -4,6 +4,7 @@ import { authRequired, roleRequired } from "../auth.js";
 import { billBalance, refreshLateFees } from "../billing.js";
 import { moneySplits, collectionMonths, serializeMove, serializeVendorBill, vendorImageList } from "../office.js";
 import { uploadDocument } from "../storage.js";
+import { compactDataUrl } from "../shrink.js";
 
 export const officeRouter = Router();
 officeRouter.use(authRequired, roleRequired("admin"));
@@ -26,9 +27,10 @@ async function storeVendorImages(images) {
   const uploaded = await Promise.all(
     incoming.map(async (img, i) => {
       if (img.startsWith("http")) return img;
-      if (img.length > MAX_IMG_CHARS) return null;
-      const url = await uploadDocument(img, `vendor-${stamp}-${i}`, "vendor-bills");
-      return url || (img.startsWith("data:") ? img : null);
+      const slim = /^data:image\//.test(img) ? await compactDataUrl(img, "document") : img;
+      if (!slim || slim.length > MAX_IMG_CHARS) return null;
+      const url = await uploadDocument(slim, `vendor-${stamp}-${i}`, "vendor-bills");
+      return url || (slim.startsWith("data:") ? slim : null);
     })
   );
   return uploaded.filter(Boolean);
