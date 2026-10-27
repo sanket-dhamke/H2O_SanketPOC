@@ -1,282 +1,270 @@
-# GateMate — User Guide
+# GATEZO — how to use the app
 
-Welcome to **GateMate**, your all-in-one app for running a gated community or a preschool. GateMate replaces WhatsApp groups, paper registers, and manual fee tracking with one simple, secure app.
+GATEZO is one app for a housing society or a preschool. The same screens run in a phone browser, and the same project builds the Android and iPhone apps. This guide is what each login can do, and the exact taps.
 
-This guide explains, in plain language, **what GateMate does**, **who uses it**, and **exactly how to use every feature** — for both **Societies** and **Preschools**.
+Open the latest version on a phone by going to:
 
----
+**https://h2o-api-5sxc.onrender.com**
 
-## 1. What is GateMate?
+That address is the live app. A push to `main` updates this site. A file you install from the Play Store or an APK is a separate build and does not change until a new store build is published.
 
-GateMate is a mobile app (**Android today, iPhone-ready** — see section 12) that helps a **society** (apartment complex) or a **preschool** manage:
-
-- **Money** — maintenance/fees billing, online payments, receipts, dues and reminders.
-- **People at the gate** — visitors, deliveries, pre-approved guests, and staff attendance.
-- **Community** — announcements, a neighbours' board, a Buy & Sell marketplace, and a helpdesk.
-- **Records** — a full payment history for every flat/student, plus exportable reports.
-- **Help** — a built-in AI assistant that answers questions in everyday language.
-
-> **One app, two modes.** GateMate automatically adapts its wording and screens depending on whether your organisation is a **Society** or a **Preschool**. See the vocabulary table in section 3.
+The first open after a quiet period can take up to a minute. Render’s free plan sleeps, then wakes.
 
 ---
 
-## 2. Who uses GateMate? (Roles)
+## 1. Who signs in
 
-GateMate has four types of login. Each sees a different home screen with only the tools they need.
+You do not pick a role on the login screen. The account already has one.
 
-| Role | Society | Preschool | What they can do |
-|------|---------|-----------|------------------|
-| **Resident / Parent** | Resident | Parent | Pay dues, approve visitors, create gate passes, book halls/amenities, use community & helpdesk. |
-| **Guard** | Security guard | Gate staff | Log visitors, take photos, notify residents/CLO, admit pre-approved passes, mark staff attendance. |
-| **Admin** | Society admin | Preschool admin | Generate bills, manage flats/students & logins, track dues, send reminders, run reports, handle tickets. |
-| **Superadmin (Owner)** | GateMate owner | GateMate owner | Oversee **all** societies/preschools, see revenue, create new organisations, manage plans & branding. |
+| Login | What they are | Bottom tabs |
+|---|---|---|
+| Resident / parent | Person in a flat, or a parent | Home, Maintenance (or Fees), Visitors, Community |
+| Guard | Gate desk | Home, Gate, Staff, Community, Visitors |
+| Society admin | Office of one society or school | Home, Finance (or Fees), Members, Community, Visitors. A preschool also has Staff. |
+| GATEZO owner | Runs the whole product | Overview, Societies, Professionals |
+| Service professional | Cleaner, AC technician, carpenter, and the other home-service trades | Jobs, Hours, Guide |
 
-You don't choose your role — it's set on your account when it's created. You simply log in with your email and password.
-
----
-
-## 3. Society vs Preschool — the same app, different words
-
-GateMate uses familiar language for each setting. Nothing else changes — the features work the same way.
-
-| In a Society you see… | In a Preschool you see… |
-|------------------------|--------------------------|
-| Flat | Student |
-| Resident | Parent |
-| Maintenance | Fees |
-| Wing | Class (Nursery, Jr KG, Sr KG, Preschool) |
-| Society balance | Fees balance |
-| "See who visited the society" | "See who entered the preschool" |
-| Amenities / Clubhouse booking | Open Hall booking |
-| Notify resident | Notify CLO (the preschool head) |
+A preschool uses different words for the same screens: flat → student, resident → parent, maintenance → fees, society → school, clubhouse → hall.
 
 ---
 
-## 4. Getting started
+## 2. Sign in, register, reset
 
-### 4.1 Installing the app
-1. Open the **QR code / install link** shared by your admin.
-2. Tap **Download**, then open the APK to install (allow "install from this source" if your phone asks).
-3. Open **GateMate**.
+1. Open the link above.
+2. Enter email and password. Tap **Show** if you want to check the password.
+3. Tap **Sign in**.
 
-### 4.2 Logging in
-1. On the login screen, enter your **email** and **password**.
-2. Tap the **Show** button to reveal your password if you want to check it.
-3. Tap **Sign in**. (The first sign-in can take a few extra seconds while the server wakes up.)
+**New resident.** On the login screen tap **New resident? Register with a join code**. Ask the society admin for the code (it starts with `GM`). Enter the code, flat or student, name, email, and password. An admin must approve you before you can sign in.
 
-### 4.3 Forgot your password?
-1. Tap **Forgot password** on the login screen.
-2. Enter your registered email — you'll receive a **one-time code (OTP)** by email.
-3. Enter the code and set a new password. Done.
+**New service professional.** On the same register screen choose **Service professional**. Ask the GATEZO owner for the provider code (it starts with `SP`). A society join code will not work. Pick at least one service you can do. You cannot sign in until the owner approves you, and you will not receive jobs until the owner records your annual pack.
 
-### 4.4 Your profile
-Tap the **profile icon** (top-right of the home screen) to see:
-- Your **name, unit (flat/student), and unique ID**.
-- **Notification preference** (turn push alerts on/off).
-- **Share my phone number** toggle (controls whether neighbours can see your number in the Directory).
-- **My orders / payment history**.
-- **Support & feedback** — GateMate's support phone number and email.
-- **Log out**.
+**Forgot password.** Tap **Forgot password**, enter your email, then the one-time code and a new password. The password needs 8 characters, one capital letter, one small letter, and one number.
 
----
+**Log out.** Open the profile icon on Home (or the header tools) and tap **Logout**.
 
-> **How to read sections 5–8.** GateMate has a **bottom tab bar** that changes based on your role. Below, each role is explained **tab by tab, left to right**, exactly as the buttons appear at the bottom of your screen — so you can follow along on your phone. Each tab lists everything you can do there, and how to reach features that live one level deeper.
+### Demo logins
 
----
+Every demo account uses the password `Password123`.
 
-## 5. The Resident / Parent app (tab by tab)
-
-**Your bottom tabs:** 🏠 Home · 💳 Maintenance/Fees · 📣 Community · 📅 Amenities/Hall · 👥 Visitors · ✨ Assistant
-
-### 5.1 🏠 Home tab
-Your dashboard. It shows a welcome header with your **profile icon** (top-right) and large shortcut **tiles** to the most-used features (Pay dues, Visitors, Gate pass, Helpdesk, Buy & Sell, Assistant). Tiles are just quick jumps into the tabs below.
-- Tap the **profile icon** for your name, unit, unique ID, notification & phone-sharing settings, payment history, and support contacts.
-
-### 5.2 💳 Maintenance / Fees tab
-Everything about **money you owe and pay**.
-- **Pay a bill:** you'll see each bill with its amount, due date, any **late fee**, and a **category breakdown** (e.g. Maintenance, Sinking Fund, Water Bill). Tap a bill and pay online via **UPI / cards / net-banking** — the money goes to your society/school's own account.
-- **Receipts:** after paying, download or share your **receipt**.
-- **Partial payments:** pay part now; the app tracks what's still due.
-- **📂 Fetching old records (previous months):** use the **month filter at the top** to jump to any past month and view/download **old paid bills and receipts** — perfect at tax time or for your records.
-- **📄 Rent agreement (society residents):** open **Rent agreements** from this tab. If your flat is on rent you can view your agreement, and you'll get **early alerts before it expires**. (Your admin marks the flat as "on rent" and verifies the agreement.)
-
-### 5.3 📣 Community tab
-Your neighbourhood hub. From here you can open:
-- **Announcements & neighbours' board:** notices from your admin, plus resident posts (questions, queries, items) with admin moderation.
-- **Buy & Sell (marketplace):** browse by **category** or **search**; tap **+** to post an item with photos, price and description; open any listing and **Message owner** to chat in-app. Listings can be seen **across societies** for more reach.
-- **Helpdesk:** raise a **ticket** for the manager (e.g. "lift not working"), follow its status, and read the **resolution note**. You can also see your **past tickets**, and **call security / office** in one tap.
-- **Directory:** searchable list of residents with **call / WhatsApp** buttons. Your own number appears **only** if you enabled "Share my phone number" in your profile.
-
-### 5.4 📅 Amenities / Hall booking tab
-Book shared facilities (Clubhouse / Party Hall in a society, Open Hall / Activity Room in a preschool).
-1. Pick a facility, choose a **date** from the calendar (past dates are disabled) and a **time slot**.
-2. Pay the booking fee in-app if the admin set a price.
-3. Your request waits for **admin approval**; track it under **My bookings**.
-
-### 5.5 👥 Visitors tab
-Manage people coming to see you.
-- **Approve visitors:** when a guard logs a visitor for your flat you get a **push notification**; here you **Approve**, **Deny**, or **Leave at gate**, and you can see the visitor's **photo** and **purpose**.
-- **🎫 Gate pass — pre-approval (like MyGate):** open **Gate pass** from this tab → **+**. Enter the guest/delivery name, type, and validity window (e.g. approve a delivery for the next 30 minutes). GateMate creates a **unique code** — share it with your guest. At the gate the guard enters the code and admits them instantly, **no call needed**.
-
-### 5.6 ✨ Assistant tab (AI)
-Your built-in helper. **Type or speak** questions like *"What's my balance?"*, *"Who visited my flat last week?"*, or *"When is my next due date?"* It only sees **your** data and answers in plain language.
+| Email | Who |
+|---|---|
+| owner@h2o.com | GATEZO owner |
+| admin@h2o.com, admin2@h2o.com | Green Valley admins (Pune) |
+| guard@h2o.com, guard2@h2o.com | Green Valley guards |
+| resident@h2o.com | Aarav Sharma, flat A-101 |
+| resident1b@h2o.com | Ananya Sharma, same flat A-101 |
+| resident2@h2o.com | Diya Mehta, A-102 |
+| resident3@h2o.com | Rohan Kapoor, B-201 |
+| admin@skyline.com | Skyline Towers admin (Mumbai) |
+| guard@skyline.com | Skyline guard |
+| resident@skyline.com | Vikram Rao, S-101 |
+| resident2@skyline.com | Neha Gupta, S-102 |
+| ac.ravi@gatezo.com | AC professional, higher rating |
+| ac.meera@gatezo.com | AC professional |
+| clean.anil@gatezo.com | Cleaning, pest, laundry |
+| salon.priya@gatezo.com | Salon |
+| trades.imran@gatezo.com | Plumbing, electrician, carpentry, instant visits, painting |
+| move.neha@gatezo.com | Movers, legal, interiors |
+| desk@gatezo.com | House desk. Takes a job only after every other professional has passed |
 
 ---
 
-## 6. The Guard / Gate-staff app (tab by tab)
+## 3. Resident or parent
 
-**Your bottom tabs:** 🏠 Home · ➕ Gate · 🪪 Staff *(preschool only)* · 📣 Community · 👥 Visitors · ✨ Assistant
+### Home
 
-### 6.1 🏠 Home tab
-Quick shortcuts to log a visitor, view the gate log, and open the assistant, plus your profile icon.
+The home page shows your society, charts, and **Needs your attention** (a visitor waiting, a due bill, a Buy & Sell message on your listing). Each attention row can be removed if you do not need it.
 
-### 6.2 ➕ Gate tab (log entries)
-Your main tool at the gate.
-- **Log a new visitor:** take/attach a **photo**, choose the **flat/student**, enter the **purpose**, then **Notify resident** (society) or **Notify CLO** (preschool) — they approve from their phone.
-- **Voice entry:** dictate the visitor's details hands-free when you're busy.
-- **🎫 Admit a pre-approved pass:** tap **Admit a pre-approved pass**, enter the **code** the resident shared, and GateMate verifies it so you can **admit** the guest in one tap.
+**Ask GATEZO** answers from your own live bills and visitors. Examples: “How much maintenance is pending?”, “Who visited last week?”, “How do I book the clubhouse?”. Hindi and Marathi questions are answered too. This reply is built from your records. It is not a paid chat model.
 
-### 6.3 🪪 Staff tab (preschool only)
-Record **teacher/staff check-in and check-out**. This feeds the attendance reports admins can export.
+Folders on Home jump to the screens below: visitors, gate pass, vehicle passes, pay bills, clubhouse, transparency, sustainability, AGM, home services, helpdesk, Buy & Sell, trusted helpers, and Help.
 
-### 6.4 📣 Community tab
-Same community hub as residents — announcements, directory, helpdesk contacts.
+### Maintenance / Fees
 
-### 6.5 👥 Visitors tab (gate log)
-See **today's entries** and their live status (approved / denied / at gate).
+- Open bills show the period, amount, due date, and any late fee.
+- Pay with UPI, card, or net banking through Razorpay. The charge goes to the society account the admin set up. You can pay part of a bill.
+- After payment, open the receipt and share it.
+- **Transparency** shows where the money went.
+- **Sustainability** shows the society green score and your flat’s water reading, when the office has entered meters.
+- **Rent agreement** shows the agreement on a rented flat and warns before it expires.
 
-### 6.6 ✨ Assistant tab
-Voice-and-text AI help right at the gate (e.g. *"Which flat did the last visitor go to?"*).
+### Visitors
 
----
+- When the guard logs someone for your flat, you get **Approve**, **Deny**, or **Leave at gate**, with the photo and purpose.
+- **Gate pass:** tap +, enter the guest or delivery, and share the code. The guard types that code and lets them in.
+- **Vehicle passes:** register a vehicle and its gate QR.
 
-## 7. The Admin app (Society / Preschool, tab by tab)
+### Community
 
-**Your bottom tabs:** 🏠 Home · 📊 Finance/Fees · 👤 Members/Accounts · 🪪 Staff *(preschool only)* · 📣 Community · 🛡️ Visitors (Gate log) · ✨ Assistant
-
-### 7.1 🏠 Home tab
-Admin dashboard with shortcut tiles and your profile icon.
-
-### 7.2 📊 Finance / Fees tab
-Your money control centre. It opens on a finance overview and drills into:
-- **Society office:** MyGate-style **total dues, overdue, advance, security deposit**, **defaulters**, **move in/out**, **vendor bills**, **entry–exit report**, **escalated helpdesk**, and optional **auto-erase of visitor details** after N days.
-- **Overview:** **collected, pending, overdue, advance, security deposit and balance** at a glance, with a **month calendar** to check **month-wise collection** for any month.
-- **Collections / Student fees:** the full bill list. In preschool mode this is **student-wise**, with **partial-payment** tracking.
-- **📂 Fetching old records (audit trail):** tap any flat/student to open its **full ledger** — **every bill and every payment from day one**, with running totals. Use this to trace any dispute or miscalculation. The **month filter** on Collections also lets you pull up any past month.
-- **Generate monthly bills:** pick the **billing month** from the calendar (past months disabled), then either set a **flat amount per unit** or generate from your **maintenance heads** (breakdown shown to residents). Confirm to bill everyone.
-- **Maintenance heads (categories):** split maintenance into **Normal Maintenance, Sinking Fund, Water Bill, Common Bill**, etc., each with its own amount.
-- **Late fee policy:** set a **flat / per-day / percentage** rule with **grace days** and an optional **cap**. Late fees apply **only to overdue bills** — never to months paid in advance.
-- **Remind unpaid / pending:** message everyone with a balance (including **partially paid**) via **push, email and WhatsApp**, with your **payment details** included automatically. Preschool admins can set a **per-student reminder date**.
-- **Amenities / Hall bookings:** approve booking requests and manage facilities, slots and prices.
-- **Reports & exports:** pull **wing-wise / class-wise** data and export as **PDF or DOC**. Preschool reports focus on **visitor and staff attendance history**.
-- **Pay to GateMate:** pay your platform/subscription dues to the GateMate owner.
-- **Vendor / venue marketplace:** manage listed vendors/venues (platform fee applies).
-
-### 7.3 👤 Members / Accounts tab
-Manage the people and units in your organisation.
-- **Manage flats/students:** **create** a unit and give it an **email + login** so the resident/parent can sign in; **edit** any detail (name, phone, class/wing, rent status); **disable** or safely **delete** (the app checks for linked accounts first). Preschool admins add students **class-wise** with fee details.
-- **Manage accounts:** create/adjust resident, parent, guard and co-admin logins.
-- **📄 Rent agreements:** open **Rent agreements** from this tab to mark a flat **on rent**, set a **different monthly maintenance** for rented flats, **add and verify** the agreement, and get **early expiry alerts**.
-- **Bank account:** set the **UPI/bank details** where resident/parent payments are received.
-- **Onboarding:** bulk-add units/members to get started fast.
-
-### 7.4 🪪 Staff tab (preschool only)
-View and manage **staff attendance** records.
-
-### 7.5 📣 Community tab
-Post **announcements**, moderate the neighbours' board, and use the helpdesk/directory.
-
-### 7.6 🛡️ Visitors / Gate log tab
-See **everyone who entered** the society/preschool and each visitor's status.
-
-### 7.7 ✨ Assistant tab
-Ask admin-level questions like *"How much is pending this month?"* or *"List flats with dues."*
+- **Announcements** from the office, and the neighbours’ board (general, for sale, question, lost & found, recommend).
+- **Buy & Sell:** post an item with photos and a price. Another resident taps **Message owner**. Both of you can read that conversation. A new message shows under Needs your attention for the flat that owns the listing, not for the society admin.
+- **Home services:** book a visit. See section 7.
+- **Helpdesk:** raise a ticket and call the guard or the office from the directory.
+- **Trusted helpers:** maids, cooks, and other people the society already knows, separate from GATEZO home-service professionals.
+- **Book clubhouse / hall:** pick a date and slot. The admin approves, then you pay if the slot has a price.
+- **SOS:** sends an emergency alert.
+- **AGM & voting:** vote and read minutes.
+- **Help & how-to:** short instructions inside the app.
+- **Assistant:** the same Ask GATEZO answers, in a full screen.
 
 ---
 
-## 8. The Superadmin / Owner app (tab by tab)
+## 4. Guard
 
-**Your bottom tabs:** 🪐 Overview · 🏢 Societies
+### Home
 
-The owner oversees the **whole platform** (all societies and preschools).
+Shortcuts to log a visitor, see the gate log, and open the directory.
 
-### 8.1 🪐 Overview tab
-- Totals across **all** organisations: **collected, pending, revenue, new tenants**.
-- A **month selector** to view any month's numbers across every society/preschool.
-- Your **profile icon** and **log out** are in the header.
+### Gate
 
-### 8.2 🏢 Societies tab
-- A card for **every onboarded organisation** with its plan, admins and balances.
-- Header buttons: **⚙️ settings**, **✉️ send test email**, **🔑 reset a user's password**, and **＋ add** a new **Society** or **Preschool** (with **CSV bulk import** for fast onboarding).
-- Per organisation you can **Add admin**, set **Plan**, get a **Login link**, set **Branding (logo)**, record **Payments**, or **Deactivate**.
-- **📂 Fetching old records across societies:** tap a society, then a flat/student, to open its **full payment ledger from the beginning** — so you can audit any figure in any society.
+1. Take the visitor’s photo. The server shrinks it before it is stored.
+2. Choose the flat or student, purpose, phone, and vehicle number.
+3. Tap notify. Residents of that flat approve on their phones.
+4. **Voice entry** fills the form from what you say, when voice is switched on at the server.
+5. **Admit a pre-approved pass:** type the code the resident shared.
 
----
+### Staff
 
-## 9. Behind-the-scenes features (automatic)
+Check staff and helpers in and out. Preschool guards use the same tab for teachers.
 
-- **Push notifications** for visitors, tickets, announcements, gate passes, and payments.
-- **Automated monthly backup** of all data, emailed to the admin.
-- **Automated WhatsApp reminders** for pending fees (via the official WhatsApp Cloud API).
-- **Multi-society scale** — the same app runs many societies/preschools with data kept separate and secure.
+### Visitors
+
+Today’s gate log and each visit’s status: waiting, approved, denied, or left at the gate.
 
 ---
 
-## 10. Tips & troubleshooting
+## 5. Society admin or preschool admin
 
-- **First login is slow (20–30s):** the server may be waking up — this only happens after a period of inactivity.
-- **Can't see text you're typing:** input text is dark on light fields; tap **Show** to reveal your password.
-- **Keyboard hides the chat in the Assistant:** the screen now scrolls the input above the keyboard automatically — just start typing.
-- **My number isn't in the Directory:** turn on **Share my phone number** in your profile.
-- **Late fee looks wrong:** remember it only applies to **overdue** bills, never to months paid in advance.
-- **Need help:** open your **profile → Support & feedback** for the GateMate support phone and email.
+You only see your own society. Skyline and Green Valley are separate.
 
----
+### Home
 
-## 11. Why GateMate? (What makes it better)
+Tiles for the office, dues, members, the gate log, and Help. **Needs your attention** is for society work (dues, gate, bookings). A private Buy & Sell chat between two flats does not land here.
 
-Most societies and preschools juggle a WhatsApp group, a paper visitor register, an Excel sheet for dues, and separate reminder calls. GateMate replaces all of that with **one app** — and does a few things noticeably better than other apps:
+### Finance / Fees
 
-- **Truly two-in-one.** The same app serves **both societies and preschools**, automatically changing its wording (Flat↔Student, Maintenance↔Fees, Notify resident↔Notify CLO). You don't buy two different tools.
-- **Real payments, real receipts.** Dues are paid **online via UPI/cards/net-banking** straight into *your* society/school account — with downloadable receipts and support for **partial payments**. No "mark as paid" guesswork.
-- **Nothing gets lost.** Every flat/student has a **complete ledger** — every bill and every payment with running totals. If a figure is ever questioned, admins and the owner can trace it back to day one.
-- **Fair, automatic late fees.** Late fees apply **only to genuinely overdue bills** and are **never** charged on months paid in advance — a common mistake in other apps.
-- **Your money, your way.** Admins can split maintenance into **categories** (Sinking Fund, Water Bill, Common Bill, etc.) instead of one lump sum.
-- **MyGate-style gate security, simpler.** Photo visitor logs, **pre-approved gate passes with a code**, and instant resident approvals from the phone.
-- **Reminders that actually reach people.** Pending-due reminders go out over **push, email AND WhatsApp**, and automatically include your payment details — so residents/parents can pay in one tap.
-- **A real community, across societies.** A **Buy & Sell marketplace** and neighbours' board reach beyond a single building, so there are more buyers, sellers, and answers.
-- **Built-in AI help.** A voice-and-text **AI assistant** answers everyday questions ("What's my balance?", "Who visited last week?") — something almost no competing app offers.
-- **Owner-level oversight.** The GateMate owner sees **revenue and dues across every society/preschool** with a month-by-month view — great for running it as a business.
-- **Safe and private by design.** Each organisation's data is kept **separate and secure**, phone numbers are shared **only** if the resident opts in, and data is **backed up automatically every month**.
-- **Zero setup cost for members.** Residents/parents just scan a QR code and log in — no hardware, no complicated onboarding.
+- Collected, pending, and balance, including older months.
+- Generate this month’s bills from one amount or from heads (security, water, sinking fund, and so on). Rented flats can use a different amount.
+- Late fee runs only after the due date plus any grace days.
+- Remind people who still owe, by the app and by WhatsApp when that is configured.
+- Approve clubhouse or hall bookings and set slots and prices.
+- **Society office:** moves in and out, vendor bills, and the day-to-day desk.
+- **Society manager:** drafts a notice or a dues reminder from the real numbers.
+- Reports and the monthly backup email.
 
-**In short:** GateMate is friendlier for everyday users, more accurate with money, stronger on gate security, and smarter (AI) than the usual society/preschool apps.
+### Members
 
----
+- Add a flat or student and a login, or share the **join code** so residents register themselves. You still approve them.
+- Edit, disable, or remove an account.
+- Mark a flat as rented, set its maintenance, and store the agreement.
+- Enter the society bank account or UPI id that resident payments should reach.
+- Bulk import from a spreadsheet.
+- Vehicle registry and staff attendance.
 
-## 12. Platform availability — Android & iPhone (iOS)
+### Community and Visitors
 
-**GateMate is fully cross-platform.** It's built with Expo/React Native, so the *same app* runs on both Android and iPhone. Today we distribute the **Android** build (installed by scanning a QR code). iPhone support is ready in the code — it just needs Apple's publishing process to hand it to iPhone users.
-
-### 12.1 Why iPhone needs an extra step
-Apple does **not** allow direct "download-and-install" like Android APKs. Every iPhone app must be signed with an **Apple Developer account** and delivered through **TestFlight** (for testers) or the **App Store** (for the public).
-
-### 12.2 One-time setup to publish for iPhone
-1. **Enrol in the Apple Developer Program** at [developer.apple.com](https://developer.apple.com) — about **US $99/year** (individual or company).
-2. **Create the app record** in **App Store Connect** using the bundle id `com.h2o.society`.
-3. **Sign in to EAS with Apple** — EAS can create the required signing certificates and provisioning profiles for you automatically.
-4. **Build the iPhone version:** run an iOS build (`eas build --platform ios --profile preview`). EAS produces a signed build in the cloud (no Mac required).
-5. **Distribute for testing via TestFlight:**
-   - Submit the build to App Store Connect (`eas submit --platform ios`).
-   - Add testers by email in **TestFlight** — they install the free **TestFlight** app and open your invite. Great for pilots with up to a few thousand testers.
-6. **Go public (optional):** when you're happy, submit the same build for **App Store review**. After approval, anyone can install GateMate from the App Store.
-
-### 12.3 What each option gives you
-- **TestFlight** — fast, ideal for a controlled pilot with specific societies/schools; builds expire after 90 days and testers must be invited.
-- **App Store** — permanent public listing; requires Apple's review but reaches everyone.
-
-> When you're ready, share your Apple Developer login (or add me as a developer) and I'll wire up the iOS build + TestFlight so iPhone users can install GateMate the same week.
+Post announcements, moderate the board, handle helpdesk tickets, and read the full gate log.
 
 ---
 
-*GateMate — safe gate, simple payments, one community app for societies and preschools, on Android and iPhone.*
+## 6. GATEZO owner
+
+This login is `owner@h2o.com` in the demo. It sees every society.
+
+### Overview
+
+Totals across societies for the month you pick, plus **Backup & recovery**.
+
+**Backup & recovery** builds a full copy of the platform, locks it when `BACKUP_ENCRYPTION_KEY` is set, stores it in a private Supabase bucket, and emails you a link. You can also email one society its own backup.
+
+### Societies
+
+- Add a society or a preschool.
+- Add that organisation’s admin, set the plan, the logo, and the login link.
+- Open a flat to see its full payment ledger.
+- Deactivate an organisation.
+
+### Professionals
+
+This is where home-service people are onboarded.
+
+1. Copy the provider code (`SP…`). Share that, not the society code. You can rotate the code; the old one stops working.
+2. Either wait for them to register, or tap add and create the login yourself.
+3. **Approve** a waiting registration. Until you do, they cannot sign in.
+4. **Record the annual pack** (the demo amount is ₹4,999 for one year). Until this is recorded, they are skipped when a resident books.
+5. The **house desk** (`desk@gatezo.com`) does not pay the pack. It is the last stop.
+
+Remove sets the professional inactive so they stop receiving jobs.
+
+---
+
+## 7. Home services and service professionals
+
+### The 11 services
+
+These are the types a professional picks. Carpentry is not its own type. It is a package inside **Plumbing, Electrician & Carpentry**, together with plumbing and electrical work. Anyone who ticks that type can be offered a carpentry job, a plumbing job, or an electrical job.
+
+| Service | Examples you can book |
+|---|---|
+| Instant Services | Electrician, plumber, or locksmith visit |
+| Home Cleaning | 1–3 BHK deep clean, sofa shampoo |
+| Packers & Movers | Local move, intercity survey |
+| AC Service & Appliances | AC service, gas, fridge, washer, TV, lights, geyser, RO |
+| Plumbing, Electrician & Carpentry | Plumbing job, electrical job, carpentry job |
+| Home Painting | One room, 2 BHK, colour consult |
+| Rent Agreement & Legal | 11-month agreement, notary, legal notice |
+| Home Interiors | Design call, kitchen survey, full-home kickoff |
+| Home Salon | Blow dry, facial, party makeup |
+| Pest Control | General pest, bedbug, termite inspection |
+| Laundry Pickup | Wash & fold, iron, dry clean |
+
+### What a resident does
+
+1. Community → **Home services** (or the Home folder).
+2. Pick the service and a package.
+3. Pick a date and an hour. An hour is shown only when at least one paid professional who does that service is free then. Hours are 9–10 through 19–20, with a break at 13–14.
+4. Confirm. You are not choosing a person by name.
+
+### What happens when 10 carpenters exist and one resident books
+
+The job is offered to **one** person, not all 10.
+
+1. GATEZO lines up professionals who listed that service, whose annual pack is paid, who work that weekday and hour, and who are not already on another job in that same hour.
+2. The highest rating is offered the job for **60 seconds**.
+3. If they accept, it is theirs. The resident then sees a 4-digit **start code**.
+4. If they decline, or the 60 seconds pass, the same job moves to the next person. The others do not see it while it is offered to someone else.
+5. An unpaid professional is skipped even if their rating is higher.
+6. After everyone has passed, the **house desk** accepts so the visit is not left with nobody.
+
+### What the professional does
+
+Tabs: **Jobs**, **Hours**, **Guide**.
+
+1. **Hours.** Set the start, the end, and the days you are off. Sunday is off until you turn it on. Save.
+2. **Jobs.** A new offer shows a countdown. Tap accept or pass. The list refreshes on its own.
+3. At the flat, ask for the resident’s start code and enter it. The visit is now started, and the resident sees a different **finish code**.
+4. When the work is done, enter the finish code and mark it done. A wrong code is rejected.
+5. The resident rates the visit from 1 to 5. That rating changes who is offered the next job first.
+
+The house desk uses the same Jobs screen. It does not get the first offer.
+
+---
+
+## 8. What is stored, and what is locked
+
+- Passwords are stored only as a bcrypt hash. The app cannot show the original password.
+- Card numbers stay with Razorpay. GATEZO does not keep them.
+- Photos are shrunk on the server. With Supabase Storage switched on, the file sits in a storage bucket and the database keeps the link.
+- Emails, phone numbers, UPI ids, and bank details are sealed only after `DATA_ENCRYPTION_KEY` is set on Render. Until then those columns are readable in the database. Keep a private copy of that key. Losing it makes the sealed columns unreadable.
+- Each society’s residents, bills, and visitors are separate. Home-service professionals are platform accounts, so one AC technician can take a job from Green Valley or from Skyline.
+
+---
+
+## 9. Phone install versus the link
+
+| How you open GATEZO | When it updates |
+|---|---|
+| Phone or laptop browser at https://h2o-api-5sxc.onrender.com | When `main` is deployed on Render. This is the latest version. |
+| Android APK or Play Store, and the iPhone app | Only after a new Expo build is published. Pushing code does not replace an app that is already installed. |
+
+Android package and iPhone bundle id are both `com.h2o.society`. Apple still needs an Apple Developer account before TestFlight or the App Store. The screens are not rewritten for each store.
