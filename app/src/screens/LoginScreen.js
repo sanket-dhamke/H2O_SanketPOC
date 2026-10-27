@@ -85,6 +85,7 @@ export default function LoginScreen() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -195,7 +196,13 @@ export default function LoginScreen() {
           onSubmitEditing={() => passwordRef.current?.focus()}
           blurOnSubmit={false}
         />
-        <View style={[styles.passwordRow, error ? styles.inputError : null]}>
+        <View
+          style={[
+            styles.passwordRow,
+            error ? styles.inputError : null,
+            passwordFocused && !error ? styles.passwordRowFocused : null,
+          ]}
+        >
           <TextInput
             ref={passwordRef}
             style={styles.passwordInput}
@@ -213,10 +220,14 @@ export default function LoginScreen() {
             textContentType="password"
             returnKeyType="go"
             onSubmitEditing={onSubmit}
+            onFocus={() => setPasswordFocused(true)}
+            onBlur={() => setPasswordFocused(false)}
           />
           <TouchableOpacity
             style={styles.showBtn}
             onPress={() => setShowPassword((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? "Hide password" : "Show password"}
           >
             <Text style={styles.showBtnText}>{showPassword ? "Hide" : "Show"}</Text>
           </TouchableOpacity>
@@ -366,18 +377,31 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: "#fff",
     marginBottom: 8,
+    minHeight: 52,
+    overflow: "hidden",
   },
+  passwordRowFocused: { borderColor: "#0B6E8F" },
   passwordInput: {
     flex: 1,
+    minWidth: 0,
+    alignSelf: "stretch",
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
     lineHeight: 22,
     color: "#1B2B33",
+    backgroundColor: "transparent",
+    borderWidth: 0,
     // Android bug: a secureTextEntry field ignores `color` for the masked dots
     // unless a NON-DEFAULT fontFamily is set — "monospace" reliably forces the
     // typed password to render dark (visible) instead of faint/white.
-    ...Platform.select({ android: { fontFamily: "monospace" }, default: {} }),
+    // On the phone browser the input draws its own focus ring, which used to
+    // stop before Show and leave that word outside the box.
+    ...Platform.select({
+      android: { fontFamily: "monospace" },
+      web: { outlineStyle: "none", outlineWidth: 0 },
+      default: {},
+    }),
   },
   inputError: { borderColor: "#E8A199", backgroundColor: "#FFF8F7" },
   errorBox: {
@@ -394,8 +418,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   errorText: { flex: 1, color: "#8A1F18", fontSize: 13, lineHeight: 18, ...body(600) },
-  showBtn: { paddingHorizontal: 14, paddingVertical: 14 },
-  showBtnText: { color: "#0B6E8F", ...body(600), fontSize: 14 },
+  showBtn: {
+    paddingHorizontal: 14,
+    alignSelf: "stretch",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  showBtnText: { color: "#0B6E8F", ...body(600), fontSize: 14, lineHeight: 20 },
   button: {
     backgroundColor: "#0B6E8F",
     borderRadius: 8,
