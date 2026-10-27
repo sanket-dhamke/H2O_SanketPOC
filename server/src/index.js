@@ -294,6 +294,11 @@ if (process.env.VISITOR_RETENTION_CRON_ENABLED !== "false") {
 }
 
 const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../public");
+const apkPath = path.join(publicDir, "gatezo.apk");
+app.get("/gatezo.apk", (req, res, next) => {
+  if (!fs.existsSync(apkPath)) return next();
+  res.download(apkPath, "GATEZO.apk");
+});
 if (fs.existsSync(path.join(publicDir, "index.html"))) {
   app.use(express.static(publicDir, { index: false, maxAge: "1h" }));
   app.get("*", (req, res, next) => {

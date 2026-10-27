@@ -2,11 +2,11 @@
 
 GATEZO is one app for a housing society or a preschool. The same screens run in a phone browser, and the same project builds the Android and iPhone apps. This guide is what each login can do, and the exact taps.
 
-Open the latest version on a phone by going to:
+Install the Android app by opening this on the phone and downloading the file:
 
-**https://h2o-api-5sxc.onrender.com**
+**https://h2o-api-5sxc.onrender.com/gatezo.apk**
 
-That address is the live app. A push to `main` updates this site. A file you install from the Play Store or an APK is a separate build and does not change until a new store build is published.
+Android will ask you to allow installs from the browser. The same address without `/gatezo.apk` opens the website. A Play Store or iPhone build is still a separate store release.
 
 The first open after a quiet period can take up to a minute. Render’s free plan sleeps, then wakes.
 
@@ -264,7 +264,8 @@ The house desk uses the same Jobs screen. It does not get the first offer.
 
 | How you open GATEZO | When it updates |
 |---|---|
-| Phone or laptop browser at https://h2o-api-5sxc.onrender.com | When `main` is deployed on Render. This is the latest version. |
-| Android APK or Play Store, and the iPhone app | Only after a new Expo build is published. Pushing code does not replace an app that is already installed. |
+| Phone or laptop browser at https://h2o-api-5sxc.onrender.com | When `main` is deployed on Render. |
+| Android install from https://h2o-api-5sxc.onrender.com/gatezo.apk | When a new APK is published at that address. Installing it replaces the copy on the phone. |
+| Play Store and the iPhone app | Only after a new store build is published. |
 
 Android package and iPhone bundle id are both `com.h2o.society`. Apple still needs an Apple Developer account before TestFlight or the App Store. The screens are not rewritten for each store.
