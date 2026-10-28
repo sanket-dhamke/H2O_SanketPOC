@@ -81,10 +81,17 @@ export function eventDatePassed(text, now = Date.now()) {
   return dates.every((day) => day < today);
 }
 
+// Bills stay until they are paid. A reminder line such as "on 12 Oct" is not
+// the date of an event, and must not take the maintenance row off the list.
+const KEEP_EVEN_IF_DATED = new Set(["bills", "finance", "expenses"]);
+
 export function withoutPassedDates(summary, now = Date.now()) {
   if (!summary) return summary;
   return {
     ...summary,
-    pending: (summary.pending || []).filter((row) => !eventDatePassed(`${row.label || ""} ${row.detail || ""}`, now)),
+    pending: (summary.pending || []).filter((row) => {
+      if (KEEP_EVEN_IF_DATED.has(row?.key)) return true;
+      return !eventDatePassed(`${row.label || ""} ${row.detail || ""}`, now);
+    }),
   };
 }

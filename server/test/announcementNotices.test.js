@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { announcementNotices, withAnnouncementNotices } from "../../app/src/lib/announcementNotices.js";
-import { eventDatePassed } from "../../app/src/lib/attentionDates.js";
+import { eventDatePassed, withoutPassedDates } from "../../app/src/lib/attentionDates.js";
 import { buildAnnouncementEmail, channelsFor, deliverAnnouncementReminders, reminderAudience } from "../src/announcementNotify.js";
 import { buildNoticeText, societyNoticePayload } from "../src/whatsapp.js";
 import { bookingNotices, withBookingNotices } from "../../app/src/lib/bookingNotices.js";
@@ -39,6 +39,21 @@ test("a meeting whose date has passed leaves the attention list, including a pin
     { now: later }
   );
   assert.deepEqual(rows.map((r) => r.announcementId), ["next", "water"]);
+});
+
+test("unpaid maintenance stays after the reminder date has passed", () => {
+  const later = new Date("2026-10-28T08:00:00.000Z").getTime();
+  const summary = withoutPassedDates(
+    {
+      pending: [
+        { key: "bills", label: "₹4,000 outstanding", detail: "The office reminded you on 12 Oct. Open bills to pay." },
+        { key: "finance", label: "₹80,000 still unpaid", detail: "12 flats have outstanding dues, including older months." },
+        { key: "announcement:meet", label: "Society meeting of 2 Oct", detail: "Club house at 6 pm" },
+      ],
+    },
+    later
+  );
+  assert.deepEqual(summary.pending.map((row) => row.key), ["bills", "finance"]);
 });
 
 test("opening a notice removes it and leaves the other attention rows", () => {
