@@ -156,6 +156,29 @@ async function residentSummary(user) {
   }
 
   const pending = [];
+  // Unpaid maintenance has no finished day. It leads the resident list and
+  // stays there until the balance is paid. The wording must not include a
+  // calendar date, or an older app would treat the reminder as a past event.
+  if (pendingAmount > 0.5) {
+    const remindedAt = bills
+      .filter((b) => billBalance(b) > 0.5 && b.lastRemindedAt)
+      .map((b) => new Date(b.lastRemindedAt))
+      .sort((a, b) => b - a)[0];
+    const remindedRecently = remindedAt && Date.now() - remindedAt.getTime() < 30 * 864e5;
+    pending.push({
+      key: "bills",
+      level: overdueBills > 0 ? "critical" : "warn",
+      icon: "cash-outline",
+      label: `₹${inr(pendingAmount).toLocaleString("en-IN")} outstanding`,
+      detail: remindedRecently
+        ? "The office sent a reminder. Open Maintenance to pay."
+        : overdueBills > 0
+          ? `${overdueBills} bill${overdueBills === 1 ? "" : "s"} past the due date.`
+          : "Open Maintenance to pay.",
+      route: "Maintenance",
+      params: { screen: "MaintenanceHome" },
+    });
+  }
   if (awaitingApproval > 0) {
     pending.push({
       key: "visitor_approvals",
@@ -165,29 +188,6 @@ async function residentSummary(user) {
       detail: "Waiting for you to approve or deny.",
       route: "Visitors",
       params: { screen: "VisitorsHome" },
-    });
-  }
-  if (pendingAmount > 0.5) {
-    const remindedAt = bills
-      .filter((b) => billBalance(b) > 0.5 && b.lastRemindedAt)
-      .map((b) => new Date(b.lastRemindedAt))
-      .sort((a, b) => b - a)[0];
-    const remindedRecently = remindedAt && Date.now() - remindedAt.getTime() < 30 * 864e5;
-    const remindedOn = remindedAt
-      ? remindedAt.toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" })
-      : "";
-    pending.push({
-      key: "bills",
-      level: overdueBills > 0 ? "critical" : "warn",
-      icon: "cash-outline",
-      label: `₹${inr(pendingAmount).toLocaleString("en-IN")} outstanding`,
-      detail: remindedRecently
-        ? `The office reminded you on ${remindedOn}. Open bills to pay.`
-        : overdueBills > 0
-          ? `${overdueBills} bill${overdueBills === 1 ? "" : "s"} past the due date.`
-          : "Pay from the bills tab.",
-      route: "Maintenance",
-      params: { screen: "MaintenanceHome" },
     });
   }
   if (unpaidBookings > 0) {

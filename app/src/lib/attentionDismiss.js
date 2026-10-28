@@ -13,6 +13,8 @@ export function hideDismissed(summary, dismissed) {
   return {
     ...summary,
     pending: (summary.pending || []).filter((item) => {
+      // A due bill stays until it is paid. Remove applies to notices and visits.
+      if (item?.key === "bills") return true;
       if (item?.announcementId && hide.has(item.announcementId)) return false;
       if (hide.has(attentionSignature(item))) return false;
       return true;

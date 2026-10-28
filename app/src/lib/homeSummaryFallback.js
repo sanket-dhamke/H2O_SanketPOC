@@ -100,6 +100,17 @@ export function composeHomeSummary({ role, bills = [], totalDue = 0, visitors = 
   const awaiting = (visitors || []).filter((v) => v.status === "pending").length;
 
   const pending = [];
+  if (role !== "guard" && pendingAmt > 0.5) {
+    pending.push({
+      key: "bills",
+      level: "warn",
+      icon: "cash-outline",
+      label: `₹${pendingAmt.toLocaleString("en-IN")} outstanding`,
+      detail: "Open Maintenance to pay.",
+      route: "Maintenance",
+      params: { screen: "MaintenanceHome" },
+    });
+  }
   if (awaiting > 0) {
     pending.push({
       key: "visitor_approvals",
@@ -109,17 +120,6 @@ export function composeHomeSummary({ role, bills = [], totalDue = 0, visitors = 
       detail: "Waiting for you to approve or deny.",
       route: "Visitors",
       params: { screen: "VisitorsHome" },
-    });
-  }
-  if (role !== "guard" && pendingAmt > 0.5) {
-    pending.push({
-      key: "bills",
-      level: "warn",
-      icon: "cash-outline",
-      label: `₹${pendingAmt.toLocaleString("en-IN")} outstanding`,
-      detail: "Pay from the bills tab.",
-      route: "Maintenance",
-      params: { screen: "MaintenanceHome" },
     });
   }
 

@@ -11,7 +11,7 @@ import { getCurrentUser } from "../lib/auth";
 import { withAnnouncementNotices } from "../lib/announcementNotices";
 import { withBookingNotices } from "../lib/bookingNotices";
 import { withVisitNotices } from "../lib/visitNotices";
-import { withoutPassedDates } from "../lib/attentionDates";
+import { withoutPassedDates, withMaintenanceFirst } from "../lib/attentionDates";
 import { withListingNotices } from "../lib/listingMessageNotices";
 import { attentionSignature, hideDismissed } from "../lib/attentionDismiss";
 
@@ -170,7 +170,7 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
       const withBookings = withBookingNotices(withNotices, bookings, { residentId });
       const withVisits = withVisitNotices(withBookings, serviceBookings);
       const dated = withoutPassedDates(withVisits);
-      setNoticeSummary(hideDismissed(withListingNotices(dated, listingNotices), dismissed));
+      setNoticeSummary(withMaintenanceFirst(hideDismissed(withListingNotices(dated, listingNotices), dismissed)));
     })();
     return () => {
       cancelled = true;
@@ -263,6 +263,7 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
                   </View>
                   {p.route ? <Ionicons name="chevron-forward" size={18} color="#B7C2C9" /> : null}
                 </TouchableOpacity>
+                {p.key === "bills" ? null : (
                 <TouchableOpacity
                   testID="attention-dismiss"
                   accessibilityLabel={`Remove ${p.label}`}
@@ -271,6 +272,7 @@ export default function HomeSummary({ data, loading, navigation, labels }) {
                 >
                   <Text style={styles.alertRemoveText}>Remove</Text>
                 </TouchableOpacity>
+                )}
               </View>
             );
           })}

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { announcementNotices, withAnnouncementNotices } from "../../app/src/lib/announcementNotices.js";
-import { eventDatePassed, withoutPassedDates } from "../../app/src/lib/attentionDates.js";
+import { eventDatePassed, withoutPassedDates, withMaintenanceFirst } from "../../app/src/lib/attentionDates.js";
 import { buildAnnouncementEmail, channelsFor, deliverAnnouncementReminders, reminderAudience } from "../src/announcementNotify.js";
 import { buildNoticeText, societyNoticePayload } from "../src/whatsapp.js";
 import { bookingNotices, withBookingNotices } from "../../app/src/lib/bookingNotices.js";
@@ -54,6 +54,24 @@ test("unpaid maintenance stays after the reminder date has passed", () => {
     later
   );
   assert.deepEqual(summary.pending.map((row) => row.key), ["bills", "finance"]);
+});
+
+test("unpaid maintenance is first, ahead of visitors and notices that still have a date", () => {
+  const later = new Date("2026-10-28T08:00:00.000Z").getTime();
+  const summary = withMaintenanceFirst(
+    withoutPassedDates(
+      {
+        pending: [
+          { key: "announcement:meet", label: "Society meeting on 30 Oct", detail: "Club house" },
+          { key: "visitor_approvals", label: "1 visitor at the gate", detail: "Waiting for you to approve or deny." },
+          { key: "bills", label: "₹4,000 outstanding", detail: "The office reminded you on 12 Oct. Open Maintenance to pay." },
+          { key: "announcement:old", label: "Society meeting of 2 Oct", detail: "Already held" },
+        ],
+      },
+      later
+    )
+  );
+  assert.deepEqual(summary.pending.map((row) => row.key), ["bills", "announcement:meet", "visitor_approvals"]);
 });
 
 test("opening a notice removes it and leaves the other attention rows", () => {

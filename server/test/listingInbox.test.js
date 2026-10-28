@@ -182,4 +182,6 @@ test("removing an attention row hides that exact notice and a new listing messag
     later.pending.map((row) => row.key),
     ["bills", "listing-message:m3"]
   );
+  const duesStay = hideDismissed(summary, [attentionSignature(summary.pending[0])]);
+  assert.equal(duesStay.pending[0].key, "bills");
 });

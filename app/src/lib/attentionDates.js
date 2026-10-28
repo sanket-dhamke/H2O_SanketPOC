@@ -81,17 +81,28 @@ export function eventDatePassed(text, now = Date.now()) {
   return dates.every((day) => day < today);
 }
 
-// Bills stay until they are paid. A reminder line such as "on 12 Oct" is not
-// the date of an event, and must not take the maintenance row off the list.
-const KEEP_EVEN_IF_DATED = new Set(["bills", "finance", "expenses"]);
+// Maintenance is not an event. A due bill has no finished day, so a reminder
+// date must not take it off the list. Notices, meetings, and visits still drop
+// once their day has passed.
+const OPEN_UNTIL_PAID = new Set(["bills", "finance", "expenses"]);
 
 export function withoutPassedDates(summary, now = Date.now()) {
   if (!summary) return summary;
   return {
     ...summary,
     pending: (summary.pending || []).filter((row) => {
-      if (KEEP_EVEN_IF_DATED.has(row?.key)) return true;
+      if (OPEN_UNTIL_PAID.has(row?.key)) return true;
       return !eventDatePassed(`${row.label || ""} ${row.detail || ""}`, now);
     }),
   };
+}
+
+// For a resident, unpaid maintenance is the first thing on the list. Dated
+// notices can sit under it. They never push the bill down.
+export function withMaintenanceFirst(summary) {
+  if (!summary) return summary;
+  const pending = summary.pending || [];
+  const bills = pending.filter((row) => row?.key === "bills");
+  if (!bills.length) return summary;
+  return { ...summary, pending: [...bills, ...pending.filter((row) => row?.key !== "bills")] };
 }
