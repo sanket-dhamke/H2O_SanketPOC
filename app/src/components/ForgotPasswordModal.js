@@ -15,8 +15,8 @@ import { Ionicons } from "@expo/vector-icons";
 import ModalClose from "./ModalClose";
 import { api } from "../lib/api";
 
-// Self-service password reset. Step 1: request an emailed OTP. Step 2: enter the
-// code from that email plus a new password. The code is never shown on screen.
+// Self-service password reset. Step 1: text a code to the saved mobile.
+// Step 2: enter that code plus a new password. The code is never shown on screen.
 export default function ForgotPasswordModal({ visible, onClose, initialEmail = "" }) {
   const [step, setStep] = useState("request");
   const [email, setEmail] = useState(initialEmail);
@@ -96,7 +96,7 @@ export default function ForgotPasswordModal({ visible, onClose, initialEmail = "
             {step === "request" ? (
               <>
                 <Text style={styles.intro}>
-                  Enter your account email and we'll send a 6-digit reset code.
+                  Enter your account email. We text a 6-digit code to the mobile number saved on the account.
                 </Text>
                 <Text style={styles.label}>Email</Text>
                 <TextInput
@@ -121,8 +121,7 @@ export default function ForgotPasswordModal({ visible, onClose, initialEmail = "
             ) : (
               <>
                 <Text style={styles.intro}>
-                  We sent a code to <Text style={{ fontWeight: "800" }}>{email.trim()}</Text>. Enter it
-                  below with your new password.
+                  Enter the code from your mobile, then choose a new password.
                 </Text>
                 <Text style={styles.label}>Reset code</Text>
                 <TextInput

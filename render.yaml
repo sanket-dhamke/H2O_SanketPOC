@@ -50,20 +50,27 @@ services:
         sync: false
       - key: SUPABASE_BUCKET
         sync: false
-      # Sign-in and reset codes are emailed only when one of these is set.
-      # Resend: EMAIL_PROVIDER=resend, RESEND_API_KEY, EMAIL_FROM.
-      # SMTP: EMAIL_PROVIDER=smtp, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM.
-      - key: EMAIL_PROVIDER
+      # Phone sign-in codes. The code is texted to the saved mobile and is never
+      # returned to the app. Set one sender in the Render dashboard.
+      # Twilio SMS: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM
+      # Exotel SMS: EXOTEL_SID, EXOTEL_TOKEN, EXOTEL_FROM
+      # WhatsApp: WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, and an approved
+      # template with one body variable, named in WHATSAPP_OTP_TEMPLATE.
+      - key: TWILIO_ACCOUNT_SID
         sync: false
-      - key: EMAIL_FROM
+      - key: TWILIO_AUTH_TOKEN
         sync: false
-      - key: RESEND_API_KEY
+      - key: TWILIO_FROM
         sync: false
-      - key: SMTP_HOST
+      - key: EXOTEL_SID
         sync: false
-      - key: SMTP_PORT
+      - key: EXOTEL_TOKEN
         sync: false
-      - key: SMTP_USER
+      - key: EXOTEL_FROM
         sync: false
-      - key: SMTP_PASS
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_OTP_TEMPLATE
         sync: false

@@ -5,9 +5,8 @@ import { prisma } from "../prisma.js";
 import { signToken, authRequired } from "../auth.js";
 import { publicUser } from "../serializers.js";
 import { validatePassword } from "../passwordPolicy.js";
-import { sendEmail } from "../email.js";
-import { sendSocietyNotice } from "../whatsapp.js";
 import { sendPush } from "../push.js";
+import { phoneTail, sendPhoneCode } from "../phoneOtp.js";
 import { providerServiceChoices, registerProviderAccount } from "../providerJoin.js";
 
 export const authRouter = Router();
@@ -117,50 +116,44 @@ authRouter.post("/auth/register-provider", async (req, res) => {
   res.status(result.status).json(result.body);
 });
 
-function phoneTail(phone) {
-  const digits = String(phone || "").replace(/\D/g, "");
-  return digits.length >= 4 ? digits.slice(-4) : "";
+function codeFailureMessage(reason, tail) {
+  if (reason === "no_phone") {
+    return "This account has no mobile number saved. Ask your admin to add one. The code is never shown on this page.";
+  }
+  if (reason === "not_configured") {
+    return "Phone codes are not turned on for this server yet.";
+  }
+  return tail
+    ? `We could not text a code to the mobile ending ${tail}.`
+    : "We could not text a code.";
 }
 
 async function issueLoginCode(email) {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !user.active || user.pendingApproval) return { ok: true, sent: false };
+  const tail = phoneTail(user.phone);
+  if (!tail) return { ok: true, sent: true, delivered: false, reason: "no_phone" };
   const otp = String(crypto.randomInt(100000, 1000000));
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
   await prisma.loginCode.deleteMany({ where: { email } });
   await prisma.loginCode.create({
     data: { email, codeHash: bcrypt.hashSync(otp, 8), expiresAt },
   });
-  const text = `Your GATEZO sign-in code is ${otp}. It expires in 10 minutes.`;
-  const mail = await sendEmail({
-    to: user.email,
-    subject: "Your GATEZO sign-in code",
-    text,
-    html: `<p>${text}</p>`,
-  });
-  const phone = await sendSocietyNotice({
-    toPhone: user.phone,
-    name: user.name || "there",
-    societyName: "GATEZO",
-    title: "Sign-in code",
-    body: text,
-  });
-  const emailed = !!mail.delivered;
-  const texted = !!phone.sent;
-  if (!emailed && !texted) {
+  const sent = await sendPhoneCode({ toPhone: user.phone, code: otp });
+  if (!sent.delivered) {
     await prisma.loginCode.deleteMany({ where: { email } });
-    return { ok: true, sent: true, delivered: false };
+    return { ok: true, sent: true, delivered: false, reason: sent.reason, phoneTail: tail };
   }
-  const tail = phoneTail(user.phone);
-  const message = emailed && texted
-    ? `Code sent to your email and the phone ending ${tail}.`
-    : texted
-      ? `Code sent to the phone ending ${tail}.`
-      : "Code sent to your email.";
-  return { ok: true, sent: true, delivered: true, message, phoneTail: texted ? tail : null };
+  return {
+    ok: true,
+    sent: true,
+    delivered: true,
+    message: `Code sent to the mobile ending ${tail}.`,
+    phoneTail: tail,
+  };
 }
 
-// Sign-in code to the registered email and phone. Password login stays available.
+// Sign-in code is texted to the mobile saved on the account. It is never returned.
 authRouter.post("/auth/login-code", async (req, res) => {
   const email = String(req.body?.email || "").trim().toLowerCase();
   if (!email) return res.status(400).json({ message: "Email is required" });
@@ -169,9 +162,7 @@ authRouter.post("/auth/login-code", async (req, res) => {
     return res.json({ ok: true, message: "If that email is registered, a sign-in code has been sent." });
   }
   if (!result.delivered) {
-    return res.status(503).json({
-      message: "We could not email a sign-in code. Email sending is not turned on for this server yet.",
-    });
+    return res.status(503).json({ message: codeFailureMessage(result.reason, result.phoneTail) });
   }
   res.json({
     ok: true,
@@ -218,17 +209,19 @@ authRouter.get("/me", authRequired, async (req, res) => {
   res.json({ user: publicUser(user) });
 });
 
-// Self-service password reset — step 1: request an emailed OTP code.
-// Always responds success (never reveals whether the email exists).
+// Self-service password reset — step 1: text a code to the saved mobile.
+// Unknown emails get the same reply. The code is never returned.
 authRouter.post("/auth/forgot-password", async (req, res) => {
   const email = String(req.body?.email || "").trim().toLowerCase();
   if (!email) return res.status(400).json({ message: "Email is required" });
-  const generic = { ok: true, message: "If that email is registered, a reset code has been sent." };
+  const generic = { ok: true, message: "If that account has a mobile number, a reset code has been sent." };
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !user.active) return res.json(generic);
+  const tail = phoneTail(user.phone);
+  if (!tail) return res.status(503).json({ message: codeFailureMessage("no_phone") });
 
-  const otp = String(crypto.randomInt(100000, 1000000)); // 6-digit
+  const otp = String(crypto.randomInt(100000, 1000000));
   await prisma.user.update({
     where: { id: user.id },
     data: {
@@ -238,24 +231,15 @@ authRouter.post("/auth/forgot-password", async (req, res) => {
     },
   });
 
-  const text =
-    `Hi ${user.name},\n\nYour GATEZO password reset code is ${otp}.\n` +
-    `It expires in 15 minutes. If you didn't request this, you can ignore this email.`;
-  const html =
-    `<p>Hi ${user.name},</p><p>Your GATEZO password reset code is ` +
-    `<b style="font-size:22px;letter-spacing:2px">${otp}</b>.</p>` +
-    `<p>It expires in 15 minutes. If you didn't request this, please ignore this email.</p>`;
-  const result = await sendEmail({ to: email, subject: "Your GATEZO password reset code", text, html });
-  if (!result.delivered) {
+  const sent = await sendPhoneCode({ toPhone: user.phone, code: otp });
+  if (!sent.delivered) {
     await prisma.user.update({
       where: { id: user.id },
       data: { resetOtpHash: null, resetOtpExpiresAt: null, resetOtpAttempts: 0 },
     });
-    return res.status(503).json({
-      message: "We could not email a reset code. Email sending is not turned on for this server yet.",
-    });
+    return res.status(503).json({ message: codeFailureMessage(sent.reason, tail) });
   }
-  res.json(generic);
+  res.json({ ...generic, message: `Reset code sent to the mobile ending ${tail}.`, phoneTail: tail });
 });
 
 // Self-service password reset — step 2: verify OTP and set a new password.

@@ -152,7 +152,7 @@ export default function LoginScreen() {
       await setBaseUrl(serverUrl);
       const res = await api.requestLoginCode(email.trim());
       setCodeSent(true);
-      setCodeNote(res.message || "Check your email for the 6-digit code.");
+      setCodeNote(res.message || "Check the mobile number on your account for the 6-digit code.");
     } catch (e) {
       setError(e.message || "Could not send a code.");
     } finally {
@@ -287,7 +287,7 @@ export default function LoginScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity onPress={sendCode} disabled={busy} style={{ marginTop: 12 }}>
-          <Text style={styles.footerLink}>{codeSent ? "Resend sign-in code" : "Email me a sign-in code"}</Text>
+          <Text style={styles.footerLink}>{codeSent ? "Resend sign-in code" : "Text me a sign-in code"}</Text>
         </TouchableOpacity>
         {codeNote ? <Text style={[styles.footerLink, { color: "#5C6E76", marginTop: 8 }]}>{codeNote}</Text> : null}
         {codeSent ? (
