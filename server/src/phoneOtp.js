@@ -9,6 +9,15 @@ export function phoneTail(phone) {
   return digits.length >= 4 ? digits.slice(-4) : "";
 }
 
+// "" clears the number. null means the typed value is not an Indian mobile.
+export function normalizeIndianMobile(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return "";
+  const last10 = digits.slice(-10);
+  if (!/^[6-9]\d{9}$/.test(last10)) return null;
+  return last10;
+}
+
 function twilioReady() {
   return !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM);
 }

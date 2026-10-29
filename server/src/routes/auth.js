@@ -6,7 +6,7 @@ import { signToken, authRequired } from "../auth.js";
 import { publicUser } from "../serializers.js";
 import { validatePassword } from "../passwordPolicy.js";
 import { sendPush } from "../push.js";
-import { phoneTail, sendPhoneCode } from "../phoneOtp.js";
+import { normalizeIndianMobile, phoneTail, sendPhoneCode } from "../phoneOtp.js";
 import { providerServiceChoices, registerProviderAccount } from "../providerJoin.js";
 
 export const authRouter = Router();
@@ -313,16 +313,23 @@ authRouter.post("/push-token", authRequired, async (req, res) => {
   res.json({ ok: true });
 });
 
-// Update the user's own preferences (currently: notifications on/off).
-// Turning notifications off also clears the stored push token immediately.
+// Update the user's own preferences: notifications, directory visibility, and
+// the mobile number sign-in codes are texted to.
 authRouter.patch("/me/preferences", authRequired, async (req, res) => {
-  const { notifyEnabled, sharePhone } = req.body || {};
+  const { notifyEnabled, sharePhone, phone } = req.body || {};
   const data = {};
   if (notifyEnabled !== undefined) {
     data.notifyEnabled = Boolean(notifyEnabled);
     if (!data.notifyEnabled) data.expoPushToken = null;
   }
   if (sharePhone !== undefined) data.sharePhone = Boolean(sharePhone);
+  if (phone !== undefined) {
+    const mobile = normalizeIndianMobile(phone);
+    if (mobile === null) {
+      return res.status(400).json({ message: "Enter a 10-digit Indian mobile number." });
+    }
+    data.phone = mobile || null;
+  }
   const user = await prisma.user.update({
     where: { id: req.user.id },
     data,

@@ -5,6 +5,7 @@ import { prisma } from "../prisma.js";
 import { authRequired, roleRequired } from "../auth.js";
 import { publicUser, serializeBill, serializeVenueBooking, serializeVisitor, serializeStaffAttendance } from "../serializers.js";
 import { validatePassword } from "../passwordPolicy.js";
+import { normalizeIndianMobile } from "../phoneOtp.js";
 import { sendPush } from "../push.js";
 import { sendEmail } from "../email.js";
 import { buildSocietyBackup, emailSocietyBackup, buildWingReport, listBlocks } from "../backup.js";
@@ -100,8 +101,12 @@ adminRouter.patch("/users/:id", async (req, res) => {
   if (!target) return res.status(404).json({ message: "User not found" });
 
   const data = {};
-  if (name !== undefined) data.name = name;
-  if (phone !== undefined) data.phone = phone || null;
+  if (name !== undefined) data.name = String(name || "").trim();
+  if (phone !== undefined) {
+    const mobile = normalizeIndianMobile(phone);
+    if (mobile === null) return res.status(400).json({ message: "Enter a 10-digit Indian mobile number." });
+    data.phone = mobile || null;
+  }
   if (active !== undefined) data.active = Boolean(active);
   if (password) {
     const policyError = validatePassword(password);

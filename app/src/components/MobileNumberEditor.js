@@ -47,7 +47,7 @@ export default function MobileNumberEditor({ user, updateUser }) {
           </TouchableOpacity>
         ) : null}
       </View>
-      <Text style={styles.hint}>Payment uses this number, so Razorpay will not ask for it again.</Text>
+      <Text style={styles.hint}>Sign-in codes are texted to this number. Payment uses it too, so Razorpay will not ask again.</Text>
       {editing ? (
         <View style={styles.edit}>
           <TextInput

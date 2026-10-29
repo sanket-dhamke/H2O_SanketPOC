@@ -23,8 +23,8 @@ async function remember(userId, phone) {
   await writeSecret(keyFor(userId), phone || "");
 }
 
-// The live API still ignores a phone on preferences. Keep the number on this
-// device so checkout can use it, and drop that copy once the account has one.
+// The account stores the mobile. A copy stays on this device only when the
+// server does not echo the same number back.
 export async function applyRememberedMobile(user) {
   if (!user?.id || normalizeIndianMobile(user.phone)) return user;
   try {

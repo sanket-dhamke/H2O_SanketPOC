@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { phoneTail, phoneOtpReady, sendPhoneCode } from "../src/phoneOtp.js";
+import { normalizeIndianMobile, phoneTail, phoneOtpReady, sendPhoneCode } from "../src/phoneOtp.js";
+
+test("an Indian mobile is stored as 10 digits", () => {
+  assert.equal(normalizeIndianMobile("+91 98765 43210"), "9876543210");
+  assert.equal(normalizeIndianMobile(""), "");
+  assert.equal(normalizeIndianMobile("12345"), null);
+});
 
 test("a phone tail is the last four digits", () => {
   assert.equal(phoneTail("99999 00001"), "0001");

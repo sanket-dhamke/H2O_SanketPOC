@@ -10,6 +10,7 @@ import {
   Share,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import TextInput from "../../components/AppTextInput";
 import { useFocusEffect } from "@react-navigation/native";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -27,6 +28,8 @@ export default function ManageUsersScreen({ navigation }) {
   const [users, setUsers] = useState([]);
   const [joinCode, setJoinCode] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -107,6 +110,31 @@ export default function ManageUsersScreen({ navigation }) {
     );
   };
 
+  const startEdit = (u) => {
+    setEditing({ id: u.id, role: u.role, name: u.name || "", phone: u.phone || "", flatNo: u.flatNo || "" });
+  };
+
+  const saveEdit = async () => {
+    if (!editing?.name.trim()) {
+      Alert.alert("Name required", "Enter the resident's name.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.adminUpdateUser(editing.id, {
+        name: editing.name.trim(),
+        phone: editing.phone.trim(),
+        ...(editing.role === "resident" && editing.flatNo.trim() ? { flatNo: editing.flatNo.trim() } : {}),
+      });
+      setEditing(null);
+      await load();
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const remove = (u) => {
     Alert.alert("Delete account", `Remove ${u.name} (${u.email})?`, [
       { text: "Cancel", style: "cancel" },
@@ -178,7 +206,37 @@ export default function ManageUsersScreen({ navigation }) {
         )}
         ListEmptyComponent={<Text style={styles.empty}>No accounts yet. Tap "New account".</Text>}
         renderItem={({ item, section }) => (
-          <View style={[styles.card, !item.active && styles.cardInactive, section.pending && styles.pendingCard]}>
+          <View style={[styles.card, !item.active && styles.cardInactive, section.pending && styles.pendingCard, editing?.id === item.id && styles.cardEditing]}>
+            {editing?.id === item.id ? (
+              <View style={{ flex: 1, gap: 8 }}>
+                <TextInput style={styles.input} value={editing.name} onChangeText={(name) => setEditing({ ...editing, name })} placeholder="Name" />
+                <TextInput
+                  style={styles.input}
+                  value={editing.phone}
+                  onChangeText={(phone) => setEditing({ ...editing, phone })}
+                  placeholder="10-digit mobile"
+                  keyboardType="phone-pad"
+                />
+                {item.role === "resident" ? (
+                  <TextInput
+                    style={styles.input}
+                    value={editing.flatNo}
+                    onChangeText={(flatNo) => setEditing({ ...editing, flatNo })}
+                    placeholder={`${L.unit} number`}
+                    autoCapitalize="characters"
+                  />
+                ) : null}
+                <View style={styles.editActions}>
+                  <TouchableOpacity onPress={() => setEditing(null)} style={styles.smallBtn} disabled={saving}>
+                    <Text style={styles.smallBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={saveEdit} style={[styles.smallBtn, styles.saveBtn]} disabled={saving}>
+                    <Text style={styles.saveText}>{saving ? "Saving..." : "Save"}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+            <>
             <View style={{ flex: 1 }}>
               <Text style={styles.name}>
                 {item.name} {!item.active && !section.pending && <Text style={styles.inactiveTag}>(disabled)</Text>}
@@ -186,7 +244,7 @@ export default function ManageUsersScreen({ navigation }) {
               <Text style={styles.meta}>
                 {item.email}
                 {item.flatNo ? ` · ${L.unit} ${item.flatNo}` : ""}
-                {item.phone ? ` · ${item.phone}` : ""}
+                {item.phone ? ` · ${item.phone}` : " · No mobile"}
               </Text>
             </View>
             {section.pending ? (
@@ -200,6 +258,9 @@ export default function ManageUsersScreen({ navigation }) {
               </>
             ) : (
               <>
+                <TouchableOpacity onPress={() => startEdit(item)} style={styles.smallBtn}>
+                  <Text style={styles.smallBtnText}>Edit</Text>
+                </TouchableOpacity>
                 <TouchableOpacity onPress={() => toggleActive(item)} style={styles.smallBtn}>
                   <Text style={styles.smallBtnText}>{item.active ? "Disable" : "Enable"}</Text>
                 </TouchableOpacity>
@@ -207,6 +268,8 @@ export default function ManageUsersScreen({ navigation }) {
                   <Text style={styles.deleteText}>Delete</Text>
                 </TouchableOpacity>
               </>
+            )}
+            </>
             )}
           </View>
         )}
@@ -232,6 +295,11 @@ const styles = StyleSheet.create({
   sectionHeader: { fontSize: 13, fontWeight: "800", color: "#6B7B85", textTransform: "uppercase", marginTop: 16, marginBottom: 8 },
   pendingHeader: { color: "#B0803A" },
   card: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 12, padding: 14, marginBottom: 10, gap: 8 },
+  cardEditing: { flexDirection: "column", alignItems: "stretch" },
+  input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, backgroundColor: "#F8FAFB" },
+  editActions: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
+  saveBtn: { backgroundColor: "#0B6E8F" },
+  saveText: { color: "#fff", fontWeight: "700", fontSize: 12 },
   cardInactive: { opacity: 0.6 },
   pendingCard: { borderWidth: 1, borderColor: "#F0D9A8", backgroundColor: "#FFFBF2" },
   joinCard: { backgroundColor: "#fff", borderRadius: 14, padding: 16, marginBottom: 4 },
