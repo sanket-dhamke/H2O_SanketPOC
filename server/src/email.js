@@ -4,8 +4,7 @@ import nodemailer from "nodemailer";
 //   EMAIL_PROVIDER=resend  RESEND_API_KEY=re_xxx  EMAIL_FROM="GATEZO <no-reply@yourdomain.com>"
 //   EMAIL_PROVIDER=smtp    SMTP_HOST=... SMTP_PORT=587 SMTP_USER=... SMTP_PASS=... EMAIL_FROM=...
 // If nothing is configured, we run in DEV mode: the email is logged to the
-// server console (and the OTP is returned by the API) so the flow is testable
-// without any provider.
+// server console only. The code is never returned to the app.
 const PROVIDER = (process.env.EMAIL_PROVIDER || "").toLowerCase();
 const FROM = process.env.EMAIL_FROM || "GATEZO <onboarding@resend.dev>";
 

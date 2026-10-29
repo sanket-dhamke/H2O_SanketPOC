@@ -152,7 +152,7 @@ export default function LoginScreen() {
       await setBaseUrl(serverUrl);
       const res = await api.requestLoginCode(email.trim());
       setCodeSent(true);
-      setCodeNote(res.devOtp ? `${res.message || "Code sent."} Dev code ${res.devOtp}` : res.message || "Code sent.");
+      setCodeNote(res.message || "Check your email for the 6-digit code.");
     } catch (e) {
       setError(e.message || "Could not send a code.");
     } finally {

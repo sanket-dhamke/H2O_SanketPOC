@@ -145,14 +145,19 @@ async function issueLoginCode(email) {
     title: "Sign-in code",
     body: text,
   });
-  return {
-    ok: true,
-    sent: true,
-    phoneTail: phoneTail(user.phone),
-    emailDev: !!mail.dev,
-    phoneDev: !!phone.dev,
-    ...(mail.dev ? { devOtp: otp } : {}),
-  };
+  const emailed = !!mail.delivered;
+  const texted = !!phone.sent;
+  if (!emailed && !texted) {
+    await prisma.loginCode.deleteMany({ where: { email } });
+    return { ok: true, sent: true, delivered: false };
+  }
+  const tail = phoneTail(user.phone);
+  const message = emailed && texted
+    ? `Code sent to your email and the phone ending ${tail}.`
+    : texted
+      ? `Code sent to the phone ending ${tail}.`
+      : "Code sent to your email.";
+  return { ok: true, sent: true, delivered: true, message, phoneTail: texted ? tail : null };
 }
 
 // Sign-in code to the registered email and phone. Password login stays available.
@@ -163,13 +168,15 @@ authRouter.post("/auth/login-code", async (req, res) => {
   if (!result.sent) {
     return res.json({ ok: true, message: "If that email is registered, a sign-in code has been sent." });
   }
+  if (!result.delivered) {
+    return res.status(503).json({
+      message: "We could not email a sign-in code. Email sending is not turned on for this server yet.",
+    });
+  }
   res.json({
     ok: true,
-    message: result.phoneTail
-      ? `Code sent to your email and the phone ending ${result.phoneTail}.`
-      : "Code sent to your email.",
+    message: result.message,
     phoneTail: result.phoneTail || null,
-    ...(result.devOtp ? { devOtp: result.devOtp } : {}),
   });
 });
 
@@ -239,12 +246,16 @@ authRouter.post("/auth/forgot-password", async (req, res) => {
     `<b style="font-size:22px;letter-spacing:2px">${otp}</b>.</p>` +
     `<p>It expires in 15 minutes. If you didn't request this, please ignore this email.</p>`;
   const result = await sendEmail({ to: email, subject: "Your GATEZO password reset code", text, html });
-
-  const payload = { ...generic };
-  // DEV mode (no provider configured): return the OTP so it's testable now.
-  if (result.dev) payload.devOtp = otp;
-  if (result.error) payload.deliveryWarning = "We couldn't deliver the email right now. Please try again or contact your admin.";
-  res.json(payload);
+  if (!result.delivered) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { resetOtpHash: null, resetOtpExpiresAt: null, resetOtpAttempts: 0 },
+    });
+    return res.status(503).json({
+      message: "We could not email a reset code. Email sending is not turned on for this server yet.",
+    });
+  }
+  res.json(generic);
 });
 
 // Self-service password reset — step 2: verify OTP and set a new password.

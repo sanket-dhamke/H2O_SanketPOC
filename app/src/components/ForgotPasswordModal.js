@@ -16,8 +16,7 @@ import ModalClose from "./ModalClose";
 import { api } from "../lib/api";
 
 // Self-service password reset. Step 1: request an emailed OTP. Step 2: enter the
-// code + a new password. In DEV mode (no email provider on the server) the API
-// returns the code so it can be shown here for testing.
+// code from that email plus a new password. The code is never shown on screen.
 export default function ForgotPasswordModal({ visible, onClose, initialEmail = "" }) {
   const [step, setStep] = useState("request");
   const [email, setEmail] = useState(initialEmail);
@@ -25,7 +24,6 @@ export default function ForgotPasswordModal({ visible, onClose, initialEmail = "
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [show, setShow] = useState(false);
-  const [devOtp, setDevOtp] = useState(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -36,7 +34,6 @@ export default function ForgotPasswordModal({ visible, onClose, initialEmail = "
       setPassword("");
       setConfirm("");
       setShow(false);
-      setDevOtp(null);
     }
   }, [visible, initialEmail]);
 
@@ -47,11 +44,9 @@ export default function ForgotPasswordModal({ visible, onClose, initialEmail = "
     }
     setBusy(true);
     try {
-      const res = await api.forgotPassword(email.trim());
-      setDevOtp(res.devOtp || null);
-      if (res.devOtp) setOtp(res.devOtp);
+      await api.forgotPassword(email.trim());
+      setOtp("");
       setStep("reset");
-      if (res.deliveryWarning) Alert.alert("Heads up", res.deliveryWarning);
     } catch (e) {
       Alert.alert("Error", e.message);
     } finally {
@@ -129,14 +124,6 @@ export default function ForgotPasswordModal({ visible, onClose, initialEmail = "
                   We sent a code to <Text style={{ fontWeight: "800" }}>{email.trim()}</Text>. Enter it
                   below with your new password.
                 </Text>
-                {!!devOtp && (
-                  <View style={styles.devBanner}>
-                    <Ionicons name="information-circle-outline" size={16} color="#9A3412" />
-                    <Text style={styles.devText}>
-                      Dev mode (no email provider set): your code is {devOtp}
-                    </Text>
-                  </View>
-                )}
                 <Text style={styles.label}>Reset code</Text>
                 <TextInput
                   style={styles.input}
@@ -201,8 +188,6 @@ const styles = StyleSheet.create({
   intro: { color: "#48606B", fontSize: 13.5, lineHeight: 20, marginBottom: 4 },
   label: { fontSize: 13, fontWeight: "600", color: "#334", marginBottom: 6, marginTop: 12 },
   input: { borderWidth: 1, borderColor: "#D6DEE3", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, backgroundColor: "#F8FAFB" },
-  devBanner: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#FBE9D8", borderRadius: 10, padding: 10, marginTop: 12 },
-  devText: { color: "#9A3412", fontSize: 12.5, fontWeight: "600", flex: 1 },
   showRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14 },
   showText: { color: "#0B6E8F", fontWeight: "700", fontSize: 13 },
   resend: { color: "#0B6E8F", fontWeight: "700", fontSize: 13, marginTop: 14 },
