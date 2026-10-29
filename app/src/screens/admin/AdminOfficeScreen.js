@@ -112,6 +112,8 @@ export default function AdminOfficeScreen() {
           <Shortcut icon="log-in" label="Entry–exit report" onPress={() => navigation.navigate("Reports")} />
           <Shortcut icon="swap-horizontal" label="Move in/out" onPress={() => navigation.navigate("Moves")} />
           <Shortcut icon="receipt" label="Vendor bills" onPress={() => navigation.navigate("Vendors")} />
+          <Shortcut icon="library" label="Accounts & Tally" onPress={() => navigation.navigate("Accounts")} />
+          <Shortcut icon="file-tray-full" label="Records & polls" onPress={() => navigation.navigate("Records")} />
         </View>
 
         <Text style={styles.section}>This month’s collection</Text>

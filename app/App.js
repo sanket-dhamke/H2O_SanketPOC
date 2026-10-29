@@ -57,6 +57,8 @@ import OnboardingScreen from "./src/screens/admin/OnboardingScreen";
 import BankAccountScreen from "./src/screens/admin/BankAccountScreen";
 import GateDevicesScreen from "./src/screens/admin/GateDevicesScreen";
 import ReportsScreen from "./src/screens/admin/ReportsScreen";
+import AccountsScreen from "./src/screens/admin/AccountsScreen";
+import OfficeRecordsScreen from "./src/screens/admin/OfficeRecordsScreen";
 import VenueMarketplaceScreen from "./src/screens/admin/VenueMarketplaceScreen";
 import AdminFeesScreen from "./src/screens/admin/AdminFeesScreen";
 import PayToH2OScreen from "./src/screens/admin/PayToH2OScreen";
@@ -192,6 +194,8 @@ function FinanceStackScreen() {
       <FinanceStack.Screen name="StudentFees" component={AdminFeesScreen} />
       <FinanceStack.Screen name="Amenities" component={AmenitiesScreen} />
       <FinanceStack.Screen name="Reports" component={ReportsScreen} />
+      <FinanceStack.Screen name="Accounts" component={AccountsScreen} />
+      <FinanceStack.Screen name="Records" component={OfficeRecordsScreen} />
       <FinanceStack.Screen name="VenueMarketplace" component={VenueMarketplaceScreen} />
       <FinanceStack.Screen name="PayToH2O" component={PayToH2OScreen} />
       <FinanceStack.Screen name="FlatLedger" component={FlatLedgerScreen} />
@@ -210,6 +214,7 @@ function CommunityStackScreen() {
     <CommunityStack.Navigator screenOptions={{ headerShown: false }}>
       <CommunityStack.Screen name="CommunityHome" component={CommunityScreen} />
       <CommunityStack.Screen name="Helpdesk" component={HelpdeskScreen} />
+      <CommunityStack.Screen name="Records" component={OfficeRecordsScreen} />
       <CommunityStack.Screen name="TicketDetail" component={TicketDetailScreen} />
       <CommunityStack.Screen name="Directory" component={DirectoryScreen} />
       <CommunityStack.Screen name="Services" component={ServicesScreen} />

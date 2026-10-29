@@ -128,8 +128,23 @@ adminRouter.delete("/users/:id", async (req, res) => {
   if (req.params.id === req.user.id) {
     return res.status(400).json({ message: "You cannot delete your own account" });
   }
-  const target = await prisma.user.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
+  const target = await prisma.user.findFirst({
+    where: { id: req.params.id, societyId: sid(req) },
+    include: { flat: true },
+  });
   if (!target) return res.status(404).json({ message: "User not found" });
+  await prisma.memberArchive.create({
+    data: {
+      societyId: sid(req),
+      userId: target.id,
+      name: target.name,
+      email: target.email,
+      phone: target.phone || null,
+      flatNo: target.flat?.flatNo || null,
+      reason: target.pendingApproval ? "rejected" : "removed",
+      note: req.body?.note ? String(req.body.note).trim().slice(0, 240) : null,
+    },
+  });
   await prisma.user.delete({ where: { id: target.id } });
   res.json({ ok: true });
 });

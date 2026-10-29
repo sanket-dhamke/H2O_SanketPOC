@@ -82,7 +82,7 @@ const BACKDROPS = {
 };
 
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const { login, loginWithCode } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordFocused, setPasswordFocused] = useState(false);
@@ -95,6 +95,9 @@ export default function LoginScreen() {
   const [orgMode, setOrgMode] = useState("neutral"); // "neutral" | "society" | "preschool"
   const [tenantName, setTenantName] = useState(null);
   const [error, setError] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [code, setCode] = useState("");
+  const [codeNote, setCodeNote] = useState("");
   const passwordRef = useRef(null);
   const theme = BACKDROPS[orgMode];
 
@@ -137,6 +140,42 @@ export default function LoginScreen() {
       cancelled = true;
     };
   }, []);
+
+  const sendCode = async () => {
+    if (!email.trim()) {
+      setError("Enter your email, then ask for a sign-in code.");
+      return;
+    }
+    setError("");
+    setBusy(true);
+    try {
+      await setBaseUrl(serverUrl);
+      const res = await api.requestLoginCode(email.trim());
+      setCodeSent(true);
+      setCodeNote(res.devOtp ? `${res.message || "Code sent."} Dev code ${res.devOtp}` : res.message || "Code sent.");
+    } catch (e) {
+      setError(e.message || "Could not send a code.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verifyCode = async () => {
+    if (!/^\d{6}$/.test(code.trim())) {
+      setError("Enter the 6-digit code.");
+      return;
+    }
+    setError("");
+    setBusy(true);
+    try {
+      await setBaseUrl(serverUrl);
+      await loginWithCode(email.trim(), code.trim());
+    } catch (e) {
+      setError(e.message || "That code was not accepted.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const onSubmit = async () => {
     if (!email.trim() || !password) {
@@ -246,6 +285,26 @@ export default function LoginScreen() {
         >
           <Text style={styles.buttonText}>{busy ? "Signing in..." : "Sign In"}</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity onPress={sendCode} disabled={busy} style={{ marginTop: 12 }}>
+          <Text style={styles.footerLink}>{codeSent ? "Resend sign-in code" : "Email me a sign-in code"}</Text>
+        </TouchableOpacity>
+        {codeNote ? <Text style={[styles.footerLink, { color: "#5C6E76", marginTop: 8 }]}>{codeNote}</Text> : null}
+        {codeSent ? (
+          <View style={{ marginTop: 10 }}>
+            <TextInput
+              style={styles.input}
+              value={code}
+              onChangeText={setCode}
+              placeholder="6-digit code"
+              keyboardType="number-pad"
+              maxLength={6}
+            />
+            <TouchableOpacity style={[styles.button, busy && { opacity: 0.6 }]} onPress={verifyCode} disabled={busy}>
+              <Text style={styles.buttonText}>Verify code</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         <View style={styles.footerRow}>
           <TouchableOpacity onPress={() => setForgotOpen(true)} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>

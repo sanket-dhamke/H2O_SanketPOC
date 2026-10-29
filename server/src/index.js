@@ -15,6 +15,7 @@ import { maintenanceRouter } from "./routes/maintenance.js";
 import { visitorsRouter } from "./routes/visitors.js";
 import { adminRouter } from "./routes/admin.js";
 import { officeRouter } from "./routes/office.js";
+import { officeBooksRouter } from "./routes/officeBooks.js";
 import { superadminRouter } from "./routes/superadmin.js";
 import { communityRouter } from "./routes/community.js";
 import { amenitiesRouter } from "./routes/amenities.js";
@@ -106,7 +107,7 @@ app.use(express.urlencoded({ extended: false }));
 // credential and AI endpoints. Exemptions (health, cron, webhook, gate device)
 // are handled inside the limiter's skip fn. Disable with RATE_LIMIT_ENABLED=false.
 app.use("/api", globalLimiter);
-app.use(["/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/register"], authLimiter);
+app.use(["/api/auth/login", "/api/auth/login-code", "/api/auth/login-code/verify", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/register"], authLimiter);
 app.use("/api/ai", aiLimiter);
 
 app.get("/api/health", (_req, res) =>
@@ -128,6 +129,7 @@ app.use("/api", paymentsRouter);
 app.use("/api", visitorsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/admin", officeRouter);
+app.use("/api", officeBooksRouter);
 app.use("/api/superadmin", superadminRouter);
 app.use("/api", communityRouter);
 app.use("/api", amenitiesRouter);

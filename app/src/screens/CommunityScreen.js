@@ -73,6 +73,7 @@ export default function CommunityScreen() {
       { id: "homeServices", label: "Home services", subtitle: "Cleaning, AC, painting, movers", icon: "construct", color: "#0B6E8F", screen: "HomeServices", roles: ["resident", "admin"], societyOnly: true },
       { id: "market", label: "Buy & Sell", subtitle: "Listings, rentals & group-buy", icon: "pricetags", color: "#C99000", ink: "#8A6200", screen: "Marketplace", roles: ["resident", "admin"] },
       { id: "helpdesk", label: "Helpdesk", subtitle: "Raise a request or call the office", icon: "help-buoy", color: "#1E7A3D", screen: "Helpdesk", roles: everyone },
+      { id: "records", label: "Notices & polls", subtitle: "Documents, polls and move requests", icon: "file-tray-full", color: "#0B6E8F", screen: "Records", roles: everyone },
       { id: "directory", label: "Directory", subtitle: preschool ? "Parents, staff & office" : "Neighbours, staff & committee", icon: "people", color: "#2B6CB0", ink: "#1E4E89", screen: "Directory", roles: everyone },
       { id: "services", label: "Helplines", subtitle: "Security, office & emergency", icon: "call", color: "#B42318", screen: "Services", roles: everyone },
       { id: "amenities", label: preschool ? "Book hall" : "Book clubhouse", subtitle: preschool ? "Hall & event slots" : "Hall, party slot & amenities", icon: "calendar", color: "#C2571A", ink: "#9A3F10", screen: "Amenities", roles: ["resident", "admin"] },

@@ -105,6 +105,28 @@ async function request(path, { method = "GET", body } = {}) {
   return data;
 }
 
+async function requestText(path) {
+  const token = await getToken();
+  const baseUrl = await getBaseUrl();
+  let res;
+  try {
+    res = await fetch(`${baseUrl}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch {
+    throw new Error(`Can't reach the ${brand.name} server. Check your internet connection and try again.`);
+  }
+  const text = await res.text();
+  if (!res.ok) {
+    let message = text;
+    try {
+      message = JSON.parse(text).message || text;
+    } catch {}
+    throw new Error(message || `Request failed (${res.status})`);
+  }
+  return text;
+}
+
 const qs = (params) => {
   const s = new URLSearchParams(
     Object.entries(params || {}).filter(([, v]) => v != null && v !== "")
@@ -119,6 +141,10 @@ export const api = {
   tenantBranding: (slug) => request(`/api/tenant/${encodeURIComponent(slug)}`),
   login: (email, password) =>
     request("/api/auth/login", { method: "POST", body: { email, password } }),
+  requestLoginCode: (email) =>
+    request("/api/auth/login-code", { method: "POST", body: { email } }),
+  verifyLoginCode: (email, code) =>
+    request("/api/auth/login-code/verify", { method: "POST", body: { email, code } }),
   // Public self-registration with a society join code (admin approves after).
   register: (payload) =>
     request("/api/auth/register", { method: "POST", body: payload }),
@@ -266,6 +292,32 @@ export const api = {
 
   // Admin: proactive AI Society Manager (insights + AI drafts)
   adminOffice: () => request("/api/admin/office"),
+  books: () => request("/api/books"),
+  addBankAccount: (payload) => request("/api/bank-accounts", { method: "POST", body: payload }),
+  addVoucher: (payload) => request("/api/vouchers", { method: "POST", body: payload }),
+  reconcileBank: (payload) => request("/api/reconcile", { method: "POST", body: payload }),
+  lockBooks: (through) => request("/api/books/lock", { method: "POST", body: { through } }),
+  tallyXml: () => requestText("/api/books/tally"),
+  raiseInvoice: (payload) => request("/api/invoices", { method: "POST", body: payload }),
+  monthReport: (period) => request(`/api/reports/month${qs({ period })}`),
+  duesCsv: (period) => requestText(`/api/reports/month${qs({ period, format: "csv" })}`),
+  gateReport: (month) => request(`/api/reports/gate${qs({ month })}`),
+  gateCsv: (month) => requestText(`/api/reports/gate${qs({ month, format: "csv" })}`),
+  buildings: () => request("/api/buildings"),
+  addBuilding: (payload) => request("/api/buildings", { method: "POST", body: payload }),
+  moveRequests: () => request("/api/move-requests"),
+  askMove: (payload) => request("/api/move-requests", { method: "POST", body: payload }),
+  decideMove: (id, status) => request(`/api/move-requests/${id}/decide`, { method: "POST", body: { status } }),
+  memberArchive: () => request("/api/member-archive"),
+  societyDocuments: () => request("/api/documents"),
+  addDocument: (payload) => request("/api/documents", { method: "POST", body: payload }),
+  polls: () => request("/api/polls"),
+  addPoll: (payload) => request("/api/polls", { method: "POST", body: payload }),
+  votePoll: (id, choice) => request(`/api/polls/${id}/vote`, { method: "POST", body: { choice } }),
+  groupMails: () => request("/api/group-mail"),
+  sendGroupMail: (payload) => request("/api/group-mail", { method: "POST", body: payload }),
+  helperDuplicates: () => request("/api/helpers/duplicates"),
+  updateHelper: (id, payload) => request(`/api/helpers/${id}`, { method: "PATCH", body: payload }),
   adminOfficeSettings: (payload) => request("/api/admin/settings", { method: "PATCH", body: payload }),
   adminMoves: () => request("/api/admin/moves"),
   adminCreateMove: (payload) => request("/api/admin/moves", { method: "POST", body: payload }),

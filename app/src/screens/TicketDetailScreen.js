@@ -32,15 +32,22 @@ export default function TicketDetailScreen({ navigation, route }) {
   const [comment, setComment] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [staff, setStaff] = useState([]);
+  const [subcategory, setSubcategory] = useState("");
 
   const load = useCallback(async () => {
     try {
       const { ticket } = await api.ticket(ticketId);
       setTicket(ticket);
+      setSubcategory(ticket.subcategory || "");
+      if (isAdmin) {
+        const contacts = await api.helpdeskContacts().catch(() => ({ contacts: [] }));
+        setStaff(contacts.contacts || []);
+      }
     } catch (e) {
       Alert.alert("Error", e.message);
     }
-  }, [ticketId]);
+  }, [ticketId, isAdmin]);
 
   useFocusEffect(
     useCallback(() => {
@@ -144,7 +151,9 @@ export default function TicketDetailScreen({ navigation, route }) {
           <Text style={styles.desc}>{ticket.description}</Text>
           <Text style={styles.meta}>
             Raised by {ticket.authorName}
-            {ticket.flatNo ? ` · ${ticket.flatNo}` : ""} · {fmt(ticket.createdAt)}
+            {ticket.flatNo ? ` · ${ticket.flatNo}` : ""} · {fmt(ticket.createdAt)} · open {ticket.ageingDays || 0} days
+            {ticket.assigneeName ? ` · with ${ticket.assigneeName}` : ""}
+            {ticket.subcategory ? ` · ${ticket.subcategory}` : ""}
           </Text>
           {ticket.status === "resolved" && !!ticket.resolution && (
             <View style={styles.resolutionBox}>
@@ -175,6 +184,23 @@ export default function TicketDetailScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
         )}
+        {isAdmin ? (
+          <View style={styles.card}>
+            <Text style={styles.meta}>Subcategory</Text>
+            <TextInput value={subcategory} onChangeText={setSubcategory} placeholder="Payment, plumbing, other" style={{ borderWidth: 1, borderColor: "#D5DEE3", borderRadius: 8, padding: 8, marginVertical: 8 }} />
+            <TouchableOpacity onPress={() => api.updateTicket(ticket.id, { subcategory }).then(load)} style={[styles.adminBtn, { backgroundColor: "#EAF4F7", alignSelf: "flex-start" }]}>
+              <Text style={[styles.adminBtnText, { color: "#0B6E8F" }]}>Save subcategory</Text>
+            </TouchableOpacity>
+            <Text style={[styles.meta, { marginTop: 10 }]}>Assign</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+              {staff.map((person) => (
+                <TouchableOpacity key={person.id} onPress={() => api.updateTicket(ticket.id, { assigneeId: person.id }).then(load)} style={[styles.adminBtn, { backgroundColor: ticket.assigneeId === person.id ? "#0B6E8F" : "#EAF4F7" }]}>
+                  <Text style={[styles.adminBtnText, { color: ticket.assigneeId === person.id ? "#fff" : "#0B6E8F" }]}>{person.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        ) : null}
 
         {/* Thread */}
         <Text style={styles.threadTitle}>Conversation</Text>

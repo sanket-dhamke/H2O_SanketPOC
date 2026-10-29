@@ -255,12 +255,31 @@ officeRouter.post("/vendors/:id/pay", async (req, res) => {
   const row = await prisma.vendorBill.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
   if (!row) return res.status(404).json({ message: "Vendor bill not found" });
   if (row.status === "paid") return res.status(400).json({ message: "Already paid" });
+  const accountId = clip(req.body?.accountId, 40);
+  if (accountId) {
+    const account = await prisma.societyAccount.findFirst({ where: { id: accountId, societyId: sid(req) } });
+    if (!account) return res.status(400).json({ message: "Bank account not found" });
+  }
   const updated = await prisma.vendorBill.update({
     where: { id: row.id },
     data: {
       status: "paid",
       paidAt: new Date(),
       paymentRef: clip(req.body?.paymentRef, 60) || `CASH-${row.id.slice(0, 8)}`,
+      accountId: clip(req.body?.accountId, 40) || null,
+    },
+  });
+  await prisma.accountVoucher.create({
+    data: {
+      societyId: sid(req),
+      accountId: updated.accountId,
+      kind: "expense",
+      ledger: "Vendor expense",
+      amount: updated.amount,
+      date: new Date().toISOString().slice(0, 10),
+      narration: `Vendor · ${updated.vendorName}`,
+      vendorBillId: updated.id,
+      createdById: req.user.id,
     },
   });
   await prisma.expense.create({

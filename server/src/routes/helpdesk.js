@@ -182,8 +182,18 @@ helpdeskRouter.post("/helpdesk/tickets/:id/comments", authRequired, async (req, 
 helpdeskRouter.patch("/helpdesk/tickets/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const ticket = await prisma.ticket.findFirst({ where: { id: req.params.id, societyId: sid(req) } });
   if (!ticket) return res.status(404).json({ message: "Ticket not found" });
-  const { status, resolution } = req.body || {};
+  const { status, resolution, subcategory, assigneeId } = req.body || {};
   const data = {};
+  if (subcategory != null) data.subcategory = String(subcategory).trim().slice(0, 80) || null;
+  if (assigneeId) {
+    const assignee = await prisma.user.findFirst({
+      where: { id: assigneeId, societyId: sid(req), role: { in: ["admin", "guard"] }, active: true },
+      select: { id: true, name: true },
+    });
+    if (!assignee) return res.status(400).json({ message: "Assignee must be an admin or guard in this society" });
+    data.assigneeId = assignee.id;
+    data.assigneeName = assignee.name;
+  }
   if (status && STATUSES.includes(status)) {
     data.status = status;
     if (status === "resolved") {

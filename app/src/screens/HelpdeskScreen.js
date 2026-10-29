@@ -181,7 +181,7 @@ export default function HelpdeskScreen() {
               <Text style={styles.ticketSubject}>{t.subject}</Text>
               <Text style={styles.ticketDesc} numberOfLines={2}>{t.description}</Text>
               <View style={styles.ticketFoot}>
-                {isAdmin && <Text style={styles.ticketMeta}>{t.authorName}{t.flatNo ? ` · ${t.flatNo}` : ""}</Text>}
+                {isAdmin && <Text style={styles.ticketMeta}>{t.authorName}{t.flatNo ? ` · ${t.flatNo}` : ""}{t.assigneeName ? ` · ${t.assigneeName}` : ""} · {t.ageingDays || 0}d</Text>}
                 <Text style={styles.ticketMeta}>{t.commentCount > 0 ? `${t.commentCount} update${t.commentCount === 1 ? "" : "s"}` : "No replies yet"}</Text>
                 <Ionicons name="chevron-forward" size={16} color="#B7C1C8" />
               </View>

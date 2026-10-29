@@ -89,6 +89,8 @@ async function buildPassport(worker, userId) {
     phone: worker.phone,
     category: worker.category,
     subtype: worker.subtype,
+    company: worker.company || null,
+    active: worker.active !== false,
     photoUrl: worker.photoUrl,
     idProof: worker.idProof,
     code: worker.code,
@@ -163,7 +165,7 @@ workersRouter.get("/workers", authRequired, async (req, res) => {
 // Register a worker (any member). De-duplicates by phone so the same maid keeps
 // ONE portable identity no matter which society/resident adds her.
 workersRouter.post("/workers", authRequired, async (req, res) => {
-  const { name, phone, category, subtype, photoUrl, idProof } = req.body || {};
+  const { name, phone, category, subtype, photoUrl, idProof, company } = req.body || {};
   if (!name || !String(name).trim()) return res.status(400).json({ message: "Name is required" });
   const p = cleanPhone(phone);
   if (p.length !== 10) return res.status(400).json({ message: "A valid 10-digit phone is required (it's the worker's portable identity)." });
@@ -175,6 +177,7 @@ workersRouter.post("/workers", authRequired, async (req, res) => {
     if (!existing.subtype && subtype) data.subtype = String(subtype).trim();
     if (!existing.photoUrl && storedPhoto) data.photoUrl = storedPhoto;
     if (!existing.idProof && idProof) data.idProof = String(idProof).trim();
+    if (!existing.company && company) data.company = String(company).trim().slice(0, 80);
     const updated = Object.keys(data).length ? await prisma.worker.update({ where: { id: existing.id }, data }) : existing;
     return res.json({ worker: await buildPassport(updated, req.user.id), existed: true });
   }
@@ -186,6 +189,7 @@ workersRouter.post("/workers", authRequired, async (req, res) => {
       subtype: subtype ? String(subtype).trim() : null,
       photoUrl: storedPhoto,
       idProof: idProof ? String(idProof).trim() : null,
+      company: company ? String(company).trim().slice(0, 80) : null,
       code: await uniqueWorkerCode(),
       createdById: req.user.id,
     },

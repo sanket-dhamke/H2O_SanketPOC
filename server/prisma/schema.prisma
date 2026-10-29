@@ -51,6 +51,11 @@ model Society {
   tier          String           @default("platinum")
   // Auto-erase visitor PII after this many days. Null / 0 = keep forever.
   visitorRetentionDays Int?
+  // Invoice numbers are INV-2026-0001 and climb by one. A locked date blocks
+  // new vouchers and invoices on or before that day.
+  invoicePrefix      String  @default("INV")
+  invoiceSeq         Int     @default(1)
+  booksLockedThrough String?
   createdAt     DateTime         @default(now())
   flats         Flat[]
   users         User[]
@@ -73,6 +78,14 @@ model Society {
   serviceBookings ServiceBooking[]
   occupancyMoves OccupancyMove[]
   vendorBills    VendorBill[]
+  vouchers       AccountVoucher[]
+  reconciliations BankReconciliation[]
+  buildings      Building[]
+  moveRequests   MoveRequest[]
+  memberArchives MemberArchive[]
+  documents      SocietyDocument[]
+  polls          Poll[]
+  groupMails     GroupMail[]
 }
 
 // A commercial booking of a society premise by an OUTSIDE vendor (not a resident):
@@ -231,6 +244,7 @@ model Bill {
   collectedBy   String?
   collectorPhone String?
   payments   Payment[]
+  invoiceNo  String?
   createdAt  DateTime  @default(now())
 
   // flatId+period: per-flat ledger & month-scoped bill generation.
@@ -424,8 +438,11 @@ model Ticket {
   priority    String          @default("normal")
   subject     String
   description String
-  // open | in_progress | resolved
+  // open | in_progress | escalated | resolved
   status      String          @default("open")
+  subcategory String?
+  assigneeId  String?
+  assigneeName String?
   resolution  String?
   resolvedById String?
   resolvedAt  DateTime?
@@ -1017,6 +1034,7 @@ model Worker {
   phone      String   @unique              // identity key across societies
   category   String   @default("helpers")  // helpers|trades|medical|utilities|lifestyle
   subtype    String?                        // "Maid","Electrician","Tiffin"…
+  company    String?                        // agency the helper works for
   photoUrl   String?
   idProof    String?                        // free note e.g. "Aadhaar verified by A-wing"
   code       String   @unique               // opaque code encoded in the passport QR
@@ -1230,6 +1248,7 @@ model VendorBill {
   status      String    @default("unpaid") // unpaid | paid
   paidAt      DateTime?
   paymentRef  String?
+  accountId   String?
   createdById String?
   createdAt   DateTime  @default(now())
 
@@ -1248,4 +1267,152 @@ model WaterReading {
 
   @@unique([flatId, period])
   @@index([societyId, period])
+}
+
+// Money posted to one society bank account. Income increases the ledger,
+// expense reduces it. A date on or before Society.booksLockedThrough is refused.
+model AccountVoucher {
+  id         String   @id @default(uuid())
+  society    Society  @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId  String
+  accountId  String?
+  kind       String   // income | expense
+  ledger     String
+  amount     Float
+  date       String   // YYYY-MM-DD
+  narration  String?
+  vendorBillId String?
+  createdById String?
+  createdAt  DateTime @default(now())
+
+  @@index([societyId, date])
+  @@index([accountId])
+}
+
+// One comparison of the book's balance with the bank statement.
+model BankReconciliation {
+  id               String   @id @default(uuid())
+  society          Society  @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId        String
+  accountId        String
+  statementDate    String
+  statementBalance Float
+  ledgerBalance    Float
+  note             String?
+  createdById      String?
+  createdAt        DateTime @default(now())
+
+  @@index([societyId, accountId])
+}
+
+model Building {
+  id          String   @id @default(uuid())
+  society     Society  @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId   String
+  name        String
+  kind        String   @default("residential") // residential | non_member | security | facilities
+  createdById String?
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([societyId])
+}
+
+// A resident asks to move in or out. The office approves it into the move book.
+model MoveRequest {
+  id          String    @id @default(uuid())
+  society     Society   @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId   String
+  flatId      String?
+  userId      String?
+  kind        String    // move_in | move_out
+  note        String?
+  status      String    @default("pending") // pending | approved | rejected
+  decidedById String?
+  decidedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([societyId, status])
+}
+
+model MemberArchive {
+  id        String   @id @default(uuid())
+  society   Society  @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId String
+  userId    String?
+  name      String
+  email     String?
+  phone     String?
+  flatNo    String?
+  reason    String   // rejected | removed
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([societyId, createdAt])
+}
+
+model SocietyDocument {
+  id          String   @id @default(uuid())
+  society     Society  @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId   String
+  title       String
+  body        String
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([societyId, createdAt])
+}
+
+model Poll {
+  id          String     @id @default(uuid())
+  society     Society    @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId   String
+  question    String
+  options     Json
+  closesOn    String?
+  createdById String?
+  createdAt   DateTime   @default(now())
+  votes       PollVote[]
+
+  @@index([societyId, createdAt])
+}
+
+model PollVote {
+  id        String   @id @default(uuid())
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  pollId    String
+  userId    String
+  choice    String
+  createdAt DateTime @default(now())
+
+  @@unique([pollId, userId])
+}
+
+model GroupMail {
+  id          String   @id @default(uuid())
+  society     Society  @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  societyId   String
+  subject     String
+  body        String
+  audience    String   // all | admins | defaulters
+  sent        Int      @default(0)
+  failed      Int      @default(0)
+  dev         Int      @default(0)
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([societyId, createdAt])
+}
+
+// A one-time sign-in code. The password login stays available.
+model LoginCode {
+  id        String   @id @default(uuid())
+  email     String
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([email])
 }

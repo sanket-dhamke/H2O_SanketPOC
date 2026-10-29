@@ -6,6 +6,7 @@ import { signToken, authRequired } from "../auth.js";
 import { publicUser } from "../serializers.js";
 import { validatePassword } from "../passwordPolicy.js";
 import { sendEmail } from "../email.js";
+import { sendSocietyNotice } from "../whatsapp.js";
 import { sendPush } from "../push.js";
 import { providerServiceChoices, registerProviderAccount } from "../providerJoin.js";
 
@@ -114,6 +115,91 @@ authRouter.get("/auth/provider-services", (_req, res) => {
 authRouter.post("/auth/register-provider", async (req, res) => {
   const result = await registerProviderAccount(req.body || {});
   res.status(result.status).json(result.body);
+});
+
+function phoneTail(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  return digits.length >= 4 ? digits.slice(-4) : "";
+}
+
+async function issueLoginCode(email) {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || !user.active || user.pendingApproval) return { ok: true, sent: false };
+  const otp = String(crypto.randomInt(100000, 1000000));
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  await prisma.loginCode.deleteMany({ where: { email } });
+  await prisma.loginCode.create({
+    data: { email, codeHash: bcrypt.hashSync(otp, 8), expiresAt },
+  });
+  const text = `Your GATEZO sign-in code is ${otp}. It expires in 10 minutes.`;
+  const mail = await sendEmail({
+    to: user.email,
+    subject: "Your GATEZO sign-in code",
+    text,
+    html: `<p>${text}</p>`,
+  });
+  const phone = await sendSocietyNotice({
+    toPhone: user.phone,
+    name: user.name || "there",
+    societyName: "GATEZO",
+    title: "Sign-in code",
+    body: text,
+  });
+  return {
+    ok: true,
+    sent: true,
+    phoneTail: phoneTail(user.phone),
+    emailDev: !!mail.dev,
+    phoneDev: !!phone.dev,
+    ...(mail.dev ? { devOtp: otp } : {}),
+  };
+}
+
+// Sign-in code to the registered email and phone. Password login stays available.
+authRouter.post("/auth/login-code", async (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  if (!email) return res.status(400).json({ message: "Email is required" });
+  const result = await issueLoginCode(email);
+  if (!result.sent) {
+    return res.json({ ok: true, message: "If that email is registered, a sign-in code has been sent." });
+  }
+  res.json({
+    ok: true,
+    message: result.phoneTail
+      ? `Code sent to your email and the phone ending ${result.phoneTail}.`
+      : "Code sent to your email.",
+    phoneTail: result.phoneTail || null,
+    ...(result.devOtp ? { devOtp: result.devOtp } : {}),
+  });
+});
+
+authRouter.post("/auth/login-code/verify", async (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const code = String(req.body?.code || "").trim();
+  if (!email || !/^\d{6}$/.test(code)) {
+    return res.status(400).json({ message: "Email and a 6-digit code are required" });
+  }
+  const row = await prisma.loginCode.findFirst({ where: { email }, orderBy: { createdAt: "desc" } });
+  if (!row || row.expiresAt < new Date() || row.attempts >= 5) {
+    return res.status(400).json({ message: "That code has expired. Send a new one." });
+  }
+  const ok = await bcrypt.compare(code, row.codeHash);
+  if (!ok) {
+    await prisma.loginCode.update({ where: { id: row.id }, data: { attempts: { increment: 1 } } });
+    return res.status(401).json({ message: "That code does not match." });
+  }
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: { flat: true, society: true },
+  });
+  if (!user || !user.active || user.pendingApproval) {
+    return res.status(401).json({ message: "This account cannot sign in yet." });
+  }
+  if (user.role !== "superadmin" && user.society && !user.society.active) {
+    return res.status(403).json({ message: "This society is currently inactive." });
+  }
+  await prisma.loginCode.deleteMany({ where: { email } });
+  res.json({ token: signToken(user), user: publicUser(user) });
 });
 
 authRouter.get("/me", authRequired, async (req, res) => {

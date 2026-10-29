@@ -31,14 +31,23 @@ export function AuthProvider({ children }) {
     })();
   }, []);
 
-  const login = async (email, password) => {
-    const { token, user } = await api.login(email, password);
+  const finishLogin = async (token, user) => {
     await setToken(token);
     // Remember tenant type so next launch shows the right branded login.
     if (user?.societyOrgType) await setOrgMode(user.societyOrgType);
     const full = await applyRememberedMobile(user);
     setUser(full);
     return full;
+  };
+
+  const login = async (email, password) => {
+    const { token, user } = await api.login(email, password);
+    return finishLogin(token, user);
+  };
+
+  const loginWithCode = async (email, code) => {
+    const { token, user } = await api.verifyLoginCode(email, code);
+    return finishLogin(token, user);
   };
 
   const logout = async () => {
@@ -52,7 +61,7 @@ export function AuthProvider({ children }) {
   currentUser = user;
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithCode, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
