@@ -133,7 +133,7 @@ export default function HomeServiceDetailScreen() {
       const when = `${date} · ${slot}`;
       const who = booking.partnerName
         ? `${booking.partnerName} accepted this visit.`
-        : "A free professional has 60 seconds to accept, then the next one. If nobody does, the GATEZO desk takes it.";
+        : "A free professional has 60 seconds to accept, then the next one. If nobody does, the QwikGate desk takes it.";
       setBooked(booking);
       setNotice({
         tone: "ok",

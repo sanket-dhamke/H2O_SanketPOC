@@ -1,4 +1,4 @@
-"""Build GATEZO_User_Manual.docx from in-app labels (not invented copy)."""
+"""Build QwikGate_User_Manual.docx from in-app labels (not invented copy)."""
 from pathlib import Path
 
 from docx import Document
@@ -9,7 +9,7 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Inches, Pt, RGBColor
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = Path(__file__).resolve().parent / "GATEZO_User_Manual.docx"
+OUT = Path(__file__).resolve().parent / "QwikGate_User_Manual.docx"
 LOGO = ROOT / "app" / "assets" / "brand" / "gatezo" / "options" / "D-combo.png"
 WORDMARK = ROOT / "app" / "assets" / "brand" / "gatezo" / "wordmark.png"
 
@@ -67,7 +67,7 @@ def add_page_number(section):
     footer.is_linked_to_previous = False
     p = footer.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run("GATEZO User Manual  ·  ")
+    run = p.add_run("QwikGate User Manual  ·  ")
     set_run(run, size=9, color=MUTED)
     fld = OxmlElement("w:fldChar")
     fld.set(qn("w:fldCharType"), "begin")
@@ -276,7 +276,7 @@ def cover(m: Manual):
         run = p.add_run()
         run.add_picture(str(logo), width=Inches(2.4))
     else:
-        m.p("GATEZO", size=32, bold=True, color=NAVY, center=True, space_after=4)
+        m.p("QwikGate", size=32, bold=True, color=NAVY, center=True, space_after=4)
     m.p("USER MANUAL", size=22, bold=True, color=TEAL, center=True, space_after=10)
     m.p(
         "Step-by-step guide to every feature",
@@ -295,7 +295,7 @@ def cover(m: Manual):
     m.table(
         ["", ""],
         [
-            ["Product", "GATEZO — one AI-first app for gated societies and preschools"],
+            ["Product", "QwikGate — one AI-first app for gated societies and preschools"],
             ["Platforms", "Android app (APK). The same app also runs in a web browser for training."],
             ["How to read this", "Button and screen names match the app exactly, in quotation marks."],
             ["Plans", "Some features need Prime or Platinum. Locked tiles say which plan is required."],
@@ -319,9 +319,9 @@ def toc_page(m: Manual):
 
 
 def ch_welcome(m: Manual):
-    m.h("1.  Welcome to GATEZO")
+    m.h("1.  Welcome to QwikGate")
     m.p(
-        "GATEZO is the app your society or preschool uses instead of a mix of WhatsApp groups, "
+        "QwikGate is the app your society or preschool uses instead of a mix of WhatsApp groups, "
         "paper visitor registers, and spreadsheets for dues. One login covers money, the gate, "
         "community, and records."
     )
@@ -332,7 +332,7 @@ def ch_welcome(m: Manual):
         "Community — announcements, neighbours’ / parents’ board, community market, helpdesk, directory.",
         "Facilities — clubhouse / hall booking, home services, trusted helpers, SOS.",
         "Records — a payment history for every flat or student, plus reports and backups on higher plans.",
-        "Help — Ask GATEZO on Home (Prime), a full Assistant chat, and Help & how-to.",
+        "Help — Ask QwikGate on Home (Prime), a full Assistant chat, and Help & how-to.",
     ])
     m.note(
         "Your organisation is either a Society or a Preschool. The buttons change wording "
@@ -348,13 +348,13 @@ def ch_welcome(m: Manual):
         "Chapter 10: Preschool extras (My child, pickups, staff, student fees).",
         "Chapter 11: Platform owner (superadmin).",
         "Chapter 12: paying with UPI.",
-        "Chapter 13: Ask GATEZO.",
+        "Chapter 13: Ask QwikGate.",
         "Chapter 14: if something does not work.",
     ])
 
 
 def ch_roles(m: Manual):
-    m.h("2.  Who uses GATEZO (roles)")
+    m.h("2.  Who uses QwikGate (roles)")
     m.p(
         "You do not pick a role. The office creates your account (or you register with a join code "
         "and wait for approval). After Sign In, the bottom tabs match your role."
@@ -382,7 +382,7 @@ def ch_roles(m: Manual):
             ],
             [
                 "Platform owner",
-                "GATEZO Platform owner",
+                "QwikGate Platform owner",
                 "Overview · Societies",
                 "All organisations, plans, branding, backups, marketplace moderation.",
             ],
@@ -420,7 +420,7 @@ def ch_plans(m: Manual):
     m.h("4.  Plans (Base, Prime, Platinum)")
     m.p(
         "The platform owner sets the plan on your society or preschool. If a shortcut is locked, "
-        "the app shows the required plan (for example “Prime feature”) and “Ask your GATEZO owner to upgrade.”"
+        "the app shows the required plan (for example “Prime feature”) and “Ask your QwikGate owner to upgrade.”"
     )
     m.p("Your plan: Home (admin) → Operations → “Your plan”, or Members → “Plans & pricing”.", size=11)
     m.table(
@@ -434,7 +434,7 @@ def ch_plans(m: Manual):
             [
                 "Prime",
                 "Automation, AI & engagement",
-                "Everything in Base, plus Ask GATEZO / Assistant, Gate pass, amenities / hall booking, WhatsApp + email reminders, rent management, automated monthly backup and wing-wise exports.",
+                "Everything in Base, plus Ask QwikGate / Assistant, Gate pass, amenities / hall booking, WhatsApp + email reminders, rent management, automated monthly backup and wing-wise exports.",
             ],
             [
                 "Platinum",
@@ -444,7 +444,7 @@ def ch_plans(m: Manual):
         ],
     )
     m.note(
-        "Buy & Sell (Community market) is available on Base. Ask GATEZO on Home needs Prime. "
+        "Buy & Sell (Community market) is available on Base. Ask QwikGate on Home needs Prime. "
         "Vehicle passes and Vehicle gate need Platinum."
     )
 
@@ -453,14 +453,14 @@ def ch_install(m: Manual):
     m.h("5.  Install the app and sign in")
     m.h("5.1  Install on Android", 2)
     m.steps([
-        "Open the install link or QR code from your office (an Expo / GATEZO APK page).",
+        "Open the install link or QR code from your office (an Expo / QwikGate APK page).",
         "Download the .apk file.",
         "If Android asks, allow Install unknown apps / Install from this source for your browser or Files app.",
         "Open the file and tap Install.",
-        "Open GATEZO. The splash and sign-in screen show the GATEZO name.",
+        "Open QwikGate. The splash and sign-in screen show the QwikGate name.",
     ])
     m.note(
-        "If you already had an older GATEZO / society app, install the new APK over it "
+        "If you already had an older QwikGate / society app, install the new APK over it "
         "(version code 32 or higher includes the latest phone fixes). You can keep the same login."
     )
     m.h("5.2  Sign in", 2)
@@ -475,7 +475,7 @@ def ch_install(m: Manual):
         "Empty fields → “Please enter both your email and password.”",
         "Wrong email or password → a message that the email or password is not right.",
         "Inactive organisation → the society/preschool is currently inactive.",
-        "Network → “Can't reach the GATEZO server…”",
+        "Network → “Can't reach the QwikGate server…”",
         "New self-registered account → wait until an admin approves you.",
     ])
     m.p(
@@ -485,7 +485,7 @@ def ch_install(m: Manual):
     m.h("5.3  Advanced server settings", 2)
     m.p(
         "Only use this if your office told you to. On Sign in, open “Advanced server settings” "
-        "and enter the Server URL they gave you. Phones in production should already point at the hosted GATEZO API — do not type localhost."
+        "and enter the Server URL they gave you. Phones in production should already point at the hosted QwikGate API — do not type localhost."
     )
     m.h("5.4  Forgot password", 2)
     m.steps([
@@ -529,9 +529,9 @@ def ch_profile(m: Manual):
         "Profile settings",
         "Everyone",
         "Home → profile icon",
-        "See your name, unit (flat/student), role, and a short GATEZO member ID.",
+        "See your name, unit (flat/student), role, and a short QwikGate member ID.",
         [
-            "Turn Push notifications on or off. On web you may see: “This preference applies to the GATEZO mobile app.”",
+            "Turn Push notifications on or off. On web you may see: “This preference applies to the QwikGate mobile app.”",
             "Residents: turn “Show my phone in directory” on if neighbours / parents may call you from Directory. Off = number hidden.",
             "Residents: open My orders & payments for a history of orders and payments.",
             "Support & feedback: call, email, or send feedback. Hours shown in-app: Mon–Sat, 9am – 7pm IST.",
@@ -558,17 +558,17 @@ def ch_resident(m: Manual):
             "Read “Needs your attention” if anything is waiting (pending visitor, unpaid bill).",
             "Visitor donut segments: Approved, Pending, Rejected, Left at gate.",
             "Tap a folder to expand shortcuts.",
-            "Use Ask GATEZO on this page if your plan includes it (Prime).",
+            "Use Ask QwikGate on this page if your plan includes it (Prime).",
             "Emergency SOS sits on Home — use only for a real emergency (see 7.3).",
         ],
         extra="If the summary does not load, pull down to refresh. The rest of Home still works.",
     )
 
-    m.h("7.2  Ask GATEZO (Home)", 2)
+    m.h("7.2  Ask QwikGate (Home)", 2)
     m.feature(
-        "Ask GATEZO",
+        "Ask QwikGate",
         "Resident / Parent (Prime plan)",
-        "Home → box titled “Ask GATEZO”",
+        "Home → box titled “Ask QwikGate”",
         "Type (or speak on the phone) a question about bills, visitors, or bookings. You get an answer from your society data, often with a button to open the right screen.",
         [
             "Type in the box. Placeholder: “Type a question about bills, visitors, or bookings”.",
@@ -577,7 +577,7 @@ def ch_resident(m: Manual):
             "Tap Clear to start again.",
             "For a longer chat: Community → Assistant.",
         ],
-        extra="If voice returns an error, type instead. Voice needs the live GATEZO server to accept transcription.",
+        extra="If voice returns an error, type instead. Voice needs the live QwikGate server to accept transcription.",
     )
     m.p("Examples to try:", size=11, space_after=4)
     m.bullets([
@@ -664,7 +664,7 @@ def ch_resident(m: Manual):
             "Use Filter by month if you need an older bill (All months, or a specific month).",
             "On an unpaid bill, tap Pay (or Pay ₹… for an instalment / partial).",
             "On “Pay via UPI”, choose Google Pay, PhonePe, Paytm, UPI ID / QR, or Card / net banking. Or Cancel.",
-            "Complete checkout (Razorpay). The merchant name should show GATEZO.",
+            "Complete checkout (Razorpay). The merchant name should show QwikGate.",
             "Full payment: receipt modal “Payment Receipt” → Download / Print receipt → Close. The bill shows PAID.",
             "Partial: “Payment received” with the remaining balance. Pay again later for the rest.",
         ],
@@ -847,7 +847,7 @@ def ch_resident(m: Manual):
         "In-app how-to",
         "Everyone",
         "Community → Help & how-to  ·  or profile",
-        "Title: “Help & how-to”. Short topics that match this manual (Home, Ask GATEZO, Visitors, bills, Transparency, Sustainability, Community, Home Services, clubhouse, Helpdesk, AGM, Buy & Sell).",
+        "Title: “Help & how-to”. Short topics that match this manual (Home, Ask QwikGate, Visitors, bills, Transparency, Sustainability, Community, Home Services, clubhouse, Helpdesk, AGM, Buy & Sell).",
         [
             "Open Help & how-to and tap a topic.",
             "Or Community → Assistant for a full chat (“Ask anything about your society/school”) with starter chips.",
@@ -1077,12 +1077,12 @@ def ch_admin(m: Manual):
         ],
     )
     m.feature(
-        "Pay to GATEZO (subscription)",
+        "Pay to QwikGate (subscription)",
         "Admin",
-        "Finance → GATEZO subscription — Pay to GATEZO",
-        "Title: “Pay to GATEZO”. Subtitle: “Platform subscription”. Pays the platform, not your society account.",
+        "Finance → QwikGate subscription — Pay to QwikGate",
+        "Title: “Pay to QwikGate”. Subtitle: “Platform subscription”. Pays the platform, not your society account.",
         [
-            "Open Pay to GATEZO.",
+            "Open Pay to QwikGate.",
             "Complete checkout the same way as other Razorpay payments.",
         ],
     )
@@ -1161,7 +1161,7 @@ def ch_admin(m: Manual):
         "Plans & pricing (view)",
         "Admin",
         "Home → Operations → Your plan  ·  Members → Plans & pricing",
-        "See Base / Prime / Platinum feature lists. Changing the plan is done by the GATEZO platform owner on Societies.",
+        "See Base / Prime / Platinum feature lists. Changing the plan is done by the QwikGate platform owner on Societies.",
         [
             "Open Plans & pricing.",
             "Read what your current package includes. Ask the owner if you need an upgrade.",
@@ -1216,7 +1216,7 @@ def ch_admin(m: Manual):
     m.steps([
         "Open Sustainability from Operations or Finance.",
         "Record litres used this month per flat (tap + or import CSV).",
-        "GATEZO compares each flat with the median. Residents see their own score.",
+        "QwikGate compares each flat with the median. Residents see their own score.",
     ])
 
 
@@ -1295,10 +1295,10 @@ def ch_owner(m: Manual):
 
     m.h("11.1  Overview", 2)
     m.feature(
-        "GATEZO Platform",
+        "QwikGate Platform",
         "Superadmin",
         "Tab: Overview",
-        "Title: “GATEZO Platform”. Counts across organisations, month snapshot, shortcuts to moderate Buy & Sell and Backup & recovery.",
+        "Title: “QwikGate Platform”. Counts across organisations, month snapshot, shortcuts to moderate Buy & Sell and Backup & recovery.",
         [
             "Open Overview.",
             "Use the month selector for a snapshot across tenants.",
@@ -1343,19 +1343,19 @@ def ch_pay(m: Manual):
             ["Maintenance / fees bill", "Resident / Parent", "Pay → Pay via UPI sheet → Google Pay, PhonePe, Paytm, UPI ID / QR, or Card / net banking."],
             ["Amenity / hall booking", "Resident / Parent after admin Approve", "Same UPI sheet, when status is Approved · pay to confirm."],
             ["Cash at the office", "Resident hands cash; admin records", "Collections → Cash → Collected by."],
-            ["GATEZO subscription", "Society / preschool admin", "Pay to GATEZO."],
+            ["QwikGate subscription", "Society / preschool admin", "Pay to QwikGate."],
             ["Vendor / venue booking", "Vendor (or admin marks paid)", "Vendor marketplace pay link or Mark paid."],
             ["Home Services visit", "Resident books in-app", "Book visit — partner / offline fulfilment as configured."],
         ],
     )
     m.note(
-        "The checkout name should be GATEZO. If an old phone build still shows another name, install the latest APK. "
+        "The checkout name should be QwikGate. If an old phone build still shows another name, install the latest APK. "
         "UPI apps must be installed on the phone for Google Pay / PhonePe / Paytm buttons to open those apps."
     )
 
 
 def ch_ask(m: Manual):
-    m.h("13.  Ask GATEZO and Assistant — what to type")
+    m.h("13.  Ask QwikGate and Assistant — what to type")
     m.p("Prime plan. Home box and Community → Assistant share the same help. Live amounts (what you owe, who visited) come from your data, not from this PDF.")
     m.table(
         ["You can ask", "Opens / explains"],
@@ -1372,7 +1372,7 @@ def ch_ask(m: Manual):
             ["What is the green score?", "Sustainability"],
             ["How do I vote in the AGM?", "AGM & voting"],
             ["How do I sell something?", "Community market"],
-            ["What can GATEZO do?", "Help overview"],
+            ["What can QwikGate do?", "Help overview"],
         ],
     )
     m.p("Guards can ask gate questions (for example who the last visitor was). Admins can ask about pending dues and tickets.")
@@ -1384,9 +1384,9 @@ def ch_tips(m: Manual):
         ["What you notice", "What to do"],
         [
             ["First Sign In is slow", "The hosted server may be waking up after idle. Wait and retry once."],
-            ["Can't reach the GATEZO server", "Check internet. Do not set Server URL to localhost on a phone."],
+            ["Can't reach the QwikGate server", "Check internet. Do not set Server URL to localhost on a phone."],
             ["Locked shortcut / Prime feature", "Your organisation’s plan does not include it. Admin: Your plan. Owner: Societies → Plan."],
-            ["Voice / mic 404 or Request failed", "Type in Ask GATEZO instead, or wait until the office’s live API includes transcription."],
+            ["Voice / mic 404 or Request failed", "Type in Ask QwikGate instead, or wait until the office’s live API includes transcription."],
             ["My number is missing in Directory", "Profile → turn on Show my phone in directory."],
             ["Late fee looks wrong", "It applies only after due date + grace, never on months paid in advance."],
             ["Visitor notification", "Tap it to jump to Visitors."],
@@ -1403,7 +1403,7 @@ def ch_tips(m: Manual):
     ])
     m.h("Android and iPhone", 2)
     m.p(
-        "Today members typically install the Android APK. GATEZO is the same Expo app on iPhone; "
+        "Today members typically install the Android APK. QwikGate is the same Expo app on iPhone; "
         "iPhone distribution needs Apple TestFlight or the App Store (Apple Developer enrolment). "
         "Until that is published, iPhone users can use the web app if the office shares the link."
     )
@@ -1458,15 +1458,15 @@ def ch_appendix(m: Manual):
     m.table(
         ["Item", "Detail"],
         [
-            ["Product name", "GATEZO"],
+            ["Product name", "QwikGate"],
             ["Audience", "Members, gate staff, office admins, platform owner"],
-            ["Matches app screens as of", "September 2026 (AI-first GATEZO build)"],
-            ["In-app twin", "Community → Help & how-to  ·  Ask GATEZO"],
+            ["Matches app screens as of", "September 2026 (AI-first QwikGate build)"],
+            ["In-app twin", "Community → Help & how-to  ·  Ask QwikGate"],
             ["Not in this manual", "Server deploy, EAS build, and investor financials — those are operations docs, not member how-to."],
         ],
     )
     m.p(
-        "GATEZO — one AI-first app for gated societies and preschools.",
+        "QwikGate — one AI-first app for gated societies and preschools.",
         size=11,
         bold=True,
         color=NAVY,

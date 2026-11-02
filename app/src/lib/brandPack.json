@@ -13,8 +13,8 @@
     },
     "gatezo": {
       "id": "gatezo",
-      "name": "GATEZO",
-      "ask": "Ask GATEZO",
+      "name": "QwikGate",
+      "ask": "Ask QwikGate",
       "icon": "./assets/brand/gatezo/icon.png",
       "splash": "./assets/brand/gatezo/splash.png",
       "favicon": "./assets/brand/gatezo/favicon.png",

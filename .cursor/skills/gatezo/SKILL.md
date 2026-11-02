@@ -1,9 +1,9 @@
 ---
 name: gatezo
-description: Project context for the GATEZO (H2O) society-management app — repo layout, roles, branches, live services, how to run the whole stack locally, how to verify UI changes without a device, how to ship an APK/QR, and the gotchas that have already cost a debugging session. Read this before working anywhere in this repo.
+description: Project context for the QwikGate (H2O) society-management app — repo layout, roles, branches, live services, how to run the whole stack locally, how to verify UI changes without a device, how to ship an APK/QR, and the gotchas that have already cost a debugging session. Read this before working anywhere in this repo.
 ---
 
-# GATEZO (repo name H2O_SanketPOC)
+# QwikGate (repo name H2O_SanketPOC)
 
 Society / preschool management app: an Expo React Native client in `app/` and a
 Node + Express + Prisma API in `server/`. One codebase serves two org types
@@ -14,10 +14,10 @@ code over it.
 ## Branches
 
 - `main` — older H2O-branded line.
-- `feature/ai-first-v1.1` — **the GATEZO UI the owner actually installs and
-  tests** (GATEZO branding, AI-first home, EAS preview APK config). Unless told
+- `feature/ai-first-v1.1` — **the QwikGate UI the owner actually installs and
+  tests** (QwikGate branding, AI-first home, EAS preview APK config). Unless told
   otherwise, feature work belongs here and PRs target it. Basing a PR on `main`
-  dumps every GATEZO commit into the diff.
+  dumps every QwikGate commit into the diff.
 - Work branches: `cursor/<descriptive-name>-2dd7`.
 
 ## Live services
@@ -97,7 +97,7 @@ cd /tmp && npm install playwright && npx playwright install chromium
 ```
 
 Log in by filling the `Email` / `Password` placeholders and pressing Enter, then
-drive the screen (`getByPlaceholder(/Type a question about/i)` is the Ask GATEZO
+drive the screen (`getByPlaceholder(/Type a question about/i)` is the Ask QwikGate
 box). Screenshot a single card with
 `page.locator("text=" + question).first().locator("xpath=ancestor::div[4]")`.
 

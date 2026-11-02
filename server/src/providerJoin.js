@@ -6,7 +6,7 @@ import { HOME_SERVICES } from "./homeServicesCatalog.js";
 import { sendPush } from "./push.js";
 
 // Separate from the society resident code (those start with "GM"). A professional
-// types an "SP…" code the GATEZO owner shares, the same way a resident types a
+// types an "SP…" code the QwikGate owner shares, the same way a resident types a
 // society join code.
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const SLUGS = new Set(HOME_SERVICES.map((s) => s.slug));
@@ -106,7 +106,7 @@ export async function registerProviderAccount(body = {}) {
   if (!setting?.providerJoinCode || setting.providerJoinCode !== code) {
     return {
       status: 404,
-      body: { message: "Invalid provider code. Ask the GATEZO owner for the service professional code." },
+      body: { message: "Invalid provider code. Ask the QwikGate owner for the service professional code." },
     };
   }
 
@@ -141,7 +141,7 @@ export async function registerProviderAccount(body = {}) {
     body: {
       ok: true,
       pending: true,
-      message: "Request sent. You'll be able to sign in once the GATEZO owner approves your professional account.",
+      message: "Request sent. You'll be able to sign in once the QwikGate owner approves your professional account.",
     },
   };
 }

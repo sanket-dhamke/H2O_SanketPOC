@@ -237,7 +237,7 @@ function wantsVisitorLookup(q) {
   return (
     /who (visited|came|was at)|visited my|anyone (named|called)|\bvisitors?\b|\bguest\b|vehicle|number plate|at the gate|gate (log|entr)/.test(
       q
-    ) && !/gate ?pass|pre-?approve|gatemate|gatezo/.test(q)
+    ) && !/gate ?pass|pre-?approve|gatemate|gatezo|qwikgate/.test(q)
   );
 }
 

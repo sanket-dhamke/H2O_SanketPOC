@@ -17,7 +17,7 @@ import { api } from "../lib/api";
 
 // Two public registrations share this screen:
 // - Resident: society join code + flat. A society admin approves them.
-// - Service professional: a separate provider code from the GATEZO owner, plus
+// - Service professional: a separate provider code from the QwikGate owner, plus
 //   the services they do. The owner approves them before they can sign in.
 export default function RegisterModal({ visible, onClose }) {
   const [mode, setMode] = useState("resident");
@@ -150,7 +150,7 @@ export default function RegisterModal({ visible, onClose }) {
             <Text style={styles.intro}>
               {mode === "provider" ? (
                 <>
-                  Ask the GATEZO owner for the <Text style={{ fontWeight: "800" }}>provider code</Text>.
+                  Ask the QwikGate owner for the <Text style={{ fontWeight: "800" }}>provider code</Text>.
                   This is separate from a society join code. The owner approves you before first sign-in.
                 </>
               ) : (

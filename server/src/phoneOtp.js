@@ -85,7 +85,7 @@ export async function sendPhoneCode({ toPhone, code }) {
   const tail = phoneTail(to);
   if (!to || tail.length < 4) return { delivered: false, reason: "no_phone", phoneTail: "" };
   if (!phoneOtpReady()) return { delivered: false, reason: "not_configured", phoneTail: tail };
-  const text = `Your GATEZO code is ${code}. It expires in 10 minutes. Do not share it.`;
+  const text = `Your QwikGate code is ${code}. It expires in 10 minutes. Do not share it.`;
   try {
     if (twilioReady()) {
       await sendTwilio(to, text);

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Restore a GATEZO full-platform backup produced by platformBackup.js.
+ * Restore a QwikGate full-platform backup produced by platformBackup.js.
  *
  * Usage:
  *   BACKUP_ENCRYPTION_KEY=... DATABASE_URL=<TARGET> \

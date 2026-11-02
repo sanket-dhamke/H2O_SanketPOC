@@ -138,7 +138,7 @@ export default function HomeScreen({ navigation }) {
   const catalog = getActionGroups(user.role, L, isPreschool(user));
   const assistantOn = hasFeature(user, "assistant");
 
-  // A tenant's branded image (set by the GATEZO owner) becomes the dashboard header
+  // A tenant's branded image (set by the QwikGate owner) becomes the dashboard header
   // background. Fall back to the default themed photo if it's unset or the URL
   // fails to load (e.g. not a direct image link).
   const customBg = !!user.societyLogoUrl && !bgError;

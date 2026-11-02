@@ -129,7 +129,7 @@ export default function PayToH2OScreen({ navigation }) {
           )}
         </View>
 
-        {/* GATEZO reference details */}
+        {/* QwikGate reference details */}
         <Text style={styles.sectionTitle}>{brand.name} account (for reference)</Text>
         <View style={styles.refCard}>
           {p.contactEmail && <RefRow icon="mail-outline" label="Contact" value={p.contactEmail} />}

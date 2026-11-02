@@ -9,7 +9,7 @@ import { uploadBackup, storageEnabled } from "./storage.js";
 // (including bcrypt password hashes, so logins survive a restore). Field
 // encryption is opened before the dump, so the file itself must be encrypted
 // with BACKUP_ENCRYPTION_KEY. The dump is gzipped, uploaded to private off-site
-// storage, and emailed to the GATEZO owner with a checksum + link. Restore with
+// storage, and emailed to the QwikGate owner with a checksum + link. Restore with
 // scripts/restore-platform-backup.js (it seals personal data again on the way in).
 
 // Prisma client accessors for every model we back up (BackupLog itself excluded).
@@ -21,7 +21,7 @@ const MODELS = [
   "listing", "listingMessage", "venueBooking", "vehicle", "gateDevice", "vehicleEntry",
 ];
 
-const MAGIC = "GMB1"; // GATEZO Backup v1 (encrypted container header)
+const MAGIC = "GMB1"; // QwikGate Backup v1 (encrypted container header)
 
 // Normalise any passphrase into a 32-byte AES key.
 function backupKey() {
@@ -55,7 +55,7 @@ export async function buildPlatformBackup() {
 
   const payload = {
     meta: {
-      app: "GATEZO",
+      app: "QwikGate",
       type: "platform-backup",
       version: 1,
       generatedAt: new Date().toISOString(),
@@ -98,7 +98,7 @@ export async function runPlatformBackup({ trigger = "manual" } = {}) {
 
   const recipients = await backupRecipients();
   const summary =
-    `GATEZO FULL PLATFORM backup\n` +
+    `QwikGate FULL PLATFORM backup\n` +
     `Generated: ${new Date().toLocaleString("en-IN")}\n` +
     `Trigger: ${trigger}\n\n` +
     `Records: ${backup.totalRows} across ${Object.keys(backup.counts).length} tables\n` +
@@ -118,9 +118,9 @@ export async function runPlatformBackup({ trigger = "manual" } = {}) {
   for (const to of recipients) {
     const r = await sendEmail({
       to,
-      subject: `GATEZO platform backup — ${new Date().toISOString().slice(0, 10)}`,
+      subject: `QwikGate platform backup — ${new Date().toISOString().slice(0, 10)}`,
       text: summary,
-      html: `<h2>GATEZO full platform backup</h2><pre style="font-family:monospace">${summary}</pre>` +
+      html: `<h2>QwikGate full platform backup</h2><pre style="font-family:monospace">${summary}</pre>` +
         (canAttach ? `<p>The encrypted backup is attached.</p>` : `<p><b>Backup too large to attach</b> — use the download link above.</p>`),
       attachments,
     });

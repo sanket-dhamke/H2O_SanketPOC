@@ -1,4 +1,4 @@
-// Which of the three languages GATEZO speaks a piece of text is in.
+// Which of the three languages QwikGate speaks a piece of text is in.
 //
 // Hindi and Marathi share Devanagari, so script alone cannot tell them apart —
 // these very common Marathi words do. Anything without Devanagari is treated as

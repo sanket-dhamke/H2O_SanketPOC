@@ -107,7 +107,7 @@ export default function AccountsScreen({ navigation }) {
   const tally = async () => {
     try {
       const xml = await api.tallyXml();
-      if (!saveText("gatezo-tally.xml", xml, "application/xml")) tell("Tally", "Open this on the website to download the file.");
+      if (!saveText("qwikgate-tally.xml", xml, "application/xml")) tell("Tally", "Open this on the website to download the file.");
     } catch (e) {
       tell("Tally", e.message);
     }

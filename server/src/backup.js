@@ -74,7 +74,7 @@ export async function buildSocietyBackup(societyId, { period = currentPeriod() }
     : null;
 
   const json = {
-    meta: { app: "GATEZO", type: "society-backup", period, generatedAt: new Date().toISOString() },
+    meta: { app: "QwikGate", type: "society-backup", period, generatedAt: new Date().toISOString() },
     society: { name: d.society.name, city: d.society.city, address: d.society.address, active: d.society.active },
     stats,
     flats: d.flats.map((f) => ({ flatNo: f.flatNo, block: f.block, ownerName: f.ownerName })),
@@ -98,7 +98,7 @@ export async function buildSocietyBackup(societyId, { period = currentPeriod() }
   );
 
   const summaryText =
-    `GATEZO backup — ${d.society.name} (${period})\n` +
+    `QwikGate backup — ${d.society.name} (${period})\n` +
     `Generated: ${new Date().toLocaleString("en-IN")}\n\n` +
     `Flats: ${stats.flats} | Residents: ${stats.residents} | Guards: ${stats.guards} | Admins: ${stats.admins}\n` +
     `Collected: ${money(stats.collected)} | Pending dues: ${money(stats.pending)}\n` +
@@ -112,9 +112,9 @@ export async function buildSocietyBackup(societyId, { period = currentPeriod() }
     json,
     summaryText,
     attachments: [
-      { filename: `GATEZO-${slug}-${period}-backup.json`, content: JSON.stringify(json), contentType: "application/json" },
-      { filename: `GATEZO-${slug}-${period}-payments.csv`, content: billsCsv, contentType: "text/csv" },
-      { filename: `GATEZO-${slug}-${period}-expenses.csv`, content: expensesCsv, contentType: "text/csv" },
+      { filename: `QwikGate-${slug}-${period}-backup.json`, content: JSON.stringify(json), contentType: "application/json" },
+      { filename: `QwikGate-${slug}-${period}-payments.csv`, content: billsCsv, contentType: "text/csv" },
+      { filename: `QwikGate-${slug}-${period}-expenses.csv`, content: expensesCsv, contentType: "text/csv" },
     ],
   };
 }
@@ -126,9 +126,9 @@ export async function emailSocietyBackup(societyId, { period = currentPeriod() }
   const recipients = admins.map((a) => a.email).filter(Boolean);
   if (recipients.length === 0) return { admins: 0, delivered: false, dev: false, message: "No admin email found" };
 
-  const subject = `GATEZO backup — ${backup.society.name} — ${period}`;
+  const subject = `QwikGate backup — ${backup.society.name} — ${period}`;
   const html =
-    `<h2>GATEZO monthly backup</h2>` +
+    `<h2>QwikGate monthly backup</h2>` +
     `<p><b>${backup.society.name}</b> — ${period}</p>` +
     `<pre style="font-family:monospace">${backup.summaryText}</pre>` +
     `<p>Attached: full data backup (JSON), payments (CSV) and expenses (CSV). Keep this for your records.</p>`;

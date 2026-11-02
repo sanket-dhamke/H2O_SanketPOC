@@ -1,4 +1,4 @@
-# Render Blueprint for GATEZO. This one service is the stable public address:
+# Render Blueprint for QwikGate. This one service is the stable public address:
 # the API lives at /api and the browser app is the exported site in server/public.
 # Rebuild the site from the repo root before deploying a UI change:
 #   cd app && env -u EXPO_PUBLIC_API_URL npx expo export --platform web --output-dir ../server/public

@@ -68,7 +68,7 @@ export default function ProviderJobsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} />}
       >
         <View style={styles.intro}>
-          <Text style={styles.introTitle}>{desk ? "You are the GATEZO house desk" : "You are a GATEZO service professional"}</Text>
+          <Text style={styles.introTitle}>{desk ? "You are the QwikGate house desk" : "You are a QwikGate service professional"}</Text>
           <Text style={styles.introBody}>
             {desk
               ? "A visit comes to you only after every other free professional has passed the 60-second offer. You do not pay the annual pack. Open Guide for the full steps."
@@ -78,7 +78,7 @@ export default function ProviderJobsScreen() {
             <Text style={styles.introMeta}>
               {me.packActive
                 ? `Annual pack is paid${me.lastPayment ? ` (₹${Number(me.lastPayment.amount).toLocaleString("en-IN")} on ${me.lastPayment.paidOn})` : ""}. Valid until ${String(me.packPaidUntil || "").slice(0, 10)}. You can receive jobs.`
-                : `Annual pack is not recorded. You can log in, but GATEZO will not send you visits until the owner records ₹${Number(me.packAmount || 0).toLocaleString("en-IN")}.`}
+                : `Annual pack is not recorded. You can log in, but QwikGate will not send you visits until the owner records ₹${Number(me.packAmount || 0).toLocaleString("en-IN")}.`}
             </Text>
           ) : null}
         </View>

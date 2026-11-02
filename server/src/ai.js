@@ -294,7 +294,7 @@ export async function assistantAnswer(user, question) {
       {
         role: "system",
         content:
-          `You are GATEZO, a helpful ${v.org}-management assistant. Answer ONLY from the provided JSON data. ` +
+          `You are QwikGate, a helpful ${v.org}-management assistant. Answer ONLY from the provided JSON data. ` +
           preschoolRule +
           residentRule +
           truncationRule +
@@ -311,8 +311,8 @@ export async function assistantAnswer(user, question) {
           `The data may include 'amenities' (bookable ${v.amenity} with slots and prices) and bookings. ` +
           `If the user asks to book a ${v.amenity}, you cannot book it yourself — tell them the available options, ` +
           `slots and prices from the data, and direct them to open the '${v.amenityTab}' tab to request a slot (admin approves, then they pay in-app). ` +
-          `If the user asks how a feature works, how to use GATEZO, or what the app can do, explain it from this FEATURE GUIDE and invite them to open Help in Community:\n` +
-          "Home dashboard: charts, folders, Ask GATEZO, Home Services, offers. " +
+          `If the user asks how a feature works, how to use QwikGate, or what the app can do, explain it from this FEATURE GUIDE and invite them to open Help in Community:\n` +
+          "Home dashboard: charts, folders, Ask QwikGate, Home Services, offers. " +
           "Visitors: approve/deny, gate pass, vehicle QR. Maintenance: pay bills and receipts. " +
           "Community: announcements, board, Helpdesk, Directory, clubhouse booking, Assistant, Help how-to. " +
           "Home Services: book cleaning/AC/trades. Buy & Sell: neighbour listings. SOS: emergency alert. " +
@@ -458,7 +458,7 @@ export async function assistantAct(user, question) {
         {
           role: "system",
           content:
-            `You are GATEZO, an assistant inside a ${v.org}-management app. The user speaks or types a request; ` +
+            `You are QwikGate, an assistant inside a ${v.org}-management app. The user speaks or types a request; ` +
             "you reply in one or two short sentences AND choose the screen that fulfils it.\n" +
             `ACTIONS you may choose from (use the id verbatim, or null if none fits):\n${menu}\n` +
             "Rules: answer ONLY from the DATA json — never invent amounts, names or dates. " +
@@ -506,7 +506,7 @@ export async function draftManagerText(societyId, kind) {
   const orgLabel = insights.societyName || `the ${v.org}`;
 
   const sys =
-    `You are the ${v.org} manager for GATEZO writing ${DRAFT_KINDS[type]}. ` +
+    `You are the ${v.org} manager for QwikGate writing ${DRAFT_KINDS[type]}. ` +
     (insights.orgType === "preschool"
       ? "This is a PRESCHOOL — use 'school', 'students', 'parents/guardians' and 'fees'; NEVER 'society/flat/maintenance'. "
       : "Use 'society', 'residents', 'flats' and 'maintenance'. ") +
@@ -550,7 +550,7 @@ export async function answerCommunityQuery(user, question) {
   const completion = await chatComplete({
     temperature: 0.3,
     messages: [
-      { role: "system", content: `You are GATEZO helping answer a resident's question in the ${v.org} community feed. Answer ONLY from DATA (amenities/timings/prices, staff contacts, recent announcements). Be brief and friendly (1–3 sentences). If DATA doesn't contain the answer, say you're not sure and suggest asking the ${v.org} office. Never invent facts.` },
+      { role: "system", content: `You are QwikGate helping answer a resident's question in the ${v.org} community feed. Answer ONLY from DATA (amenities/timings/prices, staff contacts, recent announcements). Be brief and friendly (1–3 sentences). If DATA doesn't contain the answer, say you're not sure and suggest asking the ${v.org} office. Never invent facts.` },
       { role: "user", content: `DATA:\n${JSON.stringify(ctx)}\n\nQUESTION: ${question}` },
     ],
   });

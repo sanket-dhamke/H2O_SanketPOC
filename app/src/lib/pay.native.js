@@ -65,8 +65,8 @@ export async function payBooking(booking) {
   return { paid: true };
 }
 
-// A society admin pays GATEZO's platform subscription. Same real flow; settles to
-// GATEZO's own Razorpay account. Falls back to the mock when Razorpay is off.
+// A society admin pays QwikGate's platform subscription. Same real flow; settles to
+// QwikGate's own Razorpay account. Falls back to the mock when Razorpay is off.
 export async function paySubscription() {
   const order = await api.createSubscriptionOrder();
   if (!order.enabled) {

@@ -30,7 +30,7 @@ export function LogoutButton({ onPress, style }) {
 // a faint watermark icon, an optional tools row, and an optional back button
 // (pass onBack to show it).
 // Pass `logo` (an image source) to show a brand image in the chip instead of the
-// Ionicon (used for the GATEZO owner headers).
+// Ionicon (used for the QwikGate owner headers).
 export default function ScreenHeader({ icon, title, subtitle, right, onBack, logo }) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();

@@ -29,7 +29,7 @@ export const HOME_SERVICES = [
     image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&q=80",
     etaMinutes: 15,
     priceFrom: 299,
-    partnerName: "GATEZO Instant Crew",
+    partnerName: "QwikGate Instant Crew",
     rating: 4.8,
     jobs: "12k+",
     packages: [

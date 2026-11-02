@@ -1,5 +1,5 @@
 // Customer-facing product tiers: Base < Prime < Platinum. The society's tier is
-// set by the GATEZO superadmin and arrives on the auth user as `societyTier`.
+// set by the QwikGate superadmin and arrives on the auth user as `societyTier`.
 // Screens use `hasFeature(user, key)` to unlock/lock features by tier.
 
 export const TIERS = ["base", "prime", "platinum"];

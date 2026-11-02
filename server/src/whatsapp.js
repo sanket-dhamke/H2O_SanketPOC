@@ -134,7 +134,7 @@ function clipParam(value, max) {
 export function buildNoticeText({ name, societyName, title, body }) {
   const who = name ? `Dear ${name},` : "Hello,";
   const from = societyName ? ` from ${societyName}` : "";
-  return `${who}\n\nSociety notice${from}:\n${title || "Notice"}\n\n${body || ""}\n\nOpen GATEZO and look under Needs your attention.`;
+  return `${who}\n\nSociety notice${from}:\n${title || "Notice"}\n\n${body || ""}\n\nOpen QwikGate and look under Needs your attention.`;
 }
 
 // Builds the Cloud API body. A dedicated notice template is used when

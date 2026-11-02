@@ -101,7 +101,7 @@ aiRouter.post("/transcribe", authRequired, async (req, res) => {
   }
 });
 
-// Speech-to-text for Ask GATEZO / the home mic. Open to every signed-in role.
+// Speech-to-text for Ask QwikGate / the home mic. Open to every signed-in role.
 aiRouter.post("/transcribe", authRequired, async (req, res) => {
   if (!ensureEnabled(res)) return;
   const { audioBase64 } = req.body || {};

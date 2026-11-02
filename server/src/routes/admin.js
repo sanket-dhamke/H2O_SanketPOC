@@ -711,7 +711,7 @@ adminRouter.get("/fees", async (req, res) => {
 
 // Remind every resident of a flat that still owes maintenance. Covers bills that
 // are "pending" OR "partial" (any outstanding balance). Each resident with a
-// login sees it on the GATEZO home. WhatsApp goes out when a mobile is on file.
+// login sees it on the QwikGate home. WhatsApp goes out when a mobile is on file.
 // Push and email are extra channels. Flats with dues and no resident login are
 // reported as unreachable.
 adminRouter.post("/reminders", async (req, res) => {
@@ -759,7 +759,7 @@ adminRouter.post("/reminders", async (req, res) => {
       handled.add(resident.id);
       dashboard++;
 
-      const text = `Flat ${flat.flatNo} has ${rupee} pending society maintenance. Please pay from GATEZO.`;
+      const text = `Flat ${flat.flatNo} has ${rupee} pending society maintenance. Please pay from QwikGate.`;
       if (resident.expoPushToken) {
         await sendPush(resident.expoPushToken, "Maintenance payment reminder", text, { type: "reminder" });
         pushed++;
@@ -770,7 +770,7 @@ adminRouter.post("/reminders", async (req, res) => {
           subject: "Maintenance payment reminder",
           text:
             `Dear ${resident.name || "Resident"},\n\n` +
-            `${text}\n\nIt is also under Needs your attention on your GATEZO home.\n\nThank you.`,
+            `${text}\n\nIt is also under Needs your attention on your QwikGate home.\n\nThank you.`,
         });
         if (sent?.delivered) emailed++;
       }
@@ -1197,7 +1197,7 @@ adminRouter.post("/flats/import", async (req, res) => {
 });
 
 /* ----------------------- Vendor venue marketplace ------------------------ */
-// Premium perk: outside vendors book a society premise; GATEZO keeps a platform fee.
+// Premium perk: outside vendors book a society premise; QwikGate keeps a platform fee.
 async function loadSocietyForPlan(req) {
   return prisma.society.findUnique({ where: { id: sid(req) } });
 }
@@ -1227,7 +1227,7 @@ adminRouter.get("/venue-bookings", async (req, res) => {
 adminRouter.post("/venue-bookings", async (req, res) => {
   const society = await loadSocietyForPlan(req);
   if (!isPremium(society)) {
-    return res.status(402).json({ premium: false, message: "The vendor marketplace is a premium feature. Ask GATEZO to enable premium for your society." });
+    return res.status(402).json({ premium: false, message: "The vendor marketplace is a premium feature. Ask QwikGate to enable premium for your society." });
   }
   const { venueName, vendorName, vendorPhone, vendorEmail, purpose, date, slot, amount, platformFeePct, notes } = req.body || {};
   if (!venueName || !vendorName || !date) {
@@ -1285,7 +1285,7 @@ adminRouter.delete("/venue-bookings/:id", async (req, res) => {
 
 // Create a Razorpay Payment Link the vendor can pay. When the society has a
 // Razorpay Route linked account, the society's 90% (societyNet) is transferred
-// to it and GATEZO keeps the 10% platform fee on the primary account.
+// to it and QwikGate keeps the 10% platform fee on the primary account.
 adminRouter.post("/venue-bookings/:id/payment-link", async (req, res) => {
   const society = await loadSocietyForPlan(req);
   if (!isPremium(society)) return res.status(402).json({ premium: false, message: "Premium feature" });
@@ -1306,7 +1306,7 @@ adminRouter.post("/venue-bookings/:id/payment-link", async (req, res) => {
   const amountPaise = Math.round(booking.amount * 100);
   const netPaise = Math.round(booking.societyNet * 100);
 
-  // Route the society's share to its linked account (GATEZO keeps the remainder).
+  // Route the society's share to its linked account (QwikGate keeps the remainder).
   const transfers =
     account?.active && account?.razorpayAccountId
       ? [{ account: account.razorpayAccountId, amount: netPaise, currency: "INR", notes: { venueBookingId: booking.id } }]
@@ -1371,8 +1371,8 @@ adminRouter.post("/venue-bookings/:id/sync", async (req, res) => {
   }
 });
 
-/* ------------------------- GATEZO subscription (Pay to GATEZO) ------------------- */
-// A society admin pays GATEZO's platform subscription. Payment settles to GATEZO's own
+/* ------------------------- QwikGate subscription (Pay to QwikGate) ------------------- */
+// A society admin pays QwikGate's platform subscription. Payment settles to QwikGate's own
 // Razorpay account (a plain order, no Route transfer). Only admins reach these.
 
 function subscriptionAmount(society) {
@@ -1403,7 +1403,7 @@ async function activateSubscription(society, req, { amount, orderId, paymentRef 
   return { newExpiry, periodLabel };
 }
 
-// Current plan status + GATEZO bank/UPI reference + recent subscription payments.
+// Current plan status + QwikGate bank/UPI reference + recent subscription payments.
 adminRouter.get("/subscription", async (req, res) => {
   const society = await prisma.society.findUnique({ where: { id: sid(req) } });
   const setting = await prisma.platformSetting.findUnique({ where: { id: "platform" } });
@@ -1438,13 +1438,13 @@ adminRouter.get("/subscription", async (req, res) => {
   });
 });
 
-// Step 1: create a Razorpay order for the plan amount (settles to GATEZO).
+// Step 1: create a Razorpay order for the plan amount (settles to QwikGate).
 adminRouter.post("/subscription/create-order", async (req, res) => {
   const society = await prisma.society.findUnique({ where: { id: sid(req) } });
   if (!society) return res.status(404).json({ message: "Society not found" });
   const amount = subscriptionAmount(society);
   if (!(amount > 0)) {
-    return res.status(400).json({ message: "No subscription amount is set yet. Ask GATEZO to set your plan amount." });
+    return res.status(400).json({ message: "No subscription amount is set yet. Ask QwikGate to set your plan amount." });
   }
   if (!razorpayEnabled) return res.json({ enabled: false });
   try {
@@ -1461,7 +1461,7 @@ adminRouter.post("/subscription/create-order", async (req, res) => {
       amount: order.amount,
       currency: order.currency,
       name: brand.name,
-      description: `GATEZO subscription - ${society.name}`,
+      description: `QwikGate subscription - ${society.name}`,
       prefill: {
         name: req.user.name || "",
         email: req.user.email || "",
@@ -1502,7 +1502,7 @@ adminRouter.post("/subscription/pay", async (req, res) => {
   if (!society) return res.status(404).json({ message: "Society not found" });
   const amount = subscriptionAmount(society);
   if (!(amount > 0)) {
-    return res.status(400).json({ message: "No subscription amount is set yet. Ask GATEZO to set your plan amount." });
+    return res.status(400).json({ message: "No subscription amount is set yet. Ask QwikGate to set your plan amount." });
   }
   const { newExpiry, periodLabel } = await activateSubscription(society, req, {
     amount,

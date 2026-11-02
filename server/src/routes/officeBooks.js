@@ -174,7 +174,7 @@ officeBooksRouter.get("/books/tally", roleRequired("admin"), async (req, res) =>
   ]);
   const xml = tallyXml(vouchers, society?.name || "Society");
   res.setHeader("Content-Type", "application/xml; charset=utf-8");
-  res.setHeader("Content-Disposition", "attachment; filename=gatezo-tally.xml");
+  res.setHeader("Content-Disposition", "attachment; filename=qwikgate-tally.xml");
   res.send(xml);
 });
 

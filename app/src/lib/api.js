@@ -15,7 +15,7 @@ function remoteApiUrl(value) {
 // On web, a hosted API (set for preview builds) is called directly. Otherwise
 // the page talks to port 4000 on the same host as the page. Reading only
 // extra.apiUrl missed EXPO_PUBLIC_API_URL, so a public preview page tried
-// its own hostname on port 4000 and login never reached GATEZO.
+// its own hostname on port 4000 and login never reached QwikGate.
 function webApiUrl() {
   if (Platform.OS === "web" && typeof window !== "undefined" && window.location?.hostname) {
     // An explicit public API (set for a store build) wins. The value baked into
@@ -336,7 +336,7 @@ export const api = {
   adminBackup: () => request("/api/admin/backup"),
   adminEmailBackup: () => request("/api/admin/backup/email", { method: "POST" }),
 
-  // Super admin (GATEZO platform owner): cross-society overview + management
+  // Super admin (QwikGate platform owner): cross-society overview + management
   superOverview: (period) =>
     request(`/api/superadmin/overview${period ? `?period=${encodeURIComponent(period)}` : ""}`),
   superListSocieties: () => request("/api/superadmin/societies"),
@@ -368,7 +368,7 @@ export const api = {
   superSocietyBackupEmail: (societyId) =>
     request(`/api/superadmin/societies/${societyId}/backup/email`, { method: "POST", body: {} }),
 
-  // Admin: GATEZO subscription ("Pay to GATEZO")
+  // Admin: QwikGate subscription ("Pay to QwikGate")
   adminSubscription: () => request("/api/admin/subscription"),
   createSubscriptionOrder: () =>
     request("/api/admin/subscription/create-order", { method: "POST" }),

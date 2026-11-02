@@ -297,10 +297,12 @@ if (process.env.VISITOR_RETENTION_CRON_ENABLED !== "false") {
 
 const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../public");
 const apkPath = path.join(publicDir, "gatezo.apk");
-app.get("/gatezo.apk", (req, res, next) => {
+function sendApk(req, res, next) {
   if (!fs.existsSync(apkPath)) return next();
-  res.download(apkPath, "GATEZO.apk");
-});
+  res.download(apkPath, "QwikGate.apk");
+}
+app.get("/qwikgate.apk", sendApk);
+app.get("/gatezo.apk", sendApk);
 if (fs.existsSync(path.join(publicDir, "index.html"))) {
   app.use(express.static(publicDir, { index: false, maxAge: "1h" }));
   app.get("*", (req, res, next) => {
@@ -349,7 +351,7 @@ async function prepareFieldEncryption() {
 
 prepareFieldEncryption().finally(() => {
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`GATEZO server running on http://0.0.0.0:${PORT}`);
+    console.log(`QwikGate server running on http://0.0.0.0:${PORT}`);
     console.log(`[infra] cache=${cacheBackend} queue=${queueBackend}`);
     // Start the notification queue worker (only active in redis mode; the
     // in-process queue drains on its own when no REDIS_URL is set).

@@ -46,7 +46,7 @@ model Society {
   planAmount    Float?           // agreed yearly subscription amount (INR)
   planNote      String?
   // Customer-facing product tier: "base" | "prime" | "platinum". Set by the
-  // GATEZO superadmin; drives which features are unlocked in the app. Defaults
+  // QwikGate superadmin; drives which features are unlocked in the app. Defaults
   // to "platinum" so existing tenants keep all features until explicitly tiered.
   tier          String           @default("platinum")
   // Auto-erase visitor PII after this many days. Null / 0 = keep forever.
@@ -540,7 +540,7 @@ model PlatformSetting {
   ifsc          String?
   upiId         String?
   // Separate from a society's resident join code. A service professional types
-  // this on the Register screen to create their own GATEZO login. The owner
+  // this on the Register screen to create their own QwikGate login. The owner
   // approves it before they can sign in. Owner can rotate it.
   providerJoinCode String?
   updatedBy     String?
@@ -862,7 +862,7 @@ model ServiceBooking {
   @@index([scheduledDate, slot])
 }
 
-// A home-services professional with their own login. Managed by the GATEZO
+// A home-services professional with their own login. Managed by the QwikGate
 // owner (superadmin). They pay an annual pack to receive jobs. `fallback` is
 // the house desk that takes a job only after every other free pro ignores it.
 model ServiceProvider {

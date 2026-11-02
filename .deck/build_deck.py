@@ -1,4 +1,4 @@
-"""Rebuild the GATEZO investor deck around the live product.
+"""Rebuild the QwikGate investor deck around the live product.
 
 Keeps the original narrative (team, pre-seed placeholders, Pune GTM) and
 replaces the generic 'gate-only / visual placeholder' story with what the
@@ -22,15 +22,15 @@ ROOT = Path(r"C:\Users\rajud\H2O_SanketPOC")
 DECK = ROOT / ".deck"
 ASSETS = ROOT / "app" / "assets"
 SHOTS = DECK / "shots"
-OUT = DECK / "GATEZO_Investor_Pitch_Deck_Latest.pptx"
-OUT_ALT = DECK / "GATEZO_Investor_Pitch_Deck_Updated.pptx"
+OUT = DECK / "QwikGate_Investor_Pitch_Deck_Latest.pptx"
+OUT_ALT = DECK / "QwikGate_Investor_Pitch_Deck_Updated.pptx"
 WA_DIR = Path(
     r"C:\Users\rajud\AppData\Local\Packages\5319275A.WhatsAppDesktop_cv1g1gvanyjgm"
     r"\LocalState\sessions\0F9A65987131B5156AD30805FACE3F94D24DBDDD"
     r"\transfers\2026-37"
 )
-WA_OUT = WA_DIR / "GATEZO_Investor_Pitch_Deck_Enhanced.pptx"
-WA_BACKUP = WA_DIR / "GATEZO_Investor_Pitch_Deck_Enhanced_backup.pptx"
+WA_OUT = WA_DIR / "QwikGate_Investor_Pitch_Deck_Enhanced.pptx"
+WA_BACKUP = WA_DIR / "QwikGate_Investor_Pitch_Deck_Enhanced_backup.pptx"
 
 # 16:9 widescreen — same canvas as the original Google Slides export.
 W, H = 13.333, 7.50
@@ -158,7 +158,7 @@ def notes(slide, text: str):
 
 def footer(slide, n, total=21):
     rect(slide, 0, 7.28, W, 0.22, NAVY)
-    txt(slide, 0.35, 7.28, 6, 0.22, "GATEZO  ·  CONFIDENTIAL  ·  PRE-SEED",
+    txt(slide, 0.35, 7.28, 6, 0.22, "QwikGate  ·  CONFIDENTIAL  ·  PRE-SEED",
         size=9, bold=True, color=WHITE, anchor="middle")
     txt(slide, 11.2, 7.28, 1.8, 0.22, f"{n}  /  {total}",
         size=9, bold=True, color=WHITE, align="right", anchor="middle")
@@ -333,7 +333,7 @@ def slide_title(prs, media):
         pic(s, wordmark, 0.72, 0.48, 5.36, 0.88)
     elif icon.exists():
         pic(s, icon, 0.7, 0.48, 0.88, 0.88)
-        txt(s, 1.72, 0.58, 4.2, 0.7, "GATEZO", size=32, bold=True, color=NAVY)
+        txt(s, 1.72, 0.58, 4.2, 0.7, "QwikGate", size=32, bold=True, color=NAVY)
 
     txt(s, 6.5, 0.48, 6.2, 0.28, "LIVE PRODUCT DEMO", size=13, bold=True, color="B8E0EA")
     txt(s, 6.5, 0.82, 6.2, 0.45, "PRE-SEED  ·  PUNE-LED PILOTS  ·  WORKING PRODUCT",
@@ -342,7 +342,7 @@ def slide_title(prs, media):
         "One AI-first app for gated societies and preschools.",
         size=22, color="E8F3F6")
     txt(s, 0.55, 2.18, 12.2, 0.55,
-        "Ask GATEZO, the gate, UPI bills or school fees, and home services — without stitching MyGate to Urban Company.",
+        "Ask QwikGate, the gate, UPI bills or school fees, and home services — without stitching MyGate to Urban Company.",
         size=15, color="D5E4EA")
 
     # Two verticals — equal weight
@@ -359,7 +359,7 @@ def slide_title(prs, media):
 
     chips = [
         ("FOUR ROLES", "Resident / parent · guard · admin · superadmin"),
-        ("ASK GATEZO", "Type or speak. Answers from live site data."),
+        ("ASK QwikGate", "Type or speak. Answers from live site data."),
         ("UPI IN-APP", "Razorpay · Google Pay · PhonePe · Paytm"),
         ("ONE CODEBASE", "Mobile + web. Society and preschool."),
     ]
@@ -394,9 +394,9 @@ def slide_team(prs):
         ("Udit Chothani", "Founder  |  Business, strategy & growth",
          "Experience across business, sales and customer-facing operations.\n"
          "Focused on practical products around real operational pain.\n"
-         "Driving GATEZO from concept to pilot and scalable GTM."),
+         "Driving QwikGate from concept to pilot and scalable GTM."),
         ("Sanket Dhamke", "Founding team member  |  Engineering",
-         "Building the live product: Ask GATEZO, roles, society + preschool vocabulary, payments and the mobile + web app."),
+         "Building the live product: Ask QwikGate, roles, society + preschool vocabulary, payments and the mobile + web app."),
         ("Aniket Chaudhari", "Founding team member  |  Marketing & sales",
          "Go-to-market, customer conversations and early society / preschool outreach for Pune pilots."),
     ]
@@ -469,14 +469,14 @@ def slide_solution(prs):
     rect(s, 0, 0, W, H, BG)
     rect(s, 0, 0, W, 0.12, TEAL)
     kicker(s, 0.5, 0.28, "What we are building")
-    heading(s, 0.5, 0.52, 12, "GATEZO — one operating layer")
+    heading(s, 0.5, 0.52, 12, "QwikGate — one operating layer")
     txt(s, 0.5, 1.05, 12.3, 0.45,
         "Mobile + web, one product. Four roles. Two organisation types. "
         "Designed to be used every day, not installed and forgotten.",
         size=14, color=MUTED)
 
     pillars = [
-        (TEAL, "Ask GATEZO",
+        (TEAL, "Ask QwikGate",
          "Type or speak. Answers come from live bills, visitors and bookings. Deep-links into the right screen."),
         (NAVY, "Gate & people",
          "Visitor log, gate pass, voice-fill for guards, vehicle QR (Platinum), SOS, directory."),
@@ -526,7 +526,7 @@ def slide_tabs(prs, media):
 
     tabs = [
         ("HOME", TEAL,
-         "Ask GATEZO, visitor & bill charts, shortcuts, optional neighbourhood offers."),
+         "Ask QwikGate, visitor & bill charts, shortcuts, optional neighbourhood offers."),
         ("MAINTENANCE / FEES", NAVY,
          "Pay by UPI (GPay, PhonePe, Paytm). Receipts, late fees, Transparency score — members see where money went."),
         ("VISITORS", GREEN,
@@ -596,7 +596,7 @@ def slide_ease_and_features(prs):
     ease = [
         ("Ask, don’t hunt", "Full questions on Home — “How much do I owe?” — answered from live data, with a button into the right screen."),
         ("Charts that open the tab", "Visitor pie and bill chart are not decoration. Tap them and Visitors or Maintenance opens."),
-        ("Voice at the gate", "Guard speaks the visitor’s name; the form fills. Residents can talk to Ask GATEZO too."),
+        ("Voice at the gate", "Guard speaks the visitor’s name; the form fills. Residents can talk to Ask QwikGate too."),
         ("Go live from a spreadsheet", "Admin pastes a member / flat list. No billed implementation team to type every household."),
         ("Same UPI everywhere", "One Razorpay checkout for maintenance, school fees and AC service — GPay, PhonePe, Paytm or a UPI ID."),
         ("Help is in the app", "How-to guide rewrites itself for preschool. Parents never see “flat”, “AGM” or “maintenance”."),
@@ -663,13 +663,13 @@ def slide_product_ai(prs, media):
     kicker(s, 0.45, 0.26, "Product  ·  live screenshot")
     heading(s, 0.45, 0.48, 7.4, "Home is an AI dashboard")
     txt(s, 0.45, 1.0, 7.3, 0.7,
-        "Residents land on Ask GATEZO, an attention strip, and charts for visitors and bills. "
+        "Residents land on Ask QwikGate, an attention strip, and charts for visitors and bills. "
         "The pie is not decoration — tap Visitors or Maintenance and the tab opens.",
         size=14, color=MUTED)
 
     points = [
         ("Ask a full question", "Suggestions are complete sentences — “How much maintenance do I owe?” — answered from live data."),
-        ("Voice at the gate", "Guards can speak a visitor in; the form fills. Residents can talk to Ask GATEZO too."),
+        ("Voice at the gate", "Guards can speak a visitor in; the form fills. Residents can talk to Ask QwikGate too."),
         ("Role-aware", "Admin asks about collections and spreadsheet import. Guard asks to log a visitor. Preschool hides society-only topics."),
         ("Help built in", "How-to guide rewrites itself for preschool so parents never see “flat” or “AGM”."),
     ]
@@ -772,13 +772,13 @@ def slide_how(prs):
     rect(s, 0, 0, W, H, BG)
     rect(s, 0, 0, W, 0.12, TEAL)
     kicker(s, 0.5, 0.28, "Product / service  ·  how it works")
-    heading(s, 0.5, 0.5, 12, "A day on GATEZO")
+    heading(s, 0.5, 0.5, 12, "A day on QwikGate")
 
     steps = [
         ("1", "Arrive",
          "Resident, parent, guard or admin signs in. Org type and tier (Base / Prime / Platinum) shape what they see."),
         ("2", "Ask or tap",
-         "Ask GATEZO, or use Home charts. Guards can speak a visitor. Admins open finance or upload a member list."),
+         "Ask QwikGate, or use Home charts. Guards can speak a visitor. Admins open finance or upload a member list."),
         ("3", "Act in one workflow",
          "Approve a guest, pay UPI, book a hall, raise a ticket, or schedule AC service — same session."),
         ("4", "Leave an audit trail",
@@ -834,7 +834,7 @@ def slide_why(prs):
     tech = [
         "One React Native / Expo codebase → iOS, Android and web. We do not staff three native teams and pass that into the price.",
         "Dual-vocabulary engine (org type), not a forked “school product”. One codebase, two businesses.",
-        "Ask GATEZO reads live tenant data — not a generic chatbot bolted onto a visitor log.",
+        "Ask QwikGate reads live tenant data — not a generic chatbot bolted onto a visitor log.",
         "One Razorpay UPI stack for maintenance, fees and home-service checkout.",
         "Role + preschool filters in software. Superadmin multi-tenant and tiers live in the same product we demo.",
     ]
@@ -938,7 +938,7 @@ def slide_competition(prs):
     kicker(s, 0.4, 0.22, "Why we can win a slice")
     heading(s, 0.4, 0.42, 12, "Competition — named, not 'legacy tools'")
 
-    headers = ["Capability", "GATEZO", "MyGate", "NoBrokerHood", "ADDA", "Urban Co."]
+    headers = ["Capability", "QwikGate", "MyGate", "NoBrokerHood", "ADDA", "Urban Co."]
     rows = [
         ["AI on live site data", "Yes", "No", "No", "No", "No"],
         ["Mobile + web, one codebase", "Yes", "Native apps", "Native apps", "Native apps", "Apps"],
@@ -993,7 +993,7 @@ def slide_roadmap(prs):
 
     phases = [
         ("TODAY", "Working product",
-         "Multi-role demo. Ask GATEZO. Charts. UPI. Home services. Society + preschool labels. Superadmin tiers.",
+         "Multi-role demo. Ask QwikGate. Charts. UPI. Home services. Society + preschool labels. Superadmin tiers.",
          TEAL),
         ("+12 MONTHS", "Pilot → repeatable GTM",
          "Pune paying sites. Lock pricing. Measure retention, Ask usage, bill collection, jobs booked. Reference customers.",
@@ -1041,7 +1041,7 @@ def slide_risks(prs):
          "Three tiers already in the product. Pilot multiple packages. Charge for Prime (AI) once Ask is habit."),
         ("Brand / category",
          "Nearby names exist in stores (e.g. Homefy Gatemate). Confusion at install.",
-         "Legal and store clearance before paid acquisition. This deck and the live demo are branded GATEZO."),
+         "Legal and store clearance before paid acquisition. This deck and the live demo are branded QwikGate."),
         ("Reliability & privacy",
          "Gate + fees + SOS cannot go down or leak.",
          "Access control, audit logs, transparency ledger. Reliability is a product requirement, not a later phase."),
@@ -1115,7 +1115,7 @@ def slide_annex_gtm(prs):
         ("Phase 2 — Playbook",
          "Standard onboarding (admin uploads a member spreadsheet).\nReference customers.\nChannel / secretary / CA referrals."),
         ("Phase 3 — Cities",
-         "Replicate proven economics.\nPreschool groups as a parallel motion.\nKeep Ask GATEZO the first surface."),
+         "Replicate proven economics.\nPreschool groups as a parallel motion.\nKeep Ask QwikGate the first surface."),
     ]
     for i, (t, b) in enumerate(phases):
         x = 0.45 + i * 4.2
@@ -1155,7 +1155,7 @@ def slide_close(prs, media):
     kpis = [
         "Active sites (societies + preschools)",
         "Weekly active users by role",
-        "Ask GATEZO questions / user / week",
+        "Ask QwikGate questions / user / week",
         "Gate events logged vs. paper/WhatsApp",
         "% bills collected via UPI",
         "Home-service bookings (when live)",
@@ -1171,7 +1171,7 @@ def slide_close(prs, media):
     txt(s, 7.15, 1.35, 5.5, 0.35, "INVESTOR THESIS", size=13, bold=True, color="9ED4E2")
     txt(s, 7.15, 1.85, 5.5, 3.35,
         "The gate is still the daily touchpoint.\n\n"
-        "The wedge is no longer 'make entry easier' alone — it is Ask GATEZO on live community data, then bills and home services in the same session.\n\n"
+        "The wedge is no longer 'make entry easier' alone — it is Ask QwikGate on live community data, then bills and home services in the same session.\n\n"
         "The expansion is a trusted OS for societies and preschools, site by site, city by city.\n\n"
         "We are pre-revenue. The product is demo-ready.",
         size=14, color=WHITE)
@@ -1196,7 +1196,7 @@ def write_outputs(prs):
         dest = OUT_ALT
         prs.save(dest)
         print(f"Latest file is open — wrote {dest} instead")
-    demo = DECK / "GATEZO_Demo_Deck.pptx"
+    demo = DECK / "QwikGate_Demo_Deck.pptx"
     try:
         prs.save(demo)
         print(f"Wrote {demo}  ({demo.stat().st_size // 1024} KB)")

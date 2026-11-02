@@ -11,7 +11,7 @@ import {
   Inter_800ExtraBold,
 } from "@expo-google-fonts/inter";
 
-// Brand typography. Poppins carries the GATEZO wordmark and headings; Inter
+// Brand typography. Poppins carries the QwikGate wordmark and headings; Inter
 // handles UI text — it was drawn for small sizes on screen, which is most of
 // this app.
 //

@@ -4,7 +4,7 @@ import { prisma } from "./prisma.js";
 import { placeholderPhoto } from "./storage.js";
 
 // Seeds the platform:
-//   - 1 superadmin (GATEZO owner) that can see every society
+//   - 1 superadmin (QwikGate owner) that can see every society
 //   - 2 demo societies, each with its own admins/guards/residents, flats, bills,
 //     visitors and expenses, so the super-admin summary shows real numbers.
 // Password for every account: Password123
@@ -38,7 +38,7 @@ async function main() {
   // ---- Platform owner (no society) --------------------------------------
   await prisma.user.create({
     data: {
-      name: "GATEZO Owner",
+      name: "QwikGate Owner",
       email: "owner@h2o.com",
       role: "superadmin",
       passwordHash: hash,
@@ -282,15 +282,15 @@ async function main() {
   const packUntil = new Date();
   packUntil.setFullYear(packUntil.getFullYear() + 1);
   const pros = [
-    { name: "Ravi Kulkarni", email: "ac.ravi@gatezo.com", phone: "98111 10001", slugs: "ac", rating: 4.9 },
-    { name: "Meera Joshi", email: "ac.meera@gatezo.com", phone: "98111 10002", slugs: "ac", rating: 4.6 },
-    { name: "Anil Deshmukh", email: "clean.anil@gatezo.com", phone: "98111 10003", slugs: "cleaning,pest,laundry", rating: 4.7 },
-    { name: "Priya Nair", email: "salon.priya@gatezo.com", phone: "98111 10004", slugs: "salon", rating: 4.8 },
-    { name: "Imran Shaikh", email: "trades.imran@gatezo.com", phone: "98111 10005", slugs: "trades,instant,painting", rating: 4.5 },
-    { name: "Neha Kapoor", email: "move.neha@gatezo.com", phone: "98111 10006", slugs: "movers,legal,interiors", rating: 4.7 },
+    { name: "Ravi Kulkarni", email: "ac.ravi@qwikgate.com", phone: "98111 10001", slugs: "ac", rating: 4.9 },
+    { name: "Meera Joshi", email: "ac.meera@qwikgate.com", phone: "98111 10002", slugs: "ac", rating: 4.6 },
+    { name: "Anil Deshmukh", email: "clean.anil@qwikgate.com", phone: "98111 10003", slugs: "cleaning,pest,laundry", rating: 4.7 },
+    { name: "Priya Nair", email: "salon.priya@qwikgate.com", phone: "98111 10004", slugs: "salon", rating: 4.8 },
+    { name: "Imran Shaikh", email: "trades.imran@qwikgate.com", phone: "98111 10005", slugs: "trades,instant,painting", rating: 4.5 },
+    { name: "Neha Kapoor", email: "move.neha@qwikgate.com", phone: "98111 10006", slugs: "movers,legal,interiors", rating: 4.7 },
     {
-      name: "GATEZO Desk",
-      email: "desk@gatezo.com",
+      name: "QwikGate Desk",
+      email: "desk@qwikgate.com",
       phone: "98111 10000",
       slugs: "instant,cleaning,movers,ac,trades,painting,legal,interiors,salon,pest,laundry",
       rating: 4.8,
@@ -321,9 +321,9 @@ async function main() {
   }
 
   console.log("Seed complete. All demo logins use password: " + PASSWORD);
-  console.log("  SERVICE PROVIDERS: ac.ravi@gatezo.com, ac.meera@gatezo.com, clean.anil@gatezo.com,");
-  console.log("     salon.priya@gatezo.com, trades.imran@gatezo.com, move.neha@gatezo.com, desk@gatezo.com (house desk)");
-  console.log("  SUPER ADMIN (GATEZO owner): owner@h2o.com");
+  console.log("  SERVICE PROVIDERS: ac.ravi@qwikgate.com, ac.meera@qwikgate.com, clean.anil@qwikgate.com,");
+  console.log("     salon.priya@qwikgate.com, trades.imran@qwikgate.com, move.neha@qwikgate.com, desk@qwikgate.com (house desk)");
+  console.log("  SUPER ADMIN (QwikGate owner): owner@h2o.com");
   console.log("  Society 1 - Green Valley Residency (Pune):");
   console.log("     admin@h2o.com / admin2@h2o.com, guard@h2o.com / guard2@h2o.com");
   console.log("     resident@h2o.com (A-101), resident2@h2o.com (A-102), resident3@h2o.com (B-201)");

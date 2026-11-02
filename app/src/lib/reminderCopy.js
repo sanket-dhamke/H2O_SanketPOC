@@ -1,4 +1,4 @@
-// Text the admin sees after "Remind unpaid residents". The GATEZO home is
+// Text the admin sees after "Remind unpaid residents". The QwikGate home is
 // always the dashboard channel. WhatsApp only counts when Meta accepted it.
 export function reminderResult(res = {}, labels = {}) {
   const payer = String(labels.payer || "resident").toLowerCase();
@@ -6,13 +6,13 @@ export function reminderResult(res = {}, labels = {}) {
   const lines = [];
   const home = Number(res.dashboard) || 0;
   if (home) {
-    lines.push(`Reminder is on the GATEZO home for ${home} ${payer}${home === 1 ? "" : "s"} with dues.`);
+    lines.push(`Reminder is on the QwikGate home for ${home} ${payer}${home === 1 ? "" : "s"} with dues.`);
   }
   if (res.whatsapp) lines.push(`WhatsApp sent to ${res.whatsapp}.`);
   if (res.whatsappPending) {
     const n = res.whatsappPending;
     lines.push(
-      `WhatsApp is not connected on this server, so ${n} mobile number${n === 1 ? "" : "s"} did not get a chat message. The reminder is already on their GATEZO home.`
+      `WhatsApp is not connected on this server, so ${n} mobile number${n === 1 ? "" : "s"} did not get a chat message. The reminder is already on their QwikGate home.`
     );
   }
   if (res.phonesMissing && home) {

@@ -1,12 +1,12 @@
-# GATEZO — how to use the app
+# QwikGate — how to use the app
 
-GATEZO is one app for a housing society or a preschool. The same screens run in a phone browser, and the same project builds the Android and iPhone apps. This guide is what each login can do, and the exact taps.
+QwikGate is one app for a housing society or a preschool. The same screens run in a phone browser, and the same project builds the Android and iPhone apps. This guide is what each login can do, and the exact taps.
 
 Install the Android app by opening this on the phone and downloading the file:
 
-**https://h2o-api-5sxc.onrender.com/gatezo.apk**
+**https://h2o-api-5sxc.onrender.com/qwikgate.apk**
 
-Android will ask you to allow installs from the browser. The same address without `/gatezo.apk` opens the website. A Play Store or iPhone build is still a separate store release.
+Android will ask you to allow installs from the browser. The same address without `/qwikgate.apk` opens the website. A Play Store or iPhone build is still a separate store release. The previous `/gatezo.apk` address still downloads this same file.
 
 The first open after a quiet period can take up to a minute. Render’s free plan sleeps, then wakes.
 
@@ -21,7 +21,7 @@ You do not pick a role on the login screen. The account already has one.
 | Resident / parent | Person in a flat, or a parent | Home, Maintenance (or Fees), Visitors, Community |
 | Guard | Gate desk | Home, Gate, Staff, Community, Visitors |
 | Society admin | Office of one society or school | Home, Finance (or Fees), Members, Community, Visitors. A preschool also has Staff. |
-| GATEZO owner | Runs the whole product | Overview, Societies, Professionals |
+| QwikGate owner | Runs the whole product | Overview, Societies, Professionals |
 | Service professional | Cleaner, AC technician, carpenter, and the other home-service trades | Jobs, Hours, Guide |
 
 A preschool uses different words for the same screens: flat → student, resident → parent, maintenance → fees, society → school, clubhouse → hall.
@@ -36,7 +36,7 @@ A preschool uses different words for the same screens: flat → student, residen
 
 **New resident.** On the login screen tap **New resident? Register with a join code**. Ask the society admin for the code (it starts with `GM`). Enter the code, flat or student, name, email, and password. An admin must approve you before you can sign in.
 
-**New service professional.** On the same register screen choose **Service professional**. Ask the GATEZO owner for the provider code (it starts with `SP`). A society join code will not work. Pick at least one service you can do. You cannot sign in until the owner approves you, and you will not receive jobs until the owner records your annual pack.
+**New service professional.** On the same register screen choose **Service professional**. Ask the QwikGate owner for the provider code (it starts with `SP`). A society join code will not work. Pick at least one service you can do. You cannot sign in until the owner approves you, and you will not receive jobs until the owner records your annual pack.
 
 **Forgot password.** Tap **Forgot password**, enter your email, then the one-time code and a new password. The password needs 8 characters, one capital letter, one small letter, and one number.
 
@@ -48,7 +48,7 @@ Every demo account uses the password `Password123`.
 
 | Email | Who |
 |---|---|
-| owner@h2o.com | GATEZO owner |
+| owner@h2o.com | QwikGate owner |
 | admin@h2o.com, admin2@h2o.com | Green Valley admins (Pune) |
 | guard@h2o.com, guard2@h2o.com | Green Valley guards |
 | resident@h2o.com | Aarav Sharma, flat A-101 |
@@ -59,13 +59,13 @@ Every demo account uses the password `Password123`.
 | guard@skyline.com | Skyline guard |
 | resident@skyline.com | Vikram Rao, S-101 |
 | resident2@skyline.com | Neha Gupta, S-102 |
-| ac.ravi@gatezo.com | AC professional, higher rating |
-| ac.meera@gatezo.com | AC professional |
-| clean.anil@gatezo.com | Cleaning, pest, laundry |
-| salon.priya@gatezo.com | Salon |
-| trades.imran@gatezo.com | Plumbing, electrician, carpentry, instant visits, painting |
-| move.neha@gatezo.com | Movers, legal, interiors |
-| desk@gatezo.com | House desk. Takes a job only after every other professional has passed |
+| ac.ravi@qwikgate.com | AC professional, higher rating |
+| ac.meera@qwikgate.com | AC professional |
+| clean.anil@qwikgate.com | Cleaning, pest, laundry |
+| salon.priya@qwikgate.com | Salon |
+| trades.imran@qwikgate.com | Plumbing, electrician, carpentry, instant visits, painting |
+| move.neha@qwikgate.com | Movers, legal, interiors |
+| desk@qwikgate.com | House desk. Takes a job only after every other professional has passed |
 
 ---
 
@@ -75,7 +75,7 @@ Every demo account uses the password `Password123`.
 
 The home page shows your society, charts, and **Needs your attention** (a visitor waiting, a due bill, a Buy & Sell message on your listing). Each attention row can be removed if you do not need it.
 
-**Ask GATEZO** answers from your own live bills and visitors. Examples: “How much maintenance is pending?”, “Who visited last week?”, “How do I book the clubhouse?”. Hindi and Marathi questions are answered too. This reply is built from your records. It is not a paid chat model.
+**Ask QwikGate** answers from your own live bills and visitors. Examples: “How much maintenance is pending?”, “Who visited last week?”, “How do I book the clubhouse?”. Hindi and Marathi questions are answered too. This reply is built from your records. It is not a paid chat model.
 
 Folders on Home jump to the screens below: visitors, gate pass, vehicle passes, pay bills, clubhouse, transparency, sustainability, AGM, home services, helpdesk, Buy & Sell, trusted helpers, and Help.
 
@@ -100,12 +100,12 @@ Folders on Home jump to the screens below: visitors, gate pass, vehicle passes, 
 - **Buy & Sell:** post an item with photos and a price. Another resident taps **Message owner**. Both of you can read that conversation. A new message shows under Needs your attention for the flat that owns the listing, not for the society admin.
 - **Home services:** book a visit. See section 7.
 - **Helpdesk:** raise a ticket and call the guard or the office from the directory.
-- **Trusted helpers:** maids, cooks, and other people the society already knows, separate from GATEZO home-service professionals.
+- **Trusted helpers:** maids, cooks, and other people the society already knows, separate from QwikGate home-service professionals.
 - **Book clubhouse / hall:** pick a date and slot. The admin approves, then you pay if the slot has a price.
 - **SOS:** sends an emergency alert.
 - **AGM & voting:** vote and read minutes.
 - **Help & how-to:** short instructions inside the app.
-- **Assistant:** the same Ask GATEZO answers, in a full screen.
+- **Assistant:** the same Ask QwikGate answers, in a full screen.
 
 ---
 
@@ -167,7 +167,7 @@ Post announcements, moderate the board, handle helpdesk tickets, and read the fu
 
 ---
 
-## 6. GATEZO owner
+## 6. QwikGate owner
 
 This login is `owner@h2o.com` in the demo. It sees every society.
 
@@ -192,7 +192,7 @@ This is where home-service people are onboarded.
 2. Either wait for them to register, or tap add and create the login yourself.
 3. **Approve** a waiting registration. Until you do, they cannot sign in.
 4. **Record the annual pack** (the demo amount is ₹4,999 for one year). Until this is recorded, they are skipped when a resident books.
-5. The **house desk** (`desk@gatezo.com`) does not pay the pack. It is the last stop.
+5. The **house desk** (`desk@qwikgate.com`) does not pay the pack. It is the last stop.
 
 Remove sets the professional inactive so they stop receiving jobs.
 
@@ -229,7 +229,7 @@ These are the types a professional picks. Carpentry is not its own type. It is a
 
 The job is offered to **one** person, not all 10.
 
-1. GATEZO lines up professionals who listed that service, whose annual pack is paid, who work that weekday and hour, and who are not already on another job in that same hour.
+1. QwikGate lines up professionals who listed that service, whose annual pack is paid, who work that weekday and hour, and who are not already on another job in that same hour.
 2. The highest rating is offered the job for **60 seconds**.
 3. If they accept, it is theirs. The resident then sees a 4-digit **start code**.
 4. If they decline, or the 60 seconds pass, the same job moves to the next person. The others do not see it while it is offered to someone else.
@@ -253,7 +253,7 @@ The house desk uses the same Jobs screen. It does not get the first offer.
 ## 8. What is stored, and what is locked
 
 - Passwords are stored only as a bcrypt hash. The app cannot show the original password.
-- Card numbers stay with Razorpay. GATEZO does not keep them.
+- Card numbers stay with Razorpay. QwikGate does not keep them.
 - Photos are shrunk on the server. With Supabase Storage switched on, the file sits in a storage bucket and the database keeps the link.
 - Emails, phone numbers, UPI ids, and bank details are sealed only after `DATA_ENCRYPTION_KEY` is set on Render. Until then those columns are readable in the database. Keep a private copy of that key. Losing it makes the sealed columns unreadable.
 - Each society’s residents, bills, and visitors are separate. Home-service professionals are platform accounts, so one AC technician can take a job from Green Valley or from Skyline.
@@ -262,10 +262,10 @@ The house desk uses the same Jobs screen. It does not get the first offer.
 
 ## 9. Phone install versus the link
 
-| How you open GATEZO | When it updates |
+| How you open QwikGate | When it updates |
 |---|---|
 | Phone or laptop browser at https://h2o-api-5sxc.onrender.com | When `main` is deployed on Render. |
-| Android install from https://h2o-api-5sxc.onrender.com/gatezo.apk | When a new APK is published at that address. Installing it replaces the copy on the phone. |
+| Android install from https://h2o-api-5sxc.onrender.com/qwikgate.apk | When a new APK is published at that address. Installing it replaces the copy on the phone. |
 | Play Store and the iPhone app | Only after a new store build is published. |
 
 Android package and iPhone bundle id are both `com.h2o.society`. Apple still needs an Apple Developer account before TestFlight or the App Store. The screens are not rewritten for each store.

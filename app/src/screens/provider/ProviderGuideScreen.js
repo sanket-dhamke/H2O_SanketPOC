@@ -11,7 +11,7 @@ const STEPS = [
   },
   {
     title: "2. A visit is offered to you for 60 seconds",
-    body: "GATEZO offers the booking to one professional at a time, the way Urban Company does. Accept it, or pass. If the minute ends, it moves to the next free professional.",
+    body: "QwikGate offers the booking to one professional at a time, the way Urban Company does. Accept it, or pass. If the minute ends, it moves to the next free professional.",
   },
   {
     title: "3. Start only with the resident’s code",

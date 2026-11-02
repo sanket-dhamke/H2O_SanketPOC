@@ -811,8 +811,8 @@ function EditPlanModal({ society, onClose, onDone }) {
   );
 }
 
-// Owner-editable GATEZO platform settings: the contact email shown to admins and
-// GATEZO's own bank/UPI details (reference for "Pay to GATEZO").
+// Owner-editable QwikGate platform settings: the contact email shown to admins and
+// QwikGate's own bank/UPI details (reference for "Pay to QwikGate").
 function PlatformSettingsModal({ visible, onClose }) {
   const [contactEmail, setContactEmail] = useState("");
   const [accountName, setAccountName] = useState("");

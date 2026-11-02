@@ -34,7 +34,7 @@ function loginErrorMessage(err, orgMode) {
     return `This ${org} is currently inactive. Contact your admin or ${brand.name} support.`;
   }
   if (/awaiting admin approval/.test(lower)) return raw;
-  if (/failed to fetch|network request failed|load failed|networkerror|econnrefused|timed out|can't reach the (gatemate|gatezo) server/.test(lower)) {
+  if (/failed to fetch|network request failed|load failed|networkerror|econnrefused|timed out|can't reach the (gatemate|gatezo|qwikgate) server/.test(lower)) {
     return `Can’t reach the ${brand.name} server. Check your internet, then try again. If you use a custom URL, tap Advanced server settings.`;
   }
   if (/request failed \(5/.test(lower)) {
@@ -110,7 +110,7 @@ export default function LoginScreen() {
 
   // Auto-brand the login ONLY from a branded link/QR (?t=slug or /t/slug).
   // With no such link, we stay neutral — branding is never remembered/sticky,
-  // so a plain refresh always returns to the neutral GATEZO login.
+  // so a plain refresh always returns to the neutral QwikGate login.
   useEffect(() => {
     let cancelled = false;
     (async () => {

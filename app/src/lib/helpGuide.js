@@ -1,5 +1,5 @@
 // In-app how-to for residents, admins and guards. The Help screen and Ask
-// GATEZO both read this list so answers stay consistent.
+// QwikGate both read this list so answers stay consistent.
 import { isPreschool } from "./org";
 import { brand } from "./brand";
 
@@ -60,18 +60,18 @@ export const HELP_TOPICS = [
     steps: [
       "Open the Home tab. Charts show the last 30 days of visitors and your bill status.",
       "Tap a folder (At the gate, Bills & bookings, Your society, Community) to expand the shortcuts.",
-      "Ask GATEZO on this page to get an answer — then tap the button if you want to open that screen.",
+      "Ask QwikGate on this page to get an answer — then tap the button if you want to open that screen.",
     ],
     examples: ["How much do I owe?", "Who visited my flat?", "What is on the Home tab?"],
   },
   {
     id: "ask",
-    title: "Ask GATEZO / Assistant",
+    title: "Ask QwikGate / Assistant",
     icon: "sparkles-outline",
-    keywords: ["ask", "assistant", "ai", "chat", "gatemate", "gatezo", "question"],
+    keywords: ["ask", "assistant", "ai", "chat", "gatemate", "gatezo", "qwikgate", "question"],
     summary: "Ask in plain English. You get an answer from your society data, plus a button to open the right screen.",
     steps: [
-      "On Home, type in Ask GATEZO (or tap a chip).",
+      "On Home, type in Ask QwikGate (or tap a chip).",
       "From Community, open Assistant for a full chat.",
       "Try: pay bills, visitors, book the clubhouse, raise a complaint, or how to use a feature.",
     ],
@@ -100,7 +100,7 @@ export const HELP_TOPICS = [
       "Open the Maintenance (bills) tab to see each period, due date and balance.",
       "Tap an unpaid bill to pay. Paid bills keep a receipt you can download.",
       "How the amount is divided: the committee sets maintenance heads (security, water, sinking fund, etc.) that add up to one figure per flat. A rented flat can have an override. Late fee is added only after the due date plus grace days.",
-      "Ask GATEZO “how much maintenance is pending” for the live total, or “how is the bill divided” for the head split when the office billed from heads.",
+      "Ask QwikGate “how much maintenance is pending” for the live total, or “how is the bill divided” for the head split when the office billed from heads.",
     ],
     examples: ["How much maintenance is pending?", "How is the maintenance bill divided?", "Where can I get a receipt?"],
   },
@@ -126,7 +126,7 @@ export const HELP_TOPICS = [
     summary: "A green score from monthly water-meter readings — not from your maintenance bill.",
     steps: [
       "Open Maintenance → Sustainability (or Home → Your society).",
-      "How we capture it: the office records litres used this month per flat (tap + or import a CSV). GATEZO compares each flat with the society median.",
+      "How we capture it: the office records litres used this month per flat (tap + or import a CSV). QwikGate compares each flat with the society median.",
       "Scoring: 100 at zero use, 50 at the median, lower if you use more than neighbours. The community score is the average of reported flats.",
       "Residents see their own flat, the median, and a top-savers list. This does not change what you pay in maintenance.",
     ],
@@ -167,7 +167,7 @@ export const HELP_TOPICS = [
     summary: "Reserve the hall or amenities for a date and slot. Admins add facilities and approve requests.",
     steps: [
       "Residents: Community → Book clubhouse (or Home → Bills & bookings). Pick the amenity, date and a free slot, then request. Pay if the society charges.",
-      "Admins: Community → Book clubhouse opens Requests (approve/reject) and Manage (add a hall, slots and prices). Admins do not place a resident-style booking from Ask GATEZO.",
+      "Admins: Community → Book clubhouse opens Requests (approve/reject) and Manage (add a hall, slots and prices). Admins do not place a resident-style booking from Ask QwikGate.",
     ],
     examples: ["How do I book the clubhouse?", "Book a party slot", "Create a new clubhouse booking as admin"],
   },
@@ -237,10 +237,10 @@ export function answerFromHelp(question, user) {
     return null;
   }
   if (
-    /^(help|help me|what can you do|what can (gatemate|gatezo) do|features|how to use( this| gatemate| gatezo)?|what do you (do|support))\??$/.test(
+    /^(help|help me|what can you do|what can (gatemate|gatezo|qwikgate) do|features|how to use( this| gatemate| gatezo| qwikgate)?|what do you (do|support))\??$/.test(
       q
     ) ||
-    /what can (you|gatemate|gatezo|this app)|how (do i|to) use (gatemate|gatezo|this|the app)|list (the )?features/.test(q)
+    /what can (you|gatemate|gatezo|qwikgate|this app)|how (do i|to) use (gatemate|gatezo|qwikgate|this|the app)|list (the )?features/.test(q)
   ) {
     return helpOverview(user);
   }

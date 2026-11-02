@@ -24,12 +24,12 @@ authRouter.post("/auth/login", async (req, res) => {
   // Block login when the user's society has been deactivated by the superadmin.
   if (user.role !== "superadmin" && user.society && !user.society.active) {
     const org = user.society.orgType === "preschool" ? "preschool" : "society";
-    return res.status(403).json({ message: `This ${org} is currently inactive. Contact GATEZO support.` });
+    return res.status(403).json({ message: `This ${org} is currently inactive. Contact QwikGate support.` });
   }
   // Self-registered residents wait for a society admin. Self-registered
-  // professionals wait for the GATEZO owner. Neither can sign in until then.
+  // professionals wait for the QwikGate owner. Neither can sign in until then.
   if (user.pendingApproval) {
-    const who = user.role === "provider" ? "the GATEZO owner" : "your admin";
+    const who = user.role === "provider" ? "the QwikGate owner" : "your admin";
     return res.status(403).json({
       message: `Your account is awaiting approval from ${who}. You'll be able to sign in once it is approved.`,
     });

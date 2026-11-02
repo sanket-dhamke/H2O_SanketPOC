@@ -29,7 +29,7 @@ export function channelsFor(user) {
 
 export function buildAnnouncementEmail({ title, body, societyName }) {
   const subject = societyName ? `${societyName}: ${title}` : String(title || "Society notice");
-  const text = [body, "", "Open GATEZO. This notice is also under Needs your attention."].filter((line) => line != null).join("\n");
+  const text = [body, "", "Open QwikGate. This notice is also under Needs your attention."].filter((line) => line != null).join("\n");
   return { subject, text };
 }
 

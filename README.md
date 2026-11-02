@@ -1,4 +1,4 @@
-# GATEZO (H2O) — society and preschool app
+# QwikGate (H2O) — society and preschool app
 
 One JavaScript app for Android, iPhone, and the website, plus a Node.js API.
 The live site is https://h2o-api-5sxc.onrender.com. How each login uses the app is in [USER_GUIDE.md](USER_GUIDE.md).
@@ -7,7 +7,7 @@ Production data is Supabase PostgreSQL. Render runs the API and the website.
 
 ## Features
 
-- **Roles**: resident, guard, admin, GATEZO owner (superadmin), and service professional. Residents can self-register with a society join code. Professionals self-register with a separate provider code. An admin or the owner approves them.
+- **Roles**: resident, guard, admin, QwikGate owner (superadmin), and service professional. Residents can self-register with a society join code. Professionals self-register with a separate provider code. An admin or the owner approves them.
 - **Maintenance**: residents view monthly bills + dues and pay (Razorpay: UPI/cards/netbanking, with a mock fallback for demos). Payment history + receipts.
 - **Visitors**: guard photographs the visitor and records name, phone, vehicle number, purpose and flat. **All residents of that flat** get a push notification.
 - **Approvals**: resident taps **Approve / Reject / Leave at gate**; the guard is notified of the decision. Approved/decided visitors are kept in history.
