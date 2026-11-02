@@ -168,3 +168,36 @@ Test card `4111 1111 1111 1111` (any future expiry/CVV); UPI `success@razorpay`.
 | GET/POST | `/api/admin/expenses` | admin | Society expenses |
 | POST | `/api/ai/assistant` | auth | Natural-language Q&A (role-scoped) |
 | POST | `/api/ai/voice-visitor` | guard/admin | Transcribe + parse spoken visitor details |
+
+## Pytest from a plain-language test case
+
+`pom-agent` turns one or more plain-language UI or API cases into Page Object Model tests. It writes them into the existing pytest + Playwright project in `automation/`. It does not create a new framework.
+
+Screen classes live in `automation/pages/` and extend `BasePage`. UI tests live in `automation/tests/`. API tests live in `automation/tests/api/`. Shared browser setup and the Allure failure screenshot live in `automation/conftest.py`. Tests carry Allure feature, story, severity, and title. Page actions are Allure steps. URLs and credentials come from the environment (`BASE_URL`, `API_URL`, `TEST_EMAIL`, `TEST_PASSWORD`).
+
+From the repo root, with a Cursor credential:
+
+```bash
+npx --yes "@grok/agent-sdk@0.5.0" run --dir ./pom-agent --message "$(cat <<'EOF'
+Test case: Open the home page and confirm the Welcome heading is visible.
+Use the heading role. Feature Home, story Landing, severity critical.
+EOF
+)"
+```
+
+Run the generated tests and open the Allure report:
+
+```bash
+cd automation
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+python -m playwright install chromium
+export BASE_URL=https://the-app.example
+export API_URL=https://the-app.example
+pytest
+allure generate allure-results -o allure-report --clean
+allure open allure-report
+```
+
+`pytest` writes raw results to `automation/allure-results/`. The Allure command line (Java plus the `allure` binary) turns that folder into the HTML report. `pytest -m api` runs only HTTP tests. `pytest -m ui` runs only browser tests. UI tests skip when `BASE_URL` is unset. API tests skip when `API_URL` is unset. Signed-in tests skip when `TEST_EMAIL` or `TEST_PASSWORD` is unset.
