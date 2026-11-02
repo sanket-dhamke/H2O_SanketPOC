@@ -307,6 +307,9 @@ if (fs.existsSync(path.join(publicDir, "index.html"))) {
   app.use(express.static(publicDir, { index: false, maxAge: "1h" }));
   app.get("*", (req, res, next) => {
     if (req.path.startsWith("/api")) return next();
+    // The shell must revalidate. The app script is cached for an hour, so a
+    // rename would keep showing the old name until that copy expired.
+    res.set("Cache-Control", "no-cache");
     res.sendFile(path.join(publicDir, "index.html"), (err) => err && next());
   });
 }
