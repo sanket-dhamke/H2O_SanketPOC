@@ -1,0 +1,20 @@
+# Edit this file to change what the agent is asked to test.
+# Lines that start with # are notes for you. The runner removes them.
+# OUTPUT_DIR and BASE_URL below are read by scripts/qa/run.sh. Keep them in sync with the prompt.
+# Placeholders filled in when you run scripts/qa/run.sh:
+#   {{BASE_URL}} {{QA_EMAIL}} {{QA_PASSWORD}} {{OUTPUT_DIR}}
+
+OUTPUT_DIR=qa-local-qwikgate
+BASE_URL=http://localhost:8090
+
+QA {{BASE_URL}}
+
+Depth: Standard
+Environment: local test app. Fake data is fine. Do not complete payments, do not create visitors, and do not file a real helpdesk ticket.
+Login: {{QA_EMAIL}} / {{QA_PASSWORD}}
+Deliverables: report plus a runnable Playwright suite
+Save the output in {{OUTPUT_DIR}}/
+
+Test sign-in, Home, Ask QwikGate, Maintenance, Visitors, Community, and Helpdesk.
+On Helpdesk, open New ticket and submit it empty so we can see the error. Stop before a real ticket is created.
+Then log out and confirm the sign-in screen is back after a reload.

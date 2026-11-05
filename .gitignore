@@ -31,3 +31,9 @@ Thumbs.db
 
 # Local tooling binaries
 cloudflared.exe
+
+# Local QA tester (cloned skill, virtualenv, generated report, resolved prompt with password)
+.cursor/skills/web-app-qa/
+scripts/qa/.venv/
+scripts/qa/logs/
+qa-local-qwikgate/
