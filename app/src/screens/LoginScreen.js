@@ -208,10 +208,8 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.logoWrap}>
-            <View style={styles.lockup}>
-              <Image source={brandIcon} style={styles.logoMark} resizeMode="cover" />
-              <Text style={styles.logo}>{brand.name}</Text>
-            </View>
+            <Image source={brandIcon} style={styles.logoMark} resizeMode="cover" />
+            <Text style={styles.logo}>{brand.name}</Text>
             <Text style={styles.tagline}>{theme.tagline}</Text>
           </View>
 
@@ -385,16 +383,17 @@ const styles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(6, 40, 52, 0.38)" },
   container: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 24 },
-  logoWrap: { alignItems: "center", marginBottom: 40 },
-  lockup: { flexDirection: "row", alignItems: "center", gap: 10 },
-  logoMark: { width: 48, height: 48, borderRadius: 4 },
+  logoWrap: { alignItems: "center", marginBottom: 28 },
+  logoMark: { width: 84, height: 84, borderRadius: 6 },
   logo: {
-    fontSize: 26,
-    lineHeight: 30,
+    fontSize: 40,
+    lineHeight: 46,
+    marginTop: 14,
     ...wordmark(),
+    letterSpacing: -0.8,
     color: "#fff",
   },
-  tagline: { color: "rgba(234,246,250,0.88)", marginTop: 8, fontSize: 11, letterSpacing: 1.6, textTransform: "uppercase", ...body(500) },
+  tagline: { color: "rgba(234,246,250,0.88)", marginTop: 6, fontSize: 12, letterSpacing: 2.2, textTransform: "uppercase", ...body(500) },
   card: {
     width: "100%",
     maxWidth: 420,
