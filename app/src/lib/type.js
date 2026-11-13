@@ -11,9 +11,11 @@ import {
   Inter_800ExtraBold,
 } from "@expo-google-fonts/inter";
 
-// Brand typography. Poppins carries the QwikGate wordmark and headings; Inter
-// handles UI text — it was drawn for small sizes on screen, which is most of
-// this app.
+// Brand typography. Inter carries the wordmark, headings, and UI text.
+// MyGate sets its name in Archivo, NoBrokerHood in Roboto, Razorpay in Inter
+// SemiBold. Those are all neo-grotesques at medium or semibold, with tight
+// tracking. Poppins ExtraBold with wide letter-spacing reads as a poster, so
+// the name and the screen titles use Inter instead.
 //
 // Why the helpers below instead of just setting `fontFamily`: React Native does
 // NOT synthesize weights for a custom font the way a browser does. Setting
@@ -35,7 +37,9 @@ export const FONTS = {
   Inter_800ExtraBold,
 };
 
-const HEAD = { 600: "Poppins_600SemiBold", 700: "Poppins_700Bold", 800: "Poppins_800ExtraBold" };
+// 800 is kept for existing call sites, and drawn as Bold. ExtraBold is wider
+// and heavier than the wordmarks on MyGate, NoBrokerHood, and Razorpay.
+const HEAD = { 600: "Inter_600SemiBold", 700: "Inter_700Bold", 800: "Inter_700Bold" };
 const BODY = {
   400: "Inter_400Regular",
   500: "Inter_500Medium",
@@ -50,9 +54,14 @@ const nearest = (map, weight) => {
   return map[keys.reduce((best, k) => (Math.abs(k - want) < Math.abs(best - want) ? k : best))];
 };
 
-// Headings and the brand wordmark.
+// Screen titles.
 export function head(weight = 700) {
   return { fontFamily: HEAD[weight] || nearest(HEAD, weight) };
+}
+
+// The name beside the shield. Semibold, slightly tight, no shadow.
+export function wordmark() {
+  return { fontFamily: "Inter_600SemiBold", letterSpacing: -0.5 };
 }
 
 // Everything else: labels, body copy, numbers, buttons.

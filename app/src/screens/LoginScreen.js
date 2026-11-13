@@ -17,7 +17,7 @@ import { useAuth } from "../lib/auth";
 import { getBaseUrl, setBaseUrl, clearOrgMode, api } from "../lib/api";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
 import RegisterModal from "../components/RegisterModal";
-import { body, head } from "../lib/type";
+import { body, head, wordmark } from "../lib/type";
 import { brand, brandIcon } from "../lib/brand";
 
 function loginErrorMessage(err, orgMode) {
@@ -389,15 +389,12 @@ const styles = StyleSheet.create({
   lockup: { flexDirection: "row", alignItems: "center", gap: 10 },
   logoMark: { width: 48, height: 48, borderRadius: 4 },
   logo: {
-    fontSize: 28,
-    ...head(800),
+    fontSize: 26,
+    lineHeight: 30,
+    ...wordmark(),
     color: "#fff",
-    letterSpacing: 1.4,
-    textShadowColor: "rgba(0,0,0,0.28)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 8,
   },
-  tagline: { color: "#EAF6FA", marginTop: 10, fontSize: 11, letterSpacing: 1.8, textTransform: "uppercase", ...body(600), textShadowColor: "rgba(0,0,0,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 },
+  tagline: { color: "rgba(234,246,250,0.88)", marginTop: 8, fontSize: 11, letterSpacing: 1.6, textTransform: "uppercase", ...body(500) },
   card: {
     width: "100%",
     maxWidth: 420,

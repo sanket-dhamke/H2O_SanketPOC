@@ -134,10 +134,8 @@ const styles = StyleSheet.create({
   title: {
     color: "#fff",
     fontSize: 22,
-    ...head(800),
-    textShadowColor: "rgba(0,0,0,0.25)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
+    letterSpacing: -0.3,
+    ...head(700),
   },
   titleCompact: { fontSize: 17, lineHeight: 21 },
   subtitle: { color: "#CDE9F2", fontSize: 13, marginTop: 2, ...body(400)},
