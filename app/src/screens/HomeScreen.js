@@ -490,10 +490,7 @@ const styles = StyleSheet.create({
   brandLogo: {
     width: 30,
     height: 30,
-    borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.6)",
+    borderRadius: 4,
   },
   brandLogoFallback: { alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.22)" },
   brandLogoInitial: { color: "#fff", ...body(800), fontSize: 15 },

@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 24 },
   logoWrap: { alignItems: "center", marginBottom: 40 },
   lockup: { flexDirection: "row", alignItems: "center", gap: 10 },
-  logoMark: { width: 48, height: 48, borderRadius: 12 },
+  logoMark: { width: 48, height: 48, borderRadius: 4 },
   logo: {
     fontSize: 28,
     ...head(800),
