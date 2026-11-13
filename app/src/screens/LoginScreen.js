@@ -9,7 +9,7 @@ import {
   Image,
   ScrollView,
   Linking,
-  Dimensions,
+  useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import TextInput from "../components/AppTextInput";
@@ -64,18 +64,21 @@ const BACKDROPS = {
   neutral: {
     image: isWeb ? require("../../assets/society-bg-wide.jpg") : require("../../assets/society-bg.jpg"),
     tagline: "Smart living, simplified",
+    lead: "Use the email your admin gave you.",
     emailPlaceholder: "you@email.com",
     hint: "Accounts are created by your admin.\nContact them if you can't sign in.",
   },
   society: {
     image: isWeb ? require("../../assets/society-bg-wide.jpg") : require("../../assets/society-bg.jpg"),
     tagline: "Your society, simplified",
+    lead: "Use the email your society admin gave you.",
     emailPlaceholder: "you@society.com",
     hint: "Accounts are created by your society admin.\nContact them if you can't sign in.",
   },
   preschool: {
     image: isWeb ? require("../../assets/preschool-bg-wide.jpg") : require("../../assets/preschool-bg.jpg"),
     tagline: "Smart preschool entry & fees",
+    lead: "Use the email your preschool admin gave you.",
     emailPlaceholder: "you@preschool.com",
     hint: "Accounts are created by your preschool admin.\nContact them if you can't sign in.",
   },
@@ -100,6 +103,8 @@ export default function LoginScreen() {
   const [codeNote, setCodeNote] = useState("");
   const passwordRef = useRef(null);
   const theme = BACKDROPS[orgMode];
+  const { width: windowWidth } = useWindowDimensions();
+  const split = isWeb && windowWidth >= 960;
 
   useEffect(() => {
     getBaseUrl().then(setServerUrl);
@@ -196,28 +201,34 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.bg}>
-      <BleedPhoto source={theme.image} />
-      <View style={styles.overlay} />
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.logoWrap}>
-            <Image source={brandIcon} style={styles.logoMark} resizeMode="cover" />
-            <Text style={styles.logo}>{brand.name}</Text>
-            <Text style={styles.tagline}>{theme.tagline}</Text>
+      <View style={[styles.split, !split && styles.splitStack]}>
+        {split ? (
+          <View style={styles.photoPane}>
+            <Image source={theme.image} resizeMode="cover" style={styles.photoFill} />
           </View>
-
-          <View style={styles.card}>
-        {tenantName ? (
-          <Text style={styles.tenantName}>Signing in to {tenantName}</Text>
         ) : null}
-        <Text style={styles.signIn}>Sign in</Text>
+        <KeyboardAvoidingView
+          style={[styles.formPane, !split && styles.formPaneFull]}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <ScrollView
+            contentContainerStyle={styles.formScroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.formInner}>
+              <View style={styles.brandRow}>
+                <Image source={brandIcon} style={styles.brandMark} resizeMode="cover" />
+                <View style={styles.brandText}>
+                  <Text style={styles.brandName}>{brand.name}</Text>
+                  <Text style={styles.brandTag}>{theme.tagline}</Text>
+                </View>
+              </View>
+              {tenantName ? (
+                <Text style={styles.tenantName}>Signing in to {tenantName}</Text>
+              ) : null}
+              <Text style={styles.signIn}>Sign in</Text>
+              <Text style={styles.lead}>{theme.lead}</Text>
         <TextInput
           style={[styles.input, error ? styles.inputError : null]}
           value={email}
@@ -336,9 +347,10 @@ export default function LoginScreen() {
         )}
 
             <Text style={styles.hint}>{theme.hint}</Text>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
       <ForgotPasswordModal
         visible={forgotOpen}
         onClose={() => setForgotOpen(false)}
@@ -349,68 +361,41 @@ export default function LoginScreen() {
   );
 }
 
-function BleedPhoto({ source }) {
-  const [box, setBox] = useState(() => Dimensions.get("window"));
-  useEffect(() => {
-    const sub = Dimensions.addEventListener("change", ({ window }) => setBox(window));
-    return () => sub?.remove?.();
-  }, []);
-  return (
-    <Image
-      source={source}
-      resizeMode="cover"
-      style={[
-        styles.bleed,
-        {
-          width: box.width,
-          height: box.height,
-          maxWidth: box.width,
-          maxHeight: box.height,
-        },
-      ]}
-    />
-  );
-}
-
 const styles = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: "#0B3A49", overflow: "hidden" },
-  bleed: {
-    position: "absolute",
-    top: 0,
-    left: 0,
+  bg: { flex: 1, backgroundColor: "#fff", overflow: "hidden" },
+  split: { flex: 1, flexDirection: "row" },
+  splitStack: { flexDirection: "column" },
+  photoPane: { flex: 1.18, backgroundColor: "#0B3A49", overflow: "hidden" },
+  photoFill: {
+    width: "100%",
+    height: "100%",
     ...(Platform.OS === "web" ? { objectFit: "cover" } : null),
   },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(6, 40, 52, 0.38)" },
-  container: { flex: 1 },
-  scroll: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 24 },
-  logoWrap: { alignItems: "center", marginBottom: 28 },
-  logoMark: { width: 84, height: 84, borderRadius: 6 },
-  logo: {
-    fontSize: 40,
-    lineHeight: 46,
-    marginTop: 14,
+  formPane: { flex: 1, backgroundColor: "#fff" },
+  formPaneFull: { flex: 1 },
+  formScroll: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 48, paddingVertical: 32 },
+  formInner: { width: "100%", maxWidth: 400, alignSelf: "center" },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 28 },
+  brandText: { flexShrink: 1 },
+  brandMark: { width: 64, height: 64, borderRadius: 6 },
+  brandName: {
+    fontSize: 34,
+    lineHeight: 38,
     ...wordmark(),
-    letterSpacing: -0.8,
-    color: "#fff",
+    letterSpacing: -0.7,
+    color: "#101C2E",
   },
-  tagline: { color: "rgba(234,246,250,0.88)", marginTop: 6, fontSize: 12, letterSpacing: 2.2, textTransform: "uppercase", ...body(500) },
-  card: {
-    width: "100%",
-    maxWidth: 420,
-    alignSelf: "center",
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    paddingHorizontal: 28,
-    paddingTop: 28,
-    paddingBottom: 24,
-    shadowColor: "#000",
-    shadowOpacity: 0.16,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
+  brandTag: {
+    marginTop: 6,
+    fontSize: 11,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+    color: "#5E7380",
+    ...body(500),
   },
-  tenantName: { textAlign: "center", color: "#0B6E8F", ...body(700), fontSize: 13, marginBottom: 8 },
-  signIn: { textAlign: "center", color: "#1B2B33", fontSize: 22, marginBottom: 28, ...head(700) },
+  lead: { color: "#5E7380", fontSize: 15, lineHeight: 22, marginBottom: 24, ...body(400) },
+  tenantName: { color: "#0B6E8F", ...body(700), fontSize: 13, marginBottom: 8 },
+  signIn: { color: "#101C2E", fontSize: 28, letterSpacing: -0.4, marginBottom: 8, ...head(700) },
   input: {
     borderWidth: 1,
     borderColor: "#D0D5DD",
